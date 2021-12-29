@@ -45,6 +45,6 @@ ENV DLL="${PROJECT}.dll"
 
 COPY --from=publish /app .
 
-ENTRYPOINT ["dotnet", "$DLL" ]
+ENTRYPOINT dotnet $DLL
 
 EXPOSE 80
