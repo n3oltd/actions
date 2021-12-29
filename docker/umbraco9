@@ -41,10 +41,10 @@ ARG PROJECT
 WORKDIR /app
 
 ENV ASPNETCORE_URLS http://*:80
-ENV RUN="dotnet ${PROJECT}.dll"
+ENV DLL="${PROJECT}.dll"
 
 COPY --from=publish /app .
 
-ENTRYPOINT echo $RUN
+ENTRYPOINT ["dotnet", "$DLL" ]
 
 EXPOSE 80
