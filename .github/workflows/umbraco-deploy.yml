@@ -1,0 +1,66 @@
+name: 'Umbraco Deploy'
+
+on:
+  workflow_call:
+    inputs:
+      site-id:
+        description: The site ID
+        type: string
+        required: true
+
+      container-name:
+        description: The name of the Docker container
+        type: string
+        required: true
+
+      data-region:
+        description: The data region
+        type: string
+        required: true
+
+      environment-id:
+        description: The environment ID
+        type: string
+        required: true
+
+      host-name:
+        description: The host name
+        type: string
+        required: true
+
+    secrets:
+      azure-credentials:
+        required: true
+
+      db-host:
+        required: true
+
+      db-username:
+        required: true
+
+      db-password:
+        required: true
+    
+jobs:
+  docker:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.azure-credentials }}
+
+      - name: Azure CLI script
+        uses: azure/CLI@v1
+        with:
+          azcliversion: 2.30.0
+          inlineScript: |
+            az webapp config container set --name ${{ env.app_name }} --resource-group "sites" --docker-custom-image-name ${{ env.container_image }} --docker-registry-server-url https://n3oltd.azurecr.io
+        env:
+          app_name: "${{ inputs.dataRegionId }}-${{ inputs.siteId }}-${{ inputs.environmentId }}"
+          container_image: "n3oltd.azurecr.io/${{ inputs.container-name }}:latest""
