@@ -39,9 +39,12 @@ FROM base AS final
 ARG PROJECT
 
 WORKDIR /app
+
 ENV ASPNETCORE_URLS http://*:80
+ENV RUN="dotnet ${PROJECT}.dll"
+
 COPY --from=publish /app .
 
-ENTRYPOINT ["dotnet", "${PROJECT}.dll"]
+ENTRYPOINT echo $RUN
 
 EXPOSE 80
