@@ -1,0 +1,75 @@
+name: 'Docker Build & Push'
+
+on:
+  workflow_call:
+    inputs:
+      docker-image:
+        description: Name of the docker image
+        type: string
+        required: true
+
+      docker-file:
+        description: Name of the Dockerfile
+        type: string
+        required: true
+
+      build-args:
+        description: Docker build args in the form of a string JSON array
+        type: string
+        required: false
+
+    secrets:
+      acr-username:
+        required: true
+
+      acr-password:
+        required: true
+    
+jobs:
+  docker:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: prepare
+        name: Set tags
+        shell: bash
+        run: |
+          DOCKER_IMAGE=${{ inputs.docker-image }}
+          VERSION=edge
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          if [[ $VERSION =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]{1}$ ]]; then
+            TAGS="$TAGS,${DOCKER_IMAGE}:latest"
+          fi
+          echo ::set-output name=tags::${TAGS}
+
+      - id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to ACR
+        uses: docker/login-action@v1
+        with:
+          registry: n3oltd.azurecr.io
+          username: ${{ secrets.acr-username }}
+          password: ${{ secrets.acr-password }}
+      
+      - name: Fetch Dockerfile
+        uses: wei/wget@v1
+        with:
+          args: -O Dockerfile https://raw.githubusercontent.com/n3oltd/.github/main/docker/${{ inputs.docker-file }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./src
+          target: final
+          build-args: ${{ inputs.build-args }}
+          push: true
+          tags: ${{ steps.prepare.outputs.tags }}

@@ -1,0 +1,83 @@
+name: 'dotnet Build, Pack & Push'
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: Platform to execute on
+        type: string
+        default: ubuntu-latest
+        
+      dotnet-version:
+        description: Version of dotnet to use
+        type: string
+        default: 5.0.x
+      
+      working-directory:
+        description: Folder containing the projects to build
+        type: string
+        default: src
+
+      build-configuration:
+        description: Build configuration
+        type: string
+        default: Release
+        
+      run-tests:
+        description: Run dotnet tests
+        type: boolean
+        default: false
+
+      run-pack:
+        description: Run dotnet pack
+        type: boolean
+        default: false
+
+    secrets:
+      nuget-api-key:
+        required: false
+    
+jobs:
+  build:
+    name: ${{ inputs.runs-on }}
+
+    runs-on: ${{ inputs.runs-on }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - id: prepare
+        name: Set version
+        shell: bash
+        run: |
+          VERSION=1.0.0
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          echo ::set-output name=VERSION::$(echo $VERSION)
+        
+      - name: dotnet restore
+        run: dotnet restore
+      
+      - name: dotnet build
+        run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }}
+      
+      - name: dotnet test
+        if: ${{ inputs.run-tests }}
+        run: dotnet test --no-build --verbosity normal
+
+      - name: dotnet pack
+        if: ${{ inputs.run-pack }}
+        run: dotnet pack --configuration ${{ inputs.build-configuration }} /property:Version=${{ steps.prepare.outputs.VERSION }}
+
+      - name: dotnet nuget push
+        if: ${{ inputs.run-pack }}
+        run: dotnet nuget push "**/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate

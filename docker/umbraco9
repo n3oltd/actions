@@ -1,0 +1,45 @@
+########################
+### base
+########################
+FROM mcr.microsoft.com/dotnet/aspnet:5.0 AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
+
+ARG PROJECT
+
+WORKDIR /src
+
+ENV PROJECT=${PROJECT}
+
+COPY . .
+WORKDIR "/src/${PROJECT}"
+
+RUN dotnet restore
+RUN dotnet build --no-restore --configuration Release --output /app
+
+########################
+### publish
+########################
+FROM build AS publish
+
+ARG PROJECT
+
+RUN dotnet publish "${PROJECT}.csproj" --configuration Release --output /app
+
+########################
+### final
+########################
+FROM base AS final
+
+WORKDIR /app
+ENV ASPNETCORE_URLS http://*:80
+COPY --from=publish /app .
+
+ENTRYPOINT ["dotnet", "${PROJECT}.dll"]
+
+EXPOSE 80
