@@ -45,6 +45,9 @@ ENV DLL="${PROJECT}.dll"
 
 COPY --from=publish /app .
 
-ENTRYPOINT dotnet $DLL
+RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
 
 EXPOSE 80
