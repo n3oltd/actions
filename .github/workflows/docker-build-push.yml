@@ -70,7 +70,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
           target: final
-          dockerfile: ${{ inputs.docker-file }}
+          file: ${{ inputs.docker-file }}
           build-args: ${{ inputs.build-args }}
           push: true
           tags: ${{ steps.prepare.outputs.tags }}
