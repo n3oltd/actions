@@ -71,6 +71,6 @@ jobs:
           context: ./src
           target: final
           dockerfile: ${{ inputs.docker-file }}
-          build-args: ${{ inputs.build-args }}
+          build-args: ${{ fromJSON(inputs.build-args) }}
           push: true
           tags: ${{ steps.prepare.outputs.tags }}
