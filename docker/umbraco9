@@ -36,6 +36,8 @@ RUN dotnet publish "${PROJECT}.csproj" --configuration Release --output /app
 ########################
 FROM base AS final
 
+ARG PROJECT
+
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
 COPY --from=publish /app .
