@@ -38,7 +38,7 @@ jobs:
         name: Set tags
         shell: bash
         run: |
-          DOCKER_IMAGE=${{ inputs.docker-image }}
+          DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.docker-image }}
           VERSION=edge
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
