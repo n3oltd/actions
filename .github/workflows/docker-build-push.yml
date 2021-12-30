@@ -45,19 +45,17 @@ jobs:
         uses: wei/wget@v1
         with:
           args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
-
+            
       - id: meta
-        name: Docker meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ${{ steps.buildx.outputs.name }}
-          flavor: |
-            latest=true
-          tags: |
-            type=sha
-            type=sha,prefix={{date 'YYYYMMDD'}}-
-            type=edge
-            type=edge,branch=main
+        name: Set tags
+        shell: bash
+        run: |
+          DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.docker-image }}
+          NOW=$(date +'%Y-%m-%d')
+          SHA=$(git rev-parse --short HEAD)
+          VERSION="$NOW-$SHA"
+          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
+          echo ::set-output name=tags::${TAGS}
 
       - name: Build and push
         uses: docker/build-push-action@v2
