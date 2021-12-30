@@ -84,7 +84,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
         env:
           app_name: "${{ inputs.data-region-id }}-${{ inputs.site-id }}-${{ inputs.environment-id }}"
-          custom_image: "${{ inputs.docker-image }}:latest"
+          custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
           db_connection_string: "${{ secrets.db-connection-string }}"
           aspnetcore_environment: "${{ inputs.environment-id }}"
           date_format: "${{ inputs.localization-date-format }}"
