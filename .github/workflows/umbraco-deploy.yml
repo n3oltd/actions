@@ -3,43 +3,55 @@ name: 'Umbraco Deploy'
 on:
   workflow_call:
     inputs:
-      site-id:
-        description: The site ID
-        type: string
-        required: true
-
-      container-name:
-        description: The name of the Docker container
+      docker-image:
         type: string
         required: true
 
       data-region:
-        description: The data region
         type: string
         required: true
 
       environment-id:
-        description: The environment ID
         type: string
         required: true
 
-      host-name:
-        description: The host name
+      site-id:
         type: string
         required: true
+
+      storage-container:
+        type: string
+        default: 'none'
+
+      localization-date-format:
+        type: string
+        default: dmy_slashes
+
+      localization-language:
+        type: string
+        default: en
+
+      localization-number-format:
+        type: string
+        default: international
+
+      localization-time-format:
+        type: string
+        default: '24'
+
+      localization-timezone:
+        type: string
+        default: 'Etc/UTC'
 
     secrets:
       azure-credentials:
         required: true
 
-      db-host:
+      db-connection-string:
         required: true
 
-      db-username:
-        required: true
-
-      db-password:
-        required: true
+      storage-connection-string:
+        required: false
     
 jobs:
   docker:
@@ -60,7 +72,25 @@ jobs:
         with:
           azcliversion: 2.30.0
           inlineScript: |
-            az webapp config container set --name ${{ env.app_name }} --resource-group "sites" --docker-custom-image-name ${{ env.container_image }} --docker-registry-server-url https://n3oltd.azurecr.io
+            az webapp config container set --name ${{ env.app_name }} --resource-group "sites" --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
+            az webapp config connection-string set --name ${{ env.app_name }} --resource-group "sites" --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_DateFormat="${{ env.date_format }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_Language="${{ env.language }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_NumberFormat="${{ env.number_format }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_TimeFormat="${{ env.time_format }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_Timezone="${{ env.timezone }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
         env:
           app_name: "${{ inputs.dataRegionId }}-${{ inputs.siteId }}-${{ inputs.environmentId }}"
-          container_image: "n3oltd.azurecr.io/${{ inputs.container-name }}:latest""
+          custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
+          db_connection_string: "${{ secrets.db-connection-string }}"
+          aspnetcore_environment: "${{ inputs.environmentId }}"
+          date_format: "${{ inputs.localization-date-format }}"
+          language: "${{ inputs.localization-language }}"
+          number_format: "${{ inputs.localization-number-format }}"
+          time_format: "${{ inputs.localization-time-format }}"
+          timezone: "${{ inputs.localization-timezone }}"
+          storage_container: "${{ inputs.storage-container }}"
+          storage_connection_string: "${{ secrets.storage-connection-string }}"
