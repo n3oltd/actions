@@ -4,32 +4,26 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: Platform to execute on
         type: string
         default: ubuntu-latest
         
       dotnet-version:
-        description: Version of dotnet to use
         type: string
         default: 5.0.x
       
       working-directory:
-        description: Folder containing the projects to build
         type: string
         default: src
 
       build-configuration:
-        description: Build configuration
         type: string
         default: Release
         
       run-tests:
-        description: Run dotnet tests
         type: boolean
         default: false
 
       run-pack:
-        description: Run dotnet pack
         type: boolean
         default: false
 

@@ -4,17 +4,14 @@ on:
   workflow_call:
     inputs:
       docker-image:
-        description: Name of the docker image
         type: string
         required: true
 
       docker-file:
-        description: Name of the Dockerfile
         type: string
         required: true
 
       build-args:
-        description: Docker build args in the form of a string JSON array
         type: string
         required: false
 
