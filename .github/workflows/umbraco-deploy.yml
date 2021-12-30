@@ -21,7 +21,7 @@ on:
 
       storage-container:
         type: string
-        default: 'none'
+        default: 'umbraco'
 
       localization-date-format:
         type: string
