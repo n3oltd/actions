@@ -54,7 +54,7 @@ on:
         required: false
     
 jobs:
-  docker:
+  job1:
     name: ubuntu-latest
 
     runs-on: ubuntu-latest

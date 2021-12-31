@@ -23,7 +23,7 @@ on:
         required: true
     
 jobs:
-  docker:
+  job1:
     name: ubuntu-latest
 
     runs-on: ubuntu-latest
@@ -48,7 +48,6 @@ jobs:
             
       - id: meta
         name: Set tags
-        shell: bash
         run: |
           DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.docker-image }}
           NOW=$(date +'%Y-%m-%d')

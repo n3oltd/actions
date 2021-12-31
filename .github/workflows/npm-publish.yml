@@ -1,0 +1,42 @@
+name: 'npm Publish'
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: true
+        
+      version:
+        type: string
+        required: true
+
+    secrets:
+      npm-token:
+        required: true
+    
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - run: |
+          npm install
+          packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
+          npm version $packageVersion
+          npm publish --tag latest --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
