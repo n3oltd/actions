@@ -39,4 +39,4 @@ jobs:
           npm version $packageVersion
           npm publish --tag latest --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
