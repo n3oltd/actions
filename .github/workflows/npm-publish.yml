@@ -34,7 +34,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       
       - run: |
-          npm install
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           npm version $packageVersion
           npm publish --tag latest --access public
