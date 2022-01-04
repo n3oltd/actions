@@ -7,7 +7,7 @@ on:
         type: string
         required: true
 
-      data-region-id:
+      resource-group:
         type: string
         required: true
 
@@ -15,7 +15,7 @@ on:
         type: string
         required: true
 
-      site-id:
+      site-name:
         type: string
         required: true
 
@@ -72,24 +72,25 @@ jobs:
         with:
           azcliversion: 2.30.0
           inlineScript: |
-            az webapp config container set --name ${{ env.app_name }} --resource-group "sites" --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
-            az webapp config connection-string set --name ${{ env.app_name }} --resource-group "sites" --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_DateFormat="${{ env.date_format }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_Language="${{ env.language }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_NumberFormat="${{ env.number_format }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_TimeFormat="${{ env.time_format }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings N3O_Timezone="${{ env.timezone }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group "sites" --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
+            az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
+            az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_DateFormat="${{ env.date_format }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Language="${{ env.language }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_NumberFormat="${{ env.number_format }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_TimeFormat="${{ env.time_format }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Timezone="${{ env.timezone }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
         env:
-          app_name: "${{ inputs.data-region-id }}-${{ inputs.site-id }}-${{ inputs.environment-id }}"
+          app_name: "${{ inputs.site-name }}"
           custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
           db_connection_string: "${{ secrets.db-connection-string }}"
           aspnetcore_environment: "${{ inputs.environment-id }}"
           date_format: "${{ inputs.localization-date-format }}"
           language: "${{ inputs.localization-language }}"
           number_format: "${{ inputs.localization-number-format }}"
+          resource_group: "${{ inputs.resource-group }}"
           time_format: "${{ inputs.localization-time-format }}"
           timezone: "${{ inputs.localization-timezone }}"
           storage_container: "${{ inputs.storage-container }}"
