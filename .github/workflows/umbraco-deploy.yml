@@ -79,12 +79,12 @@ jobs:
             az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
             az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_FORWARDEDHEADERS_ENABLED="true" 
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_DateFormat="${{ env.date_format }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Language="${{ env.language }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_NumberFormat="${{ env.number_format }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_TimeFormat="${{ env.time_format }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Timezone="${{ env.timezone }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__CMS__WEBROUTING__UMBRACOAPPLICATIONURL="${{ env.site_url }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
         env:
@@ -96,7 +96,6 @@ jobs:
           language: "${{ inputs.localization-language }}"
           number_format: "${{ inputs.localization-number-format }}"
           resource_group: "${{ inputs.resource-group }}"
-          site_url: "https://${{ inputs.site-host }}"
           time_format: "${{ inputs.localization-time-format }}"
           timezone: "${{ inputs.localization-timezone }}"
           storage_container: "${{ inputs.storage-container }}"
