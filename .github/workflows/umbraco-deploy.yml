@@ -96,7 +96,7 @@ jobs:
           language: "${{ inputs.localization-language }}"
           number_format: "${{ inputs.localization-number-format }}"
           resource_group: "${{ inputs.resource-group }}"
-          site_url: "https://${{ inputs.site-host }}/umbraco"
+          site_url: "https://${{ inputs.site-host }}"
           time_format: "${{ inputs.localization-time-format }}"
           timezone: "${{ inputs.localization-timezone }}"
           storage_container: "${{ inputs.storage-container }}"
