@@ -1,0 +1,30 @@
+name: 'npm-prepare'
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: true
+    
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - run: |
+          cp ../LICENSE.md dist/LICENSE.md
+          cp README.md dist/README.md
+          cp package.json dist/package.json
+
+      - uses: sergeysova/jq-action@v2
+        with:
+          cmd: 'jq 'del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = "index.js"' dist/package.json > dist/package.json'

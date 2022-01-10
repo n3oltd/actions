@@ -1,4 +1,4 @@
-name: 'dotnet Build, Pack & Push'
+name: 'dotnet-build-pack=push'
 
 on:
   workflow_call:

@@ -1,4 +1,4 @@
-name: 'Umbraco Deploy'
+name: 'umbraco-deploy'
 
 on:
   workflow_call:
