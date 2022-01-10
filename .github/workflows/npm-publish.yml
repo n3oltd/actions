@@ -48,12 +48,16 @@ jobs:
           cp README.md dist/README.md
       
       - if: ${{ inputs.prepack }}
+        id: prepare
         uses: sergeysova/jq-action@v2
         with:
-          cmd: "jq 'del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"' package.json > dist/package.json"
+          cmd: "jq 'del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"' package.json"
+          multiline: true
       
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
+          cd dist
+          echo ${{ steps.prepare.outputs.value }} > package.json
           npm version $packageVersion
           cat package.json
           npm publish --tag latest --access public
