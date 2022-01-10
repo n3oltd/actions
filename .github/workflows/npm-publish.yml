@@ -44,7 +44,7 @@ jobs:
           
       - if: ${{ inputs.prepack }}
         run: |
-          cp ../LICENSE.md dist/LICENSE.md
+          cp ../../LICENSE.md dist/LICENSE.md
           cp README.md dist/README.md
           jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > dist/package.json
       
@@ -52,7 +52,6 @@ jobs:
           cd dist
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           npm version $packageVersion
-          cat package.json
           npm publish --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
