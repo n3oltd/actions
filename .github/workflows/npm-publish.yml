@@ -57,9 +57,10 @@ jobs:
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           cd dist
-          echo ${{ steps.prepare.outputs.value }} > package.json
+          echo $PACKAGE_JSON > package.json
           npm version $packageVersion
           cat package.json
           npm publish --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
+          PACKAGE_JSON: ${{ steps.prepare.outputs.value }}
