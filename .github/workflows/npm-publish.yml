@@ -49,12 +49,10 @@ jobs:
           jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > dist/package.json
       
       - run: |
-          packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           cd dist
-          echo $PACKAGE_JSON > package.json
+          packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           npm version $packageVersion
           cat package.json
           npm publish --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
-          PACKAGE_JSON: ${{ steps.prepare.outputs.value }}
