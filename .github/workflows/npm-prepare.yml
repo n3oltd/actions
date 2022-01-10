@@ -27,4 +27,4 @@ jobs:
 
       - uses: sergeysova/jq-action@v2
         with:
-          cmd: 'jq 'del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = "index.js"' dist/package.json > dist/package.json'
+          cmd: "jq 'del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"' dist/package.json > dist/package.json"
