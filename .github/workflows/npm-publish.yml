@@ -10,6 +10,10 @@ on:
       version:
         type: string
         required: true
+        
+      prepack:
+        type: boolean
+        default: false
 
     secrets:
       npm-token:
@@ -32,6 +36,18 @@ jobs:
         with:
           node-version: '14.x'
           registry-url: 'https://registry.npmjs.org'
+          
+          
+      - if: ${{ inputs.prepack }}
+        run: |
+          npm run prepack
+          cp ../LICENSE.md dist/LICENSE.md
+          cp README.md dist/README.md
+      
+      - if: ${{ inputs.prepack }}
+        uses: sergeysova/jq-action@v2
+        with:
+          cmd: "jq 'del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"' package.json > dist/package.json"
       
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
