@@ -41,6 +41,9 @@ jobs:
       - if: ${{ inputs.prepack }}
         run: |
           npm run prepack
+          
+      - if: ${{ inputs.prepack }}
+        run: |
           cp ../LICENSE.md dist/LICENSE.md
           cp README.md dist/README.md
       
@@ -52,6 +55,7 @@ jobs:
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           npm version $packageVersion
+          cat package.json
           npm publish --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
