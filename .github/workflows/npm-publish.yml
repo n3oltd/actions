@@ -48,8 +48,11 @@ jobs:
           cp README.md dist/README.md
           jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > dist/package.json
       
-      - run: |
+      - if: ${{ inputs.prepack }}
+        run: |
           cd dist
+
+      - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           npm version $packageVersion
           npm publish --tag latest --access public
