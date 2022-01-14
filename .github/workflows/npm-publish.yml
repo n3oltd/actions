@@ -44,14 +44,15 @@ jobs:
           
       - if: ${{ inputs.prepack }}
         run: |
-          cp ../../LICENSE.md dist/LICENSE.md
+          dir=$(pwd -P)
+          while [ -n "$dir" -a ! -f "$dir/LICENSE.md" ]; do
+              dir=${dir%/*}
+          done
+          if [ -f "$dir/LICENSE.md" ]; then cp "$dir/LICENSE.md" dist/LICENSE.md; fi
           cp README.md dist/README.md
           jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > dist/package.json
-      
-      - if: ${{ inputs.prepack }}
-        run: |
           cd dist
-
+          
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
           npm version $packageVersion
