@@ -48,10 +48,10 @@ jobs:
           while [ -n "$dir" -a ! -f "$dir/LICENSE.md" ]; do
               dir=${dir%/*}
           done
-          if [ -f "$dir/LICENSE.md" ]; then cp "$dir/LICENSE.md" dist/LICENSE.md; fi
-          cp README.md dist/README.md
-          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > dist/package.json
-          cd dist
+          if [ -f "$dir/LICENSE.md" ]; then cp "$dir/LICENSE.md" build/LICENSE.md; fi
+          cp README.md build/README.md
+          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > build/package.json
+          cd build
           
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
