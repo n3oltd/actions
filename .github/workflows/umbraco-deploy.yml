@@ -83,6 +83,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Timezone="${{ env.timezone }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
+            az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
         env:
           app_name: "${{ inputs.site-name }}"
           custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
