@@ -50,7 +50,7 @@ jobs:
           done
           if [ -f "$dir/LICENSE.md" ]; then cp "$dir/LICENSE.md" build/LICENSE.md; fi
           cp README.md build/README.md
-#          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > build/package.json
+          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > build/package.json
 
       - run: |
           cd build
