@@ -40,7 +40,7 @@ jobs:
           
       - if: ${{ inputs.prepack }}
         run: |
-          npm run install
+          npm install
           npm run build
           
       - if: ${{ inputs.prepack }}
