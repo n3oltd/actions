@@ -55,7 +55,7 @@ jobs:
           cd build
 
       - run: |
-          packageVersion="$(echo "${{ inputs.version }}" | sed 's/\(.*\)\./\1-/')"
+          packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
           npm version $packageVersion
           npm publish --tag latest --access public
         env:
