@@ -20,7 +20,7 @@ COPY . .
 WORKDIR "/src/${PROJECT}"
 
 RUN dotnet restore
-RUN dotnet build --no-restore --configuration Release --output /app
+RUN dotnet build --no-restore --configuration Release --output /build
 
 ########################
 ### publish
@@ -29,7 +29,7 @@ FROM build AS publish
 
 ARG PROJECT
 
-RUN dotnet publish "${PROJECT}.csproj" --configuration Release --output /app
+RUN dotnet publish "${PROJECT}.csproj" --configuration Release --output /publish
 
 ########################
 ### final
@@ -38,12 +38,12 @@ FROM base AS final
 
 ARG PROJECT
 
-WORKDIR /app
+WORKDIR /publish
 
 ENV ASPNETCORE_URLS http://*:80
 ENV DLL="${PROJECT}.dll"
 
-COPY --from=publish /app .
+COPY --from=publish /publish .
 
 RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
