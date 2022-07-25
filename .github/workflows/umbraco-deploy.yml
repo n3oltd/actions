@@ -74,6 +74,7 @@ jobs:
           inlineScript: |
             az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
             az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
+            az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN_ProviderName="Microsoft.Data.SqlClient" --connection-string-type SQLAzure
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_FORWARDEDHEADERS_ENABLED="true" 
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_DateFormat="${{ env.date_format }}"
