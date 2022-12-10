@@ -9,7 +9,7 @@ on:
         
       dotnet-version:
         type: string
-        default: 6.0.x
+        default: 7.x
       
       working-directory:
         type: string
