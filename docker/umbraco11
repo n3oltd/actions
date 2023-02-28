@@ -36,6 +36,10 @@ RUN dotnet publish "${PROJECT}.csproj" --configuration Release --output /publish
 ########################
 FROM base AS final
 
+RUN apt-get update
+RUN echo "yes" | apt install ttf-mscorefonts-installer --assume-yes
+RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi fontconfig
+
 ARG PROJECT
 
 WORKDIR /publish
