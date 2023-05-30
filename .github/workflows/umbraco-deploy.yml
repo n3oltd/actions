@@ -82,6 +82,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_NumberFormat="${{ env.number_format }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_TimeFormat="${{ env.time_format }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Timezone="${{ env.timezone }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Tracing__OtlpExporterUrl="https://tracing.n3o.cloud"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
