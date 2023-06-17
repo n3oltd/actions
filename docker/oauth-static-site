@@ -10,13 +10,9 @@ WORKDIR /app
 ########################
 FROM node:18 AS build
 
-WORKDIR /src
+WORKDIR /
 
 COPY . .
-
-RUN ls
-
-WORKDIR /src
 
 RUN ls
 
