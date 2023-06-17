@@ -12,9 +12,9 @@ WORKDIR /
 
 COPY . .
 
-RUN npm install -g -s --no-progress yarn && \
-    yarn install --frozen-lockfile && \
-    yarn build
+RUN npm install -g yarn
+RUN yarn install --frozen-lockfile
+RUN yarn build
 
 ########################
 ### final
