@@ -22,9 +22,9 @@ RUN yarn build
 ########################
 FROM base AS final
 
-ENV OAUTH2_PROXY_HTTP_ADDRESS "0.0.0.0:80"
+ENV OAUTH2_PROXY_HTTP_ADDRESS "0.0.0.0:8080"
 ENV OAUTH2_PROXY_UPSTREAMS file:///var/www/#/
 
 COPY --from=build /src/build /var/www
 
-EXPOSE 80
+EXPOSE 8080
