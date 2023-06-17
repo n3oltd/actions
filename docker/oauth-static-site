@@ -12,8 +12,10 @@ WORKDIR /
 
 COPY . .
 
+RUN ls
+
 RUN yarn install --frozen-lockfile
-RUN yarn run build
+RUN yarn build
 
 ########################
 ### final
