@@ -1,8 +1,8 @@
-FROM quay.io/oauth2-proxy/oauth2-proxy:latest
+FROM quay.io/oauth2-proxy/oauth2-proxy:latest  AS final
 
 ENV OAUTH2_PROXY_HTTP_ADDRESS "0.0.0.0:80"
 ENV OAUTH2_PROXY_UPSTREAMS file:///var/www/#/
 
-COPY . /var/www/
+COPY build /var/www/
 
 EXPOSE 80
