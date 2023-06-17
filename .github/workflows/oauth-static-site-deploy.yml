@@ -63,7 +63,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_EMAIL_DOMAINS="${{ env.email_domains }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_PROVIDER="azure"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_AZURE_TENANT_ID="${{ env.tenant_id }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_OIDC_ISSUER_URL="https://sts.windows.net/${{ env.tenant_id }}/"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_OIDC_ISSUER_URL="https://login.microsoftonline.com/${{ env.tenant_id }}/v2.0"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings WEBSITES_PORT="8080"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
         env:
