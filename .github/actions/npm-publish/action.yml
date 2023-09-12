@@ -1,0 +1,27 @@
+name: npm-publish
+description: Publishes one or more npm packages
+
+inputs:
+  package-directories:
+    description: The list of package directories as a JSON array
+    required: true
+
+  access-token:
+    description: A valid PAT with suitable permissions
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: npm publish
+      shell: bash
+      run: |
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
+        for packageDirectory in $packageDirectories
+        do
+          (cd $packageDirectory; npm version $version; echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc; echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc; ls -a; npm publish)
+        done
+      working-directory: ${{github.workspace}}
+      env: 
+        NODE_AUTH_TOKEN: ${{inputs.access-token}}

@@ -1,0 +1,11 @@
+name: n3o-tool install
+description: Installs the n3o-tool dotnet tool
+
+runs:
+  using: "composite"
+  steps: 
+    - name: dotnet tool install n3o-tool
+      shell: bash
+      run: |
+        dotnet new tool-manifest
+        dotnet tool install --no-cache n3o-tool

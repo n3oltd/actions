@@ -36,7 +36,7 @@ on:
 
       cookie-secret:
         required: true
-    
+
 jobs:
   job1:
     name: ubuntu-latest
@@ -79,4 +79,3 @@ jobs:
           email_domains: "${{ inputs.email-domains }}"
           resource_group: "${{ inputs.resource-group }}"
           tenant_id: "${{ inputs.tenant-id }}"
-          

@@ -1,0 +1,10 @@
+name: n3o-tool prepack
+description: Prepares projects for packaging
+
+runs:
+  using: "composite"
+  steps: 
+    - name: n3o prepack
+      shell: bash
+      run: |
+        dotnet tool run n3o-tool prepack

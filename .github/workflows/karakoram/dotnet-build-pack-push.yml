@@ -1,0 +1,75 @@
+﻿name: dotnet build, pack and push
+
+on:
+  workflow_call:
+    inputs:
+      nuget-packages:
+        description: List of NuGet packages to create as a JSON array
+        required: true
+        type: string
+
+      npm-packages:
+        description: List of npm package directories as a JSON array
+        required: true
+        type: string
+
+      run-number:
+        description: The workflow run number
+        required: true
+        type: string
+
+      run-attempt:
+        description: The workflow run-attempt number
+        required: true
+        type: string
+
+    secrets:
+      access-token:
+        description: A valid PAT with suitable permissions
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'
+
+      - name: setup-node
+        if: inputs.npm-packages != ''
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.13.0'
+
+      - name: n3o tool install
+        uses: n3o/actions/.github/actions/n3o-tool-install@main
+
+      - name: n3o tool prepack
+        uses: n3o/actions/.github/actions/n3o-tool-prepack@main
+
+      - name: dotnet build
+        uses: n3o/actions/.github/actions/dotnet-build@main
+
+      - name: dotnet pack
+        uses: n3o/actions/.github/actions/dotnet-pack@main
+        with:
+          projects: ${{ inputs.nuget-packages }}
+
+      - name: dotnet push
+        uses: n3o/actions/.github/actions/dotnet-push@main
+        with:
+          projects: ${{ inputs.nuget-packages }}
+          access-token: ${{ secrets.access-token }}
+
+      - name: npm publish clients packages
+        if: inputs.npm-packages != ''
+        uses: n3o/actions/.github/actions/npm-publish@main
+        with:
+          package-directories: ${{ inputs.npm-packages }}
+          access-token: ${{ secrets.access-token }} 

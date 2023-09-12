@@ -52,7 +52,7 @@ on:
 
       storage-connection-string:
         required: false
-    
+
 jobs:
   job1:
     name: ubuntu-latest
