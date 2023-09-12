@@ -18,4 +18,4 @@ runs:
         do
           echo "Packing: $project"
           dotnet pack "src/$project/$project.csproj" /p:Version=$version
-        done            
+        done

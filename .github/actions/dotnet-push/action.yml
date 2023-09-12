@@ -23,5 +23,3 @@ runs:
           echo "Project: $project"
           (cd $project; dotnet nuget push **/*.nupkg -k ${{inputs.access-token}} --source "https://nuget.pkg.github.com/n3oltd/index.json" --skip-duplicate)
         done
-
-      
