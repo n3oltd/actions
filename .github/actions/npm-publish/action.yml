@@ -1,0 +1,30 @@
+name: dotnet-pack
+description: "Packing Dotnet project"
+
+inputs:
+  client-directories:
+    description: The json array list of client directories
+    required: true
+  repository-owner: 
+    description: Owner username of the repository that run the main-ci.yaml        
+    required: true
+  access-token:
+    description: the access token from the calling workflow
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Parse JSON client directories list input and then publish packages in a loop
+      id: parse-json
+      shell: bash
+      run: |
+        listOfDirectories=$(echo '${{ inputs.client-directories }}' | jq -c -r '.[]')                
+        for packageDirectory in $listOfDirectories        
+        do
+          packageVersion=$(date +"%Y.%m.%d")-${{ github.run_number }}                 
+          ( cd $packageDirectory; npm version $packageVersion; echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc; echo "@${{ inputs.repository-owner }}:registry=https://npm.pkg.github.com" >> .npmrc; ls -a; npm publish)                                 
+        done
+      working-directory: ${{github.workspace}}
+      env: 
+        NODE_AUTH_TOKEN: ${{inputs.access-token}}

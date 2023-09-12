@@ -1,0 +1,20 @@
+name: N3O tool install and Prepack
+description: Installing the n3o tool to prepack the projects
+
+inputs:
+  azure-feed-pat:
+    description: The personal access token for accessing azure feed.
+
+runs:
+  using: "composite"
+  steps: 
+    - name: dotnet tool Install n3o
+      shell: bash
+      run: |
+        dotnet new tool-manifest
+        dotnet tool install --no-cache n3o
+
+    - name: n3o prepack
+      shell: bash      
+      run: |
+        dotnet tool run n3o prepack  
