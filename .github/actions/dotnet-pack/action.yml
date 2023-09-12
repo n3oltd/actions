@@ -1,22 +1,21 @@
 name: dotnet-pack
-description: "Packing Dotnet project"
+description: Create NuGet packages
 
 inputs:
   projects:
-    description: The json array list of projects
+    description: The list of projects to pack as a JSON array
     required: true
 
 runs:
   using: "composite"
   steps: 
-    - name: Parse JSON projects list input
-      id: parse-json
+    - name: dotnet-pack
       shell: bash
       run: |
-        listOfProjects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
-        echo $listOfProjects        
-        for project in $listOfProjects
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        projects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
+        for project in $projects
         do
-          echo "Packing project: $project"
-          dotnet pack "src/$project/$project.csproj" /p:Version=$(echo $(date +"%Y.%m.%d")-${{ github.run_number }})
+          echo "Packing: $project"
+          dotnet pack "src/$project/$project.csproj" /p:Version=$version
         done            

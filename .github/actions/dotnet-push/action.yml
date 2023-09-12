@@ -1,31 +1,27 @@
 name: dotnet-push
-description: "Pushing the Dotnet packages to Github Packages"
+description: Push NuGet packages to a private feed
 
-inputs:  
+inputs:
   projects:
-    description: 'The json array list of projects'
+    description: The list of projects to pack as a JSON array
     required: true
-  repository-owner: 
-    description: 'Owner username of the repository that run the main-ci.yaml'    
-    required: true
+
   access-token: 
-    description: 'The personal Access token passed from the calling flow'
+    description: A valid PAT with suitable permissions
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Push Nuget Package to GitHub packages feed
+    - name: dotnet push
       shell: bash
       working-directory: ${{github.workspace}}/src
       run: |
-        listOfProjects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
-        echo $listOfProjects        
-        for project in $listOfProjects
+        projects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
+        for project in $projects
         do
-          echo "Pushing project: $project"
-          echo $PWD
-          (cd $project; dotnet nuget push **/*.nupkg -k ${{inputs.access-token}} --source "https://nuget.pkg.github.com/${{ inputs.repository-owner }}/index.json" --skip-duplicate )          
-        done                 
-      
+          echo "Project: $project"
+          (cd $project; dotnet nuget push **/*.nupkg -k ${{inputs.access-token}} --source "https://nuget.pkg.github.com/n3oltd/index.json" --skip-duplicate)
+        done
+
       

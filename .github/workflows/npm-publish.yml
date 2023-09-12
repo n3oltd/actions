@@ -6,11 +6,11 @@ on:
       working-directory:
         type: string
         required: true
-        
+
       version:
         type: string
         required: true
-        
+
       prepack:
         type: boolean
         default: false
@@ -18,7 +18,7 @@ on:
     secrets:
       npm-token:
         required: true
-    
+
 jobs:
   job1:
     name: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
-    
+
     steps:
       - uses: actions/checkout@v2
 
@@ -36,12 +36,12 @@ jobs:
         with:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
-          
+
       - if: ${{ inputs.prepack }}
         run: |
           npm install
           npm run build
-          
+
       - if: ${{ inputs.prepack }}
         run: |
           dir=$(pwd -P)

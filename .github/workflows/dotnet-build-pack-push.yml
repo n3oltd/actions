@@ -6,11 +6,11 @@ on:
       runs-on:
         type: string
         default: ubuntu-latest
-        
+
       dotnet-version:
         type: string
         default: 7.x
-      
+
       working-directory:
         type: string
         default: src
@@ -18,7 +18,7 @@ on:
       build-configuration:
         type: string
         default: Release
-        
+
       run-tests:
         type: boolean
         default: false
@@ -30,7 +30,7 @@ on:
     secrets:
       nuget-api-key:
         required: false
-    
+
 jobs:
   job1:
     name: ${{ inputs.runs-on }}
@@ -40,7 +40,7 @@ jobs:
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
-    
+
     steps:
       - uses: actions/checkout@v2
 
@@ -56,13 +56,13 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
           echo ::set-output name=VERSION::$(echo $VERSION)
-        
+
       - name: dotnet restore
         run: dotnet restore
-      
+
       - name: dotnet build
         run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }}
-      
+
       - name: dotnet test
         if: ${{ inputs.run-tests }}
         run: dotnet test --no-build --verbosity normal

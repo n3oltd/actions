@@ -1,29 +1,26 @@
-name: dotnet-pack
-description: "Packing Dotnet project"
+name: npm-publish
+description: Publishes one or more npm packages
 
 inputs:
-  client-directories:
-    description: The json array list of client directories
+  package-directories:
+    description: The list of package directories as a JSON array
     required: true
-  repository-owner: 
-    description: Owner username of the repository that run the main-ci.yaml        
-    required: true
+
   access-token:
-    description: the access token from the calling workflow
+    description: A valid PAT with suitable permissions
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Parse JSON client directories list input and then publish packages in a loop
-      id: parse-json
+    - name: npm publish
       shell: bash
       run: |
-        listOfDirectories=$(echo '${{ inputs.client-directories }}' | jq -c -r '.[]')                
-        for packageDirectory in $listOfDirectories        
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
+        for packageDirectory in $packageDirectories
         do
-          packageVersion=$(date +"%Y.%m.%d")-${{ github.run_number }}                 
-          ( cd $packageDirectory; npm version $packageVersion; echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc; echo "@${{ inputs.repository-owner }}:registry=https://npm.pkg.github.com" >> .npmrc; ls -a; npm publish)                                 
+          (cd $packageDirectory; npm version $version; echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc; echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc; ls -a; npm publish)
         done
       working-directory: ${{github.workspace}}
       env: 
