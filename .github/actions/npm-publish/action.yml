@@ -25,3 +25,21 @@ runs:
       working-directory: ${{github.workspace}}
       env: 
         NODE_AUTH_TOKEN: ${{inputs.access-token}}
+        
+    - name: Npm publish to Azure feed
+      shell: bash
+      run: |
+        listOfDirectories=$(echo '${{ inputs.client-directories }}' | jq -c -r '.[]')                
+        for packageDirectory in $listOfDirectories        
+        do          
+          ( cd $packageDirectory; rm .npmrc; 
+            echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/registry/:username=a2658dbf-ef4b-4609-9d8d-9c65c96f86a4" >> .npmrc;
+            echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/registry/:_password=${{ inputs.azure-feed-token }}" >> .npmrc;
+            echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/registry/:email=n3oltd@n3oltd.com" >> .npmrc;
+            echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/:username=n3oltd" >> .npmrc;
+            echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/:_password=${{ inputs.azure-feed-token }}" >> .npmrc;
+            echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/:email=n3oltd@n3oltd.com" >> .npmrc; 
+            echo "n3oltd:registry=https://pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/registry/" >> .npmrc;
+            cat .npmrc; ls -a; npm publish )
+        done
+      working-directory: ${{github.workspace}}

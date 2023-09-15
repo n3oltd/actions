@@ -23,11 +23,6 @@ on:
         required: true
         type: string
 
-    secrets:
-      access-token:
-        description: A valid PAT with suitable permissions
-        required: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -65,11 +60,12 @@ jobs:
         uses: n3o/actions/.github/actions/dotnet-push@main
         with:
           projects: ${{ inputs.nuget-packages }}
-          access-token: ${{ secrets.access-token }}
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: npm publish clients packages
         if: inputs.npm-packages != ''
         uses: n3o/actions/.github/actions/npm-publish@main
         with:
           package-directories: ${{ inputs.npm-packages }}
-          access-token: ${{ secrets.access-token }} 
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          azure-feed-token: ${{ secrets.AZURE_FEED_CREDENTIALS }} 
