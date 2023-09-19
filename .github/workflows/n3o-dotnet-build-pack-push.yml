@@ -37,24 +37,24 @@ jobs:
           node-version: '18.13.0'
 
       - name: n3o tool install
-        uses: n3o/actions/.github/actions/n3o-tool-install@main
+        uses: n3oltd/actions/.github/actions/n3o-tool-install@main
 
       - name: n3o tool prepack
-        uses: n3o/actions/.github/actions/n3o-tool-prepack@main
+        uses: n3oltd/actions/.github/actions/n3o-tool-prepack@main
 
       - name: dotnet build
-        uses: n3o/actions/.github/actions/dotnet-restore-build@main
+        uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet pack
-        uses: n3o/actions/.github/actions/dotnet-pack@main
+        uses: n3oltd/actions/.github/actions/dotnet-pack@main
         with:
           projects: ${{ inputs.nuget-packages }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet push
-        uses: n3o/actions/.github/actions/dotnet-push@main
+        uses: n3oltd/actions/.github/actions/dotnet-push@main
         with:
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
           projects: ${{ inputs.nuget-packages }}
@@ -62,7 +62,7 @@ jobs:
 
       - name: npm publish clients packages
         if: inputs.npm-packages != ''
-        uses: n3o/actions/.github/actions/npm-publish@main
+        uses: n3oltd/actions/.github/actions/npm-publish@main
         with:
           package-directories: ${{ inputs.npm-packages }}
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}

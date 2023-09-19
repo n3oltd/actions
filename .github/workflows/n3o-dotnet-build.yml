@@ -25,6 +25,6 @@ jobs:
           dotnet-version: '7.x'
 
       - name: dotnet build
-        uses: n3o/actions/.github/actions/dotnet-restore-build@main
+        uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
         with:
           working-directory: ${{ inputs.working-directory }}
