@@ -9,15 +9,17 @@ inputs:
   working-directory:
     description: "The working directory"
     default: src
-
+    
 runs:
   using: "composite"
   steps:
     - name: add Github Source Credentials to nuget.config
       shell: bash
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
+      env:
+        GITHUB_PACKAGE_TOKEN: ${{ inputs.access-token }}
       run: |
-        dotnet nuget update source n3oltd --username n3oltd --password ${{ inputs.access-token }} 
+        dotnet nuget update source n3oltd -u n3oltd -p ${{env.GITHUB_PACKAGE_TOKEN}}
         dotnet nuget list source
       
     - name: dotnet restore
