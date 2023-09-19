@@ -17,19 +17,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: npm publish
-      shell: bash
-      run: |
-        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
-        packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
-        for packageDirectory in $packageDirectories
-        do
-          (cd $packageDirectory; npm version $version; echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc; echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc; ls -a; npm publish)
-        done
-      working-directory: ${{github.workspace}}
-      env: 
-        NODE_AUTH_TOKEN: ${{inputs.access-token}}
-        
     - name: Npm publish to Azure feed
       shell: bash
       run: |
@@ -47,3 +34,23 @@ runs:
             cat .npmrc; ls -a; npm publish )
         done
       working-directory: ${{github.workspace}}
+      
+    - name: npm publish
+      shell: bash
+      run: |
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
+        for packageDirectory in $packageDirectories
+        do
+          ( cd $packageDirectory; 
+            sed -i 's/"name": "@n3o/"name": "@n3oltd/g' package.json;
+            npm version $version; 
+            echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
+            echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
+            ls -a;
+            npm publish )
+        done
+      working-directory: ${{github.workspace}}
+      env: 
+        NODE_AUTH_TOKEN: ${{inputs.access-token}}
+        
