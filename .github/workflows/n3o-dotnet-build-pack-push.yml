@@ -45,6 +45,7 @@ jobs:
       - name: dotnet build
         uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
         with:
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet pack
