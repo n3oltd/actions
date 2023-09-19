@@ -43,7 +43,7 @@ runs:
             echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/:username=n3oltd" >> .npmrc;
             echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/:_password=${{ inputs.azure-feed-token }}" >> .npmrc;
             echo "//pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/:email=n3oltd@n3oltd.com" >> .npmrc; 
-            echo "n3oltd:registry=https://pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/registry/" >> .npmrc;
+            echo "@n3oltd:registry=https://pkgs.dev.azure.com/n3oltd/_packaging/Feed/npm/registry/" >> .npmrc;
             cat .npmrc; ls -a; npm publish )
         done
       working-directory: ${{github.workspace}}
