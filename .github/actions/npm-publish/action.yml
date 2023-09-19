@@ -2,12 +2,16 @@ name: npm-publish
 description: Publishes one or more npm packages
 
 inputs:
-  package-directories:
-    description: The list of package directories as a JSON array
-    required: true
-
   access-token:
     description: A valid PAT with suitable permissions
+    required: true
+
+  azure-feed-token:
+    description: An Azure feeds token
+    required: true
+
+  package-directories:
+    description: The list of package directories as a JSON array
     required: true
 
 runs:
