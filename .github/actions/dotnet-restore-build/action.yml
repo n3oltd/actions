@@ -1,17 +1,22 @@
 name: dotnet-restore-build
 description: Restore and build
 
+inputs:
+  working-directory:
+    description: "The working directory"
+    default: src
+
 runs:
   using: "composite"
   steps:
     - name: dotnet restore
       shell: bash
-      working-directory: ${{github.workspace}}/src
+      working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: dotnet restore --no-cache -v m
 
     - name: dotnet build
       shell: bash
-      working-directory: ${{github.workspace}}/src
+      working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
         version=$(date +"%Y.%m.%d")-${{ github.run_number }}
         echo "Version: $version"

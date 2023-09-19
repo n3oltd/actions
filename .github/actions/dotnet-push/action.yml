@@ -2,20 +2,24 @@ name: dotnet-push
 description: Push NuGet packages to a private feed
 
 inputs:
+  access-token: 
+    description: A valid PAT with suitable permissions
+    required: true
+
   projects:
     description: The list of projects to pack as a JSON array
     required: true
 
-  access-token: 
-    description: A valid PAT with suitable permissions
-    required: true
+  working-directory:
+    description: "The working directory"
+    default: src
 
 runs:
   using: "composite"
   steps:
     - name: dotnet push
       shell: bash
-      working-directory: ${{github.workspace}}/src
+      working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
         projects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
         for project in $projects
@@ -26,7 +30,7 @@ runs:
 
     - name: Push Nuget packages to Azure Artifacts
       shell: bash
-      working-directory: ${{github.workspace}}/src
+      working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
         listOfProjects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')        
         for project in $listOfProjects

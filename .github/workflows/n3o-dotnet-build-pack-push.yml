@@ -23,6 +23,10 @@ on:
         required: true
         type: string
 
+      working-directory:
+        type: string
+        default: src
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -50,17 +54,21 @@ jobs:
 
       - name: dotnet build
         uses: n3o/actions/.github/actions/dotnet-restore-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet pack
         uses: n3o/actions/.github/actions/dotnet-pack@main
         with:
           projects: ${{ inputs.nuget-packages }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet push
         uses: n3o/actions/.github/actions/dotnet-push@main
         with:
-          projects: ${{ inputs.nuget-packages }}
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          projects: ${{ inputs.nuget-packages }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: npm publish clients packages
         if: inputs.npm-packages != ''

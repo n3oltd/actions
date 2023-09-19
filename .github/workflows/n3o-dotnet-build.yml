@@ -2,10 +2,18 @@
 
 on:
   workflow_call:
-    
+    inputs:
+      working-directory:
+        type: string
+        default: src
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
       - name: checkout
@@ -18,3 +26,5 @@ jobs:
 
       - name: dotnet build
         uses: n3o/actions/.github/actions/dotnet-restore-build@main
+        with:
+          working-directory: ${{ inputs.working-directory }}

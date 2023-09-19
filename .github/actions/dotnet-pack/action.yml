@@ -6,6 +6,10 @@ inputs:
     description: The list of projects to pack as a JSON array
     required: true
 
+  working-directory:
+    description: "The working directory"
+    default: src
+
 runs:
   using: "composite"
   steps: 
@@ -17,5 +21,5 @@ runs:
         for project in $projects
         do
           echo "Packing: $project"
-          dotnet pack "src/$project/$project.csproj" /p:Version=$version
+          dotnet pack "${{ inputs.working-directory }}/$project/$project.csproj" /p:Version=$version
         done
