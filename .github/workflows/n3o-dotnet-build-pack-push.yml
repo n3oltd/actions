@@ -3,23 +3,13 @@
 on:
   workflow_call:
     inputs:
-      nuget-packages:
-        description: List of NuGet packages to create as a JSON array
-        required: true
-        type: string
-
       npm-packages:
         description: List of npm package directories as a JSON array
         required: true
         type: string
 
-      run-number:
-        description: The workflow run number
-        required: true
-        type: string
-
-      run-attempt:
-        description: The workflow run-attempt number
+      nuget-packages:
+        description: List of NuGet packages to create as a JSON array
         required: true
         type: string
 
