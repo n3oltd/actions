@@ -49,7 +49,7 @@ jobs:
         uses: n3o/actions/.github/actions/n3o-tool-prepack@main
 
       - name: dotnet build
-        uses: n3o/actions/.github/actions/dotnet-build@main
+        uses: n3o/actions/.github/actions/dotnet-restore-build@main
 
       - name: dotnet pack
         uses: n3o/actions/.github/actions/dotnet-pack@main

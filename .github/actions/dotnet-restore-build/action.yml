@@ -1,4 +1,4 @@
-name: dotnet-build
+name: dotnet-restore-build
 description: Restore and build
 
 runs:

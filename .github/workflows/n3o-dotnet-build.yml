@@ -17,4 +17,4 @@ jobs:
           dotnet-version: '7.x'
 
       - name: dotnet build
-        uses: n3o/actions/.github/actions/dotnet-build@main
+        uses: n3o/actions/.github/actions/dotnet-restore-build@main
