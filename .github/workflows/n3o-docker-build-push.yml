@@ -7,11 +7,11 @@ on:
         type: string
         required: true
 
-      targets-webapi:
+      web:
         type: string
         required: true
 
-      targets-webworker:
+      worker:
         type: string
         required: true
 
@@ -27,23 +27,23 @@ jobs:
       - id: buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Login to ACR
+      - name: acr login
         uses: docker/login-action@v1
         with:
           registry: n3oltd.azurecr.io
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Fetch Dockerfile
+      - name: fetch dockerfile
         uses: wei/wget@v1
         with:
           args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
 
       - id: meta-webapi
-        name: Set tags Web Api
-        if: inputs.targets-webapi != ''
+        name: prepare web
+        if: inputs.web != ''
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ inputs.targets-webapi }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
+          DOCKER_IMAGE_NAME=$(echo ${{ inputs.web }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y-%m-%d')
           SHA=$(git rev-parse --short HEAD)
@@ -51,16 +51,16 @@ jobs:
           TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
           echo ::set-output name=tags::${TAGS}
 
-      - name: Build and push webapi
+      - name: build and push web
         uses: docker/build-push-action@v2
-        if: inputs.targets-webapi != ''
+        if: inputs.web != ''
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
           target: final
           file: ${{ inputs.docker-file }}
           build-args: |
-            "PROJECT:${{inputs.targets-webapi}}"
+            "PROJECT:${{inputs.web}}"
             "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT:${{secrets.NUGET_PAT}}"
           push: true
@@ -68,10 +68,10 @@ jobs:
           labels: ${{ steps.meta-webapi.outputs.labels }}
 
       - id: meta-webworker
-        name: Set tags Web Worker
-        if: inputs.targets-webworker != ''
+        name: prepare worker
+        if: inputs.worker != ''
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ inputs.targets-webworker }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
+          DOCKER_IMAGE_NAME=$(echo ${{ inputs.worker }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y-%m-%d')
           SHA=$(git rev-parse --short HEAD)
@@ -79,16 +79,16 @@ jobs:
           TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
           echo ::set-output name=tags::${TAGS}
 
-      - name: Build and push webworker
+      - name: build and push worker
         uses: docker/build-push-action@v2
-        if: inputs.targets-webworker != ''
+        if: inputs.worker != ''
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
           target: final
           file: ${{ inputs.docker-file }}
           build-args: |
-            "PROJECT:${{inputs.targets-webworker}}"
+            "PROJECT:${{inputs.worker}}"
             "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT:${{secrets.NUGET_PAT}}"
           push: true
