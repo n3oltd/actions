@@ -29,6 +29,6 @@ runs:
       shell: bash
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
-        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        version=$(date +"%Y.%m.%d").${{ github.run_number }}
         echo "Version: $version"
         dotnet build --no-restore -c Release /property:Version=$version

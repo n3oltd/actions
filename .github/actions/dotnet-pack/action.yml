@@ -16,7 +16,7 @@ runs:
     - name: dotnet-pack
       shell: bash
       run: |
-        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        version=$(date +"%Y.%m.%d").${{ github.run_number }}
         projects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
         for project in $projects
         do
