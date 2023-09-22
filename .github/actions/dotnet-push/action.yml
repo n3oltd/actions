@@ -26,15 +26,4 @@ runs:
         do
           echo "Project: $project"
           (cd $project; dotnet nuget push **/*.nupkg -k ${{inputs.access-token}} --source "https://nuget.pkg.github.com/n3oltd/index.json" --skip-duplicate)
-        done
-
-    - name: Push Nuget packages to Azure Artifacts
-      shell: bash
-      working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
-      run: |
-        listOfProjects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')        
-        for project in $listOfProjects
-        do
-          echo "Pushing project: $project"          
-          (cd $project; dotnet nuget push **/*.nupkg --skip-duplicate --api-key az --source n3o )          
-        done   
+        done    
