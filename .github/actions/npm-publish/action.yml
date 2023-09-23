@@ -6,10 +6,6 @@ inputs:
     description: A valid PAT with suitable permissions
     required: true
 
-  azure-feed-token:
-    description: An Azure feeds token
-    required: true
-
   package-directories:
     description: The list of package directories as a JSON array
     required: true
