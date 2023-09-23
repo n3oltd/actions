@@ -70,4 +70,3 @@ jobs:
         with:
           package-directories: ${{ inputs.npm-packages }}
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
-          azure-feed-token: ${{ secrets.AZURE_FEED_CREDENTIALS }} 
