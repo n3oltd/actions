@@ -21,6 +21,7 @@ runs:
         for packageDirectory in $packageDirectories
         do
           ( cd $packageDirectory; 
+            sed -i 's/"name": "@n3o/"name": "@n3oltd/g' package.json;
             npm version $version; 
             echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
             echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
