@@ -1,15 +1,9 @@
 name: n3o-tool prepack
 description: Prepares projects for packaging
 
-inputs:
-  working-directory:
-    description: "The working directory"
-    default: src
-
 runs:
   using: "composite"
   steps: 
     - name: n3o prepack
       shell: bash
-      run: n3o-tool prepack --verbose
-      working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
+      run: n3o-tool prepack --verbose -p ${{github.workspace}}/src     
