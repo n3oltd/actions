@@ -11,5 +11,5 @@ runs:
   steps: 
     - name: n3o prepack
       shell: bash
-      run: dotnet tool run n3o-tool prepack --verbose
+      run: n3o-tool prepack --verbose
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
