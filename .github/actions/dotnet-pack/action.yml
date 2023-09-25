@@ -21,5 +21,6 @@ runs:
         for project in $projects
         do
           echo "Packing: $project"
+          dotnet build --no-restore -c Release "${{ inputs.working-directory }}/$project/$project.csproj"
           dotnet pack --no-build --configuration Release "${{ inputs.working-directory }}/$project/$project.csproj" /p:Version=$version
         done
