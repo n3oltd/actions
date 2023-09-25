@@ -18,7 +18,6 @@ runs:
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
         dotnet nuget update source n3oltd -u n3oltd -p ${{inputs.access-token}} --store-password-in-clear-text
-        dotnet nuget list source
       
     - name: dotnet restore
       shell: bash
@@ -29,6 +28,4 @@ runs:
       shell: bash
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
-        version=$(date +"%Y.%m.%d").${{ github.run_number }}
-        echo "Version: $version"
-        dotnet build --no-restore -c Release /property:Version=$version
+        dotnet build --no-restore -c Release
