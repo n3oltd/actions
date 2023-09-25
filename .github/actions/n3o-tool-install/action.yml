@@ -8,4 +8,4 @@ runs:
       shell: bash
       run: |
         dotnet new tool-manifest
-        dotnet tool install --no-cache n3o-tool
+        dotnet tool install --no-cache -g n3o-tool 
