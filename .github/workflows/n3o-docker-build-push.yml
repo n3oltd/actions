@@ -48,7 +48,7 @@ jobs:
           NOW=$(date +'%Y-%m-%d')
           SHA=$(git rev-parse --short HEAD)
           VERSION="$NOW-$SHA"
-          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
+          TAGS="$(date +"%Y.%m.%d").${{ github.run_number }}"
           echo ::set-output name=tags::${TAGS}
 
       - name: build and push web
@@ -64,8 +64,7 @@ jobs:
             "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT:${{secrets.NUGET_PAT}}"
           push: true
-          tags: ${{ steps.meta-webapi.outputs.tags }}
-          labels: ${{ steps.meta-webapi.outputs.labels }}
+          tags: ${{ steps.meta-webapi.outputs.tags }}          
 
       - id: meta-webworker
         name: prepare worker
@@ -76,7 +75,7 @@ jobs:
           NOW=$(date +'%Y-%m-%d')
           SHA=$(git rev-parse --short HEAD)
           VERSION="$NOW-$SHA"
-          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
+          TAGS="$(date +"%Y.%m.%d").${{ github.run_number }}"
           echo ::set-output name=tags::${TAGS}
 
       - name: build and push worker
@@ -92,5 +91,4 @@ jobs:
             "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT:${{secrets.NUGET_PAT}}"
           push: true
-          tags: ${{ steps.meta-webworker.outputs.tags }}
-          labels: ${{ steps.meta-webworker.outputs.labels }}
+          tags: ${{ steps.meta-webworker.outputs.tags }}          
