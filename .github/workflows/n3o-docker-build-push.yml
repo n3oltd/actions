@@ -45,10 +45,9 @@ jobs:
         run: |
           DOCKER_IMAGE_NAME=$(echo ${{ inputs.web }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
-          NOW=$(date +'%Y-%m-%d')
-          SHA=$(git rev-parse --short HEAD)
-          VERSION="$NOW-$SHA"
-          TAGS="$(date +"%Y.%m.%d").${{ github.run_number }}"
+          NOW=$(date +'%Y.%m.%d')
+          VERSION="$NOW.${{ github.run_number }}"
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
           echo ::set-output name=tags::${TAGS}
 
       - name: build and push web
@@ -72,10 +71,9 @@ jobs:
         run: |
           DOCKER_IMAGE_NAME=$(echo ${{ inputs.worker }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
-          NOW=$(date +'%Y-%m-%d')
-          SHA=$(git rev-parse --short HEAD)
-          VERSION="$NOW-$SHA"
-          TAGS="$(date +"%Y.%m.%d").${{ github.run_number }}"
+          NOW=$(date +'%Y.%m.%d')
+          VERSION="$NOW.${{ github.run_number }}"
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
           echo ::set-output name=tags::${TAGS}
 
       - name: build and push worker
