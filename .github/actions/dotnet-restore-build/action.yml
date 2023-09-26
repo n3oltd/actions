@@ -28,4 +28,4 @@ runs:
       shell: bash
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
-        dotnet build --no-restore -c Release
+        dotnet build --no-restore -c Release 

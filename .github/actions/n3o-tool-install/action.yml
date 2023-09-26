@@ -6,5 +6,6 @@ runs:
   steps: 
     - name: dotnet tool install n3o-tool
       shell: bash
-      run: |        
-        dotnet tool install --no-cache -g n3o-tool 
+      run: |
+        dotnet new tool-manifest
+        dotnet tool install --no-cache n3o-tool 
