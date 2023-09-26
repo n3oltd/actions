@@ -37,7 +37,7 @@ jobs:
       - name: fetch dockerfile
         uses: wei/wget@v1
         with:
-          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/docker/${{ inputs.docker-file }}
+          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
 
       - id: meta-webapi
         name: prepare web
