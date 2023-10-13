@@ -25,12 +25,12 @@ jobs:
         with:
           node-version: '14.x'
           
-      - name: npm install and build
+      - name: npm install and build for region 1
         run: |
-          export REACT_APP_REGION_PREFIX=${{ inputs.region }}
-          export PUBLIC_URL=${{ region }}
+          export REACT_APP_REGION_PREFIX=${{ inputs.region1 }}
+          export PUBLIC_URL=${{ inputs.region1 }}
           export GENERATE_SOURCEMAP=true
-          export SENTRY_AUTH_TOKEN=$(SENTRY_AUTH_TOKEN)
+          export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           npm install -g react-scripts
           npm install -g react-app-rewired
           npm install
@@ -39,11 +39,11 @@ jobs:
           
       - name: process build files
         run: |
-          mv build/* deploy/${{ region }}/
-          rm deploy/${{ region }}/README
+          mv build/* deploy/${{ inputs.region1 }}/
+          rm deploy/${{ inputs.region1 }}/README
           
       - name: npm publish react app to region1
         uses: n3oltd/actions/.github/actions/npm-publish-react@main
         with:          
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
-          working-directory: 'deploy/${{ inputs.region1 }}'
+          working-directory: deploy/${{ inputs.region1 }}
