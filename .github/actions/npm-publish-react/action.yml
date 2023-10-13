@@ -1,0 +1,25 @@
+﻿name: npm-publish-react
+description: Publishes the react app to github packages
+
+inputs:
+  access-token:
+    description: A valid PAT with suitable permissions
+    required: true
+      
+  working-directory:
+    description: The working directory
+    default: ''
+    
+runs:
+  using: "composite"
+  steps:
+    - name: npm publish
+      shell: bash
+      run: |
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        npm version $version; 
+        rm .nmprc;
+        echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
+        echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
+        npm publish;
+      working-directory: ${{ inputs.working-directory }}

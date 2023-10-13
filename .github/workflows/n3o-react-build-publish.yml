@@ -1,0 +1,49 @@
+﻿name: react app build and publish
+
+on:
+  workflow_call:
+    inputs:
+      region1:
+        description: First region
+        required: true
+        type: string
+        default: 'eu1'
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+    
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        
+      - name: setup-node        
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14.x'
+          
+      - name: npm install and build
+        run: |
+          export REACT_APP_REGION_PREFIX=${{ inputs.region }}
+          export PUBLIC_URL=${{ region }}
+          export GENERATE_SOURCEMAP=true
+          export SENTRY_AUTH_TOKEN=$(SENTRY_AUTH_TOKEN)
+          npm install -g react-scripts
+          npm install -g react-app-rewired
+          npm install
+          #npm run test
+          npm run build
+          
+      - name: process build files
+        run: |
+          mv build/* deploy/${{ region }}/
+          rm deploy/${{ region }}/README
+          
+      - name: npm publish react app to region1
+        uses: n3oltd/actions/.github/actions/npm-publish-react@main
+        with:          
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          working-directory: 'deploy/${{ inputs.region1 }}'
