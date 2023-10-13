@@ -31,6 +31,7 @@ jobs:
           export PUBLIC_URL=${{ inputs.region1 }}
           export GENERATE_SOURCEMAP=true
           export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          ls -a
           cat .npmrc 
           rm .nmprc
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
