@@ -45,5 +45,5 @@ jobs:
       - name: npm publish react app to region1
         uses: n3oltd/actions/.github/actions/npm-publish-react@main
         with:          
-          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          access-token: ${{ env.GH_PAT }}
           working-directory: deploy/${{ inputs.region1 }}
