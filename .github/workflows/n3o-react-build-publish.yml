@@ -27,9 +27,10 @@ jobs:
           
       - name: npm install and build for region 1
         run: |
-          (cd ${{ github.workspace }}; ls -a; rm .nmprc;
-          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc;
-          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;)
+          cat .npmrc 
+          rm .nmprc
+          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           export REACT_APP_REGION_PREFIX=${{ inputs.region1 }}
           export PUBLIC_URL=${{ inputs.region1 }}
           export GENERATE_SOURCEMAP=true
