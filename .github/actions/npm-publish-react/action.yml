@@ -16,11 +16,8 @@ runs:
     - name: npm publish
       shell: bash
       run: |
-        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
-        npm version $version;         
-        echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc
-        echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-        cat .npmrc
-        ls -a
-        npm publish;
-      working-directory: ${{ inputs.working-directory }}
+        (cd ${{ inputs.working-directory }}; 
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }};
+        npm version $version;)      
+        cat .npmrc        
+        npm publish ${{ inputs.working-directory }};      
