@@ -40,14 +40,16 @@ jobs:
           npm install
           #npm run test
           npm run build
+        working-directory: ${{ github.workspace }}
           
       - name: process build files
         run: |
           mv build/* deploy/${{ inputs.region1 }}/
           rm deploy/${{ inputs.region1 }}/README
+        working-directory: ${{ github.workspace }}
           
       - name: npm publish react app to region1
         uses: n3oltd/actions/.github/actions/npm-publish-react@main
         with:          
           access-token: ${{ env.GH_PAT }}
-          working-directory: deploy/${{ inputs.region1 }}
+          working-directory: ${{ github.workspace }}/deploy/${{ inputs.region1 }}
