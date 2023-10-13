@@ -17,9 +17,6 @@ runs:
       shell: bash
       run: |
         version=$(date +"%Y.%m.%d")-${{ github.run_number }}
-        npm version $version; 
-        rm .nmprc;
-        echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
-        echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
+        npm version $version;         
         npm publish;
       working-directory: ${{ inputs.working-directory }}
