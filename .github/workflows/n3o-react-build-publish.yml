@@ -14,9 +14,8 @@ env:
     
 jobs:
   build-publish:
-    runs-on:
-      group: React-Runners
-    
+    runs-on: self-hosted-react     
+  
     steps:
       - name: checkout
         uses: actions/checkout@v3
