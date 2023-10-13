@@ -33,7 +33,7 @@ jobs:
           export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           ls -a
           cat .npmrc 
-          rm .nmprc
+          rm .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           npm install -g react-scripts
