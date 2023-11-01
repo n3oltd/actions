@@ -48,7 +48,7 @@ ARG PROJECT
 RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
 RUN apt-get update
 RUN apt-get install --assume-yes wget
-wget -O /app https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/start-app-and-ssh.sh
+RUN wget -O /app https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/start-app-and-ssh.sh
 COPY --from=build "/src/${PROJECT}/node_modules" /app/node_modules
 
 ########################
@@ -59,7 +59,7 @@ FROM base AS final
 RUN apt-get update
 RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
 RUN apt-get install --assume-yes wget
-wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/sshd_config
+RUN wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/sshd_config
 #COPY assets/authorized_keys  root/.ssh/authorized_keys
 
 RUN apt-get --yes install zip unzip
