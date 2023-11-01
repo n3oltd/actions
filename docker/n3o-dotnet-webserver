@@ -1,0 +1,74 @@
+﻿########################
+### base
+########################
+FROM mcr.microsoft.com/dotnet/aspnet:7.0-jammy AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM mcr.microsoft.com/dotnet/sdk:7.0-jammy AS build
+
+ARG FEED_URL
+ARG PAT
+ARG PROJECT
+
+WORKDIR /src
+
+ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED true
+ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"ArtifactsDocker\", \"password\":\"${PAT}\"}]}
+ENV PROJECT=${PROJECT}
+ENV DLL=.dll
+
+COPY . .
+WORKDIR "/src/${PROJECT}"
+
+RUN apt-get update
+RUN apt-get --assume-yes install curl wget gnupg nodejs npm
+#RUN npm install vsts-npm-auth
+#RUN vsts-npm-auth -config K2.WebServer/.npmrc
+RUN rm K2.WebServer/.npmrc
+RUN echo "//npm.pkg.github.com/:_authToken=${PAT}" >> K2.WebServer/.npmrc
+RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> K2.WebServer/.npmrc
+RUN npm install
+#RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
+RUN dotnet restore
+RUN dotnet build -c Release -o /app
+RUN rm -f /app/appsettings.json
+
+########################
+### publish
+########################
+FROM build AS publish
+
+ARG PROJECT
+
+RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
+COPY dockerassets/start-app-and-ssh.sh /app
+COPY --from=build "/src/${PROJECT}/node_modules" /app/node_modules
+
+########################
+### final
+########################
+FROM base AS final
+
+RUN apt-get update
+RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
+COPY dockerassets/sshd_config /etc/ssh/sshd_config
+#COPY dockerassets/authorized_keys  root/.ssh/authorized_keys
+
+RUN apt-get --yes install zip unzip
+RUN apt-get --yes install libgdiplus
+RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg  
+
+WORKDIR /app
+ENV ASPNETCORE_URLS http://*:80
+COPY --from=publish /app .
+RUN echo "root:n3o" | chpasswd
+RUN chmod +x /app/start-app-and-ssh.sh
+
+ENTRYPOINT ["/bin/bash", "-c", "/app/start-app-and-ssh.sh"]
+
+EXPOSE 80
+EXPOSE 2222

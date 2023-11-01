@@ -26,7 +26,6 @@ WORKDIR "/src/${PROJECT}"
 
 RUN apt-get update
 RUN apt-get install --assume-yes wget
-RUN wget -qO- https://raw.githubusercontent.com/Microsoft/<Swapthisout>artifacts-credprovider/master/helpers/installcredprovider.sh | bash
 RUN dotnet restore
 RUN dotnet build -c Release -o /app
 RUN rm -f /app/appsettings.json
