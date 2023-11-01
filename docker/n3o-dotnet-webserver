@@ -26,6 +26,7 @@ WORKDIR "/src/${PROJECT}"
 
 RUN apt-get update
 RUN apt-get --assume-yes install curl wget gnupg nodejs npm
+RUN apt-get install --assume-yes wget
 #RUN npm install vsts-npm-auth
 #RUN vsts-npm-auth -config K2.WebServer/.npmrc
 RUN rm K2.WebServer/.npmrc
@@ -45,7 +46,7 @@ FROM build AS publish
 ARG PROJECT
 
 RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
-COPY https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/start-app-and-ssh.sh /app
+wget -O /app https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/start-app-and-ssh.sh
 COPY --from=build "/src/${PROJECT}/node_modules" /app/node_modules
 
 ########################
@@ -55,7 +56,7 @@ FROM base AS final
 
 RUN apt-get update
 RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
-COPY https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/sshd_config /etc/ssh/sshd_config
+wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/sshd_config
 #COPY assets/authorized_keys  root/.ssh/authorized_keys
 
 RUN apt-get --yes install zip unzip
