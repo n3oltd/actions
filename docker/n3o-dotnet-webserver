@@ -24,6 +24,9 @@ ENV DLL=.dll
 COPY . .
 WORKDIR "/src/${PROJECT}"
 
+RUN echo $PAT
+RUN echo $FEED_URL
+RUN echo $PROJECT
 RUN apt-get update
 RUN apt-get --assume-yes install curl wget gnupg nodejs npm
 RUN apt-get install --assume-yes wget
@@ -31,9 +34,6 @@ RUN apt-get install --assume-yes wget
 #RUN vsts-npm-auth -config K2.WebServer/.npmrc
 RUN ls -a
 RUN (cd K2.WebServer; rm .npmrc)
-RUN echo $PAT
-RUN echo $FEED_URL
-RUN echo $PROJECT
 RUN echo "//npm.pkg.github.com/:_authToken=$PAT" >> K2.WebServer/.npmrc
 RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> K2.WebServer/.npmrc
 RUN (cd K2.WebServer; ls -a; cat .npmrc)
