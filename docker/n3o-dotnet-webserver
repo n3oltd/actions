@@ -36,13 +36,11 @@ RUN ls -a
 RUN rm .npmrc
 RUN echo "//npm.pkg.github.com/:_authToken=$PAT" >> .npmrc
 RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-RUN echo "unsafe-perm=true" >> .npmrc
-RUN echo "package-lock=false" >> .npmrc
-RUN echo "always-auth=true" >> .npmrc
 RUN cat .npmrc
+RUN npm config set @n3oltd:registry https://npm.pkg.github.com
+RUN npm config set //npm.pkg.github.com/:_authToken $PAT
 RUN npm install 
 #RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
-RUN dotnet nuget update source n3oltd -u n3oltd -p $PAT --store-password-in-clear-text
 RUN dotnet restore
 RUN dotnet build -c Release -o /app
 RUN rm -f /app/appsettings.json
