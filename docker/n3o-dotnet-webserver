@@ -32,6 +32,8 @@ RUN apt-get install --assume-yes wget
 RUN rm K2.WebServer/.npmrc
 RUN echo "//npm.pkg.github.com/:_authToken=${PAT}" >> K2.WebServer/.npmrc
 RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> K2.WebServer/.npmrc
+RUN ls -a
+RUN npm -v
 RUN npm install
 #RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
 RUN dotnet restore
