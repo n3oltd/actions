@@ -65,6 +65,6 @@ jobs:
           build-args: |
             "PROJECT:${{inputs.project}}"
             "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
-            "PAT:${{secrets.NUGET_PAT}}"
+            "PAT:${{secrets.GH_PACKAGES_TOKEN}}"
           push: true
           tags: ${{ steps.meta-webserver.outputs.tags }}          
