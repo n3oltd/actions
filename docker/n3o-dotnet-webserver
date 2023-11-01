@@ -30,6 +30,9 @@ RUN apt-get install --assume-yes wget
 #RUN npm install vsts-npm-auth
 #RUN vsts-npm-auth -config K2.WebServer/.npmrc
 RUN (cd K2.WebServer; rm .npmrc)
+RUN echo $PAT
+RUN echo $FEED_URL
+RUN echo $PROJECT
 RUN echo "//npm.pkg.github.com/:_authToken=$PAT" >> K2.WebServer/.npmrc
 RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> K2.WebServer/.npmrc
 RUN (cd K2.WebServer; ls -a; cat .npmrc)
