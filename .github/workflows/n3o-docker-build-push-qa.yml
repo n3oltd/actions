@@ -66,8 +66,8 @@ jobs:
           target: final
           file: ${{ inputs.docker-file }}
           build-args: |
-            "PROJECT:${{inputs.project}}"
-            "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
-            "PAT:${{ env.GH_PAT }}"
+            PROJECT:${{inputs.project}}
+            FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json
+            PAT:${{ env.GH_PAT }}
           push: true
           tags: ${{ steps.meta-webserver.outputs.tags }}          
