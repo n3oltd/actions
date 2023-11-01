@@ -17,21 +17,21 @@ ARG PROJECT
 WORKDIR /src
 
 ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED true
-ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"ArtifactsDocker\", \"password\":\"${PAT}\"}]}
+ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"n3oltd\", \"password\":\"${PAT}\"}]}
 ENV PROJECT=${PROJECT}
 ENV DLL=.dll
 
 COPY . .
 WORKDIR "/src/${PROJECT}"
 
-RUN echo $PAT
-RUN echo $FEED_URL
-RUN echo $PROJECT
 RUN apt-get update
 RUN apt-get --assume-yes install curl wget gnupg nodejs npm
 RUN apt-get install --assume-yes wget
 #RUN npm install vsts-npm-auth
 #RUN vsts-npm-auth -config K2.WebServer/.npmrc
+RUN echo $PAT
+RUN echo $FEED_URL
+RUN echo $PROJECT
 RUN ls -a
 RUN (cd K2.WebServer; rm .npmrc)
 RUN echo "//npm.pkg.github.com/:_authToken=$PAT" >> K2.WebServer/.npmrc
