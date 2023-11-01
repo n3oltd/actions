@@ -25,7 +25,6 @@ COPY . .
 WORKDIR "/src/${PROJECT}"
 
 RUN apt-get update
-RUN apt-get install --assume-yes wget
 RUN dotnet restore
 RUN dotnet build -c Release -o /app
 RUN rm -f /app/appsettings.json
