@@ -45,7 +45,7 @@ FROM build AS publish
 ARG PROJECT
 
 RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
-COPY dockerassets/start-app-and-ssh.sh /app
+COPY assets/start-app-and-ssh.sh /app
 COPY --from=build "/src/${PROJECT}/node_modules" /app/node_modules
 
 ########################
@@ -55,8 +55,8 @@ FROM base AS final
 
 RUN apt-get update
 RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
-COPY dockerassets/sshd_config /etc/ssh/sshd_config
-#COPY dockerassets/authorized_keys  root/.ssh/authorized_keys
+COPY assets/sshd_config /etc/ssh/sshd_config
+#COPY assets/authorized_keys  root/.ssh/authorized_keys
 
 RUN apt-get --yes install zip unzip
 RUN apt-get --yes install libgdiplus
