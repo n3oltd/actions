@@ -39,7 +39,7 @@ RUN ls -a
 RUN cat .npmrc
 RUN npm config set @n3oltd:registry https://npm.pkg.github.com
 RUN npm config set //npm.pkg.github.com/:_authToken $PAT
-RUN npm install 
+RUN npm install --registry https://npm.pkg.github.com/n3oltd
 #RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
 RUN dotnet restore
 RUN dotnet build -c Release -o /app
