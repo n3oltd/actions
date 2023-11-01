@@ -19,6 +19,9 @@ on:
         type: string
         required: true
 
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
 jobs:
   job1:
     name: ubuntu-latest
@@ -65,6 +68,6 @@ jobs:
           build-args: |
             "PROJECT:${{inputs.project}}"
             "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
-            "PAT:${{secrets.GH_PACKAGES_TOKEN}}"
+            "PAT:${{ env.GH_PAT }}"
           push: true
           tags: ${{ steps.meta-webserver.outputs.tags }}          
