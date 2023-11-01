@@ -32,7 +32,14 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: github-migration
-
+          
+      - name: setting the npmrc file
+        run: |
+          rm .npmrc
+          echo "//npm.pkg.github.com/:_authToken=$PAT" >> .npmrc
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+        working-directory: ${{ github.workspace }}/src/K2.WebServer
+                  
       - id: buildx
         uses: docker/setup-buildx-action@v3
 
