@@ -56,8 +56,7 @@ jobs:
           echo ::set-output name=tags::${TAGS}
 
       - name: build and push web server
-        uses: docker/build-push-action@v2
-        if: inputs.worker != ''
+        uses: docker/build-push-action@v2        
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
