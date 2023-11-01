@@ -29,6 +29,7 @@ RUN apt-get --assume-yes install curl wget gnupg nodejs npm
 RUN apt-get install --assume-yes wget
 #RUN npm install vsts-npm-auth
 #RUN vsts-npm-auth -config K2.WebServer/.npmrc
+RUN ls -a
 RUN (cd K2.WebServer; rm .npmrc)
 RUN echo $PAT
 RUN echo $FEED_URL
