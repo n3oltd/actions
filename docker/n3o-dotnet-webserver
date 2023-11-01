@@ -36,6 +36,9 @@ RUN ls -a
 RUN rm .npmrc
 RUN echo "//npm.pkg.github.com/:_authToken=$PAT" >> .npmrc
 RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+RUN echo "unsafe-perm=true" >> .npmrc
+RUN echo "package-lock=false" >> .npmrc
+RUN echo "always-auth=true" >> .npmrc
 RUN cat .npmrc
 RUN npm install 
 #RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
