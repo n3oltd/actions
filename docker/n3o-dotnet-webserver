@@ -27,19 +27,7 @@ WORKDIR "/src/${PROJECT}"
 RUN apt-get update
 RUN apt-get --assume-yes install curl wget gnupg nodejs npm
 RUN apt-get install --assume-yes wget
-#RUN npm install vsts-npm-auth
-#RUN vsts-npm-auth -config K2.WebServer/.npmrc
-RUN echo $PAT
-RUN echo $FEED_URL
-RUN echo $PROJECT
-RUN ls -a
-#RUN rm .npmrc
-#RUN echo "//npm.pkg.github.com/:_authToken=$PAT" >> .npmrc
-#RUN echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
 RUN cat .npmrc
-#RUN npm config set @n3oltd:registry https://npm.pkg.github.com
-#RUN npm config set //npm.pkg.github.com/:_authToken $PAT
-#RUN npm install --registry https://npm.pkg.github.com/n3oltd --userconfig .npmrc
 RUN npm install
 #RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
 RUN dotnet restore
