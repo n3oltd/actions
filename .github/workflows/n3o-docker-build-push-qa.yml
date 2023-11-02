@@ -21,7 +21,10 @@ on:
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
-    
+  OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY  }}
+  OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
+  OCTOPUS_SPACE: 'Spaces-2'
+
 jobs:
   job1:
     name: build, push and deploy docker image 
@@ -84,11 +87,7 @@ jobs:
 
       - id: octo-create-release
         name: create release in octopus deploy
-        uses: OctopusDeploy/deploy-release-action@v3
-        env:
-          OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY  }}
-          OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
-          OCTOPUS_SPACE: 'Spaces-2'
+        uses: OctopusDeploy/create-release-action@v3
         with:
           project: ${{ inputs.projectId }}
 
