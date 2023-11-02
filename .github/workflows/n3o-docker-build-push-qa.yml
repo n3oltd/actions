@@ -21,10 +21,10 @@ on:
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
-
+    
 jobs:
   job1:
-    name: build and push docker image 
+    name: build, push and deploy docker image 
 
     runs-on: self-hosted
 
@@ -64,7 +64,7 @@ jobs:
           DOCKER_IMAGE_NAME=$(echo ${{ inputs.project }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
-          VERSION="$NOW.${{ github.run_number }}"
+          VERSION="$NOW.${{ github.run_number }}"          
           TAGS="${DOCKER_IMAGE}:${VERSION}"
           echo ::set-output name=tags::${TAGS}
 
@@ -80,4 +80,26 @@ jobs:
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
           push: true
-          tags: ${{ steps.meta-webserver.outputs.tags }}          
+          tags: ${{ steps.meta-webserver.outputs.tags }}        
+
+      - id: octo-create-release
+        name: create release in octopus deploy
+        uses: OctopusDeploy/deploy-release-action@v3
+        env:
+          OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY  }}
+          OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
+          OCTOPUS_SPACE: 'Spaces-2'
+        with:
+          project: ${{ inputs.projectId }}
+
+      - name: deploy the release that was created to QA
+        uses: OctopusDeploy/deploy-release-action@v3
+        env:
+          OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY  }}
+          OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
+          OCTOPUS_SPACE: 'Spaces-2'
+        with:
+          project: ${{ inputs.projectId }}
+          release_number: ${{ steps.octo-create-release.outputs.release_number }}
+          environments: |
+            "QA"
