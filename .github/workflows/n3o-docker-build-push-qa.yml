@@ -91,7 +91,6 @@ jobs:
         uses: OctopusDeploy/create-release-action@v3
         with:
           project: ${{ inputs.projectId }}
-          package_version: ${{ steps.meta-webserver.outputs.version_number }}
 
       - name: deploy the release that was created to QA
         uses: OctopusDeploy/deploy-release-action@v3
