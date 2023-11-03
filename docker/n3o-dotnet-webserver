@@ -13,6 +13,7 @@ FROM mcr.microsoft.com/dotnet/sdk:7.0-jammy AS build
 ARG FEED_URL
 ARG PAT
 ARG PROJECT
+ARG CHPASSWORD
 
 WORKDIR /src
 
@@ -52,6 +53,7 @@ COPY --from=build "/src/${PROJECT}/node_modules" /app/node_modules
 FROM base AS final
 
 ARG PROJECT
+ARG CHPASSWORD
 
 RUN apt-get update
 RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
@@ -66,7 +68,7 @@ RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
 COPY --from=publish /app .
-RUN echo "root:n3o" | chpasswd #Put in secret
+RUN echo "${CHPASSWORD}" | chpasswd
 RUN chmod +x /app/start-app-and-ssh.sh
 RUN echo ${PROJECT}
 RUN sed -i "s/__PROJECT__/${PROJECT}/g" /app/start-app-and-ssh.sh
