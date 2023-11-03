@@ -19,12 +19,6 @@ on:
         type: string
         required: true
 
-env:
-  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
-  OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY  }}
-  OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
-  OCTOPUS_SPACE: 'Spaces-2'
-
 jobs:
   job1:
     name: build, push and deploy docker image 
@@ -84,24 +78,9 @@ jobs:
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
           push: true
-          tags: ${{ steps.meta-webserver.outputs.tags }}        
+          tags: ${{ steps.meta-webserver.outputs.tags }}
 
-      - id: octo-create-release
-        name: create release in octopus deploy
-        uses: OctopusDeploy/create-release-action@v3
-        with:
-          project: ${{ inputs.projectId }}
-          packages: |
-            Additional Packages:${{ steps.meta-webserver.outputs.version_number }} 
-
-      - name: deploy the release that was created to QA
-        uses: OctopusDeploy/deploy-release-action@v3
-        env:
-          OCTOPUS_API_KEY: ${{ secrets.OCTOPUS_API_KEY  }}
-          OCTOPUS_URL: ${{ secrets.OCTOPUS_URL }}
-          OCTOPUS_SPACE: 'Spaces-2'
-        with:
-          project: ${{ inputs.projectId }}
-          release_number: ${{ steps.octo-create-release.outputs.release_number }}
-          environments: |
-            "QA"
+      - name: Installing Octopus Cli
+        run: |
+          dotnet tool install --global Octopus.DotNet.Cli
+          dotnet-octo create-release --project='Web Server' --progress --waitForDeployment  --deployTo='Environments-21' --server=${{secrets.OCTOPUS_URL}}  --apiKey=${{secrets.OCTOPUS_API_KEY}} --space='Spaces-2'
