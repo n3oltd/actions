@@ -51,6 +51,7 @@ COPY --from=build "/src/${PROJECT}/node_modules" /app/node_modules
 ########################
 FROM base AS final
 
+RUN sed -i "s/__PROJECT__/${PROJECT}/g" /app/start-app-and-ssh.sh
 RUN apt-get update
 RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
 RUN apt-get install --assume-yes wget
