@@ -1,8 +1,6 @@
 ﻿#!/bin/bash 
 service ssh start
-dotnet --version
-echo $__PROJECT__
-echo __PROJECT__
+
 dotnet __PROJECT__.dll
 
 while sleep 15; do
