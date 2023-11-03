@@ -65,8 +65,8 @@ WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
 COPY --from=publish /app .
 RUN echo "root:n3o" | chpasswd
-RUN sed -i "s/__PROJECT__/${PROJECT}/g" /app/start-app-and-ssh.sh
 RUN chmod +x /app/start-app-and-ssh.sh
+RUN sed -i "s/__PROJECT__/$PROJECT/g" /app/start-app-and-ssh.sh
 
 ENTRYPOINT ["/bin/bash", "-c", "/app/start-app-and-ssh.sh"]
 
