@@ -70,7 +70,7 @@ jobs:
           VERSION="$NOW.${{ github.run_number }}"       
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT 
           TAGS="${DOCKER_IMAGE}:${VERSION}"
-          echo ::set-output name=tags::${TAGS}
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: build and push web server
         uses: docker/build-push-action@v2
