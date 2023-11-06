@@ -41,7 +41,7 @@ jobs:
           npm install
           #npm run test
           npm run build
-        working-directory: ${{ github.workspace }}/src
+        working-directory: ${{ github.workspace }}
 
       - name: process build files
         run: |
