@@ -18,9 +18,7 @@ runs:
       run: |
         version=$(date +"%Y.%m.%d")-${{ github.run_number }}
         echo $version
-        ls -a
-        npm view k2.react version
-        npm ls
+        ls -a        
         npm version $version
         echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc
         echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
