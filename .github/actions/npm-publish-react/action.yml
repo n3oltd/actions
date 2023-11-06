@@ -16,10 +16,13 @@ runs:
     - name: npm publish
       shell: bash
       run: |
-        (cd ${{ inputs.working-directory }};
-        version=$(date +"%Y.%m.%d")-${{ github.run_number }};
-        npm version $version;
-        echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
-        echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
-        cat .npmrc)
-        npm publish ${{ inputs.working-directory }};
+        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        echo $version        
+        ls -a
+        $ echo "$PWD"
+        npm version $version
+        echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc
+        echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+        cat .npmrc
+        npm publish
+      working-directory: ${{ inputs.working-directory }}
