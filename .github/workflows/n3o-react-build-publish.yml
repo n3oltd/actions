@@ -32,16 +32,16 @@ jobs:
           export PUBLIC_URL=${{ inputs.region1 }}
           export GENERATE_SOURCEMAP=true
           export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
-          rm .npmrc
-          cat .npmrc
+          rm .npmrc          
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          cat .npmrc
           npm install -g react-scripts
           npm install -g react-app-rewired
           npm install
           #npm run test
           npm run build
-        working-directory: ${{ github.workspace }}
+        working-directory: ${{ github.workspace }}/src
 
       - name: process build files
         run: |
