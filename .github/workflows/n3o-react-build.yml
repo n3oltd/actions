@@ -15,7 +15,7 @@ env:
 jobs:
   build-publish:
     
-    runs-on: React-App-Runner     
+    runs-on: React-App-Runner
 
     steps:
       - name: checkout
@@ -48,9 +48,3 @@ jobs:
           mv build/* deploy/${{ inputs.region1 }}/
           rm deploy/${{ inputs.region1 }}/README
         working-directory: ${{ github.workspace }}
-
-      - name: npm publish react app to region1
-        uses: n3oltd/actions/.github/actions/npm-publish-react@main
-        with:
-          access-token: ${{ env.GH_PAT }}
-          working-directory: ${{ github.workspace }}/deploy/${{ inputs.region1 }}
