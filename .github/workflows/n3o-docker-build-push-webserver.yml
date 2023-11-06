@@ -9,10 +9,6 @@ on:
 
       project:
         type: string
-        required: true     
-
-      project-name:
-        type: string
         required: true
 
 env:
