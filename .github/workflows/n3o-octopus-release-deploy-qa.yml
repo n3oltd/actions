@@ -1,0 +1,20 @@
+﻿name: 'n3o-octopus-release-deploy-qa'
+
+on:
+  workflow_call:
+    inputs:
+      project-name:
+        type: string
+        required: true
+
+jobs:
+  octopus-create-release-and-deploy-job:
+    
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Installing Octopus Cli
+        run: dotnet tool install --global Octopus.DotNet.Cli
+
+      - name: Creating and Deploying new release in Octopus 
+        run: dotnet-octo create-release --project='${{ inputs.project-name }}' --progress --waitForDeployment  --deployTo='Environments-21' --server=${{secrets.OCTOPUS_URL}}  --apiKey=${{secrets.OCTOPUS_API_KEY}} --space='Spaces-2'

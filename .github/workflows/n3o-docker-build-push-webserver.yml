@@ -1,4 +1,4 @@
-﻿name: 'docker-build-push-qa'
+﻿name: 'docker-build-push-webserver'
 
 on:
   workflow_call:
@@ -9,13 +9,9 @@ on:
 
       project:
         type: string
-        required: true
-      
-      projectId:
-        type: string
-        required: true
-      
-      projectName:
+        required: true     
+
+      project-name:
         type: string
         required: true
 
@@ -23,8 +19,7 @@ env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
-  job1:
-    name: build, push and deploy docker image 
+  build-push-docker-image-job:    
 
     runs-on: ubuntu-latest
 
@@ -83,8 +78,3 @@ jobs:
             "CHPASSWORD=${{ secrets.CHPASSWORD }}"
           push: true
           tags: ${{ steps.meta-webserver.outputs.tags }}
-
-      - name: Installing Octopus Cli
-        run: |
-          dotnet tool install --global Octopus.DotNet.Cli
-          dotnet-octo create-release --project='Web Server' --progress --waitForDeployment  --deployTo='Environments-21' --server=${{secrets.OCTOPUS_URL}}  --apiKey=${{secrets.OCTOPUS_API_KEY}} --space='Spaces-2'
