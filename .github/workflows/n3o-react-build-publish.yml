@@ -15,7 +15,7 @@ env:
 jobs:
   build-publish:
     
-    runs-on: React-App-Runner     
+    runs-on: self-hosted     
 
     steps:
       - name: checkout
