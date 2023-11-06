@@ -27,6 +27,16 @@ jobs:
         with:
           dotnet-version: '7.x'
 
+      - name: setting the npmrc file
+        run: |
+          rm .npmrc
+          echo "unsafe-perm=true" >> .npmrc
+          echo "package-lock=false" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+        working-directory: ${{ inputs.working-directory }}/K2.WebServer          
+
       - name: dotnet build
         uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
         with:
