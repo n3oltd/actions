@@ -11,22 +11,22 @@ on:
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
-    
+
 jobs:
   build-publish:
     runs-on: React-App-Runner     
-  
+
     steps:
       - name: checkout
         uses: actions/checkout@v3
-        
-      - name: setup-node        
+
+      - name: setup-node
         uses: actions/setup-node@v3
         with:
           node-version: '14.x'
-          
+
       - name: npm install and build for region 1
-        run: |          
+        run: |
           export REACT_APP_REGION_PREFIX=${{ inputs.region1 }}
           export PUBLIC_URL=${{ inputs.region1 }}
           export GENERATE_SOURCEMAP=true
@@ -41,15 +41,15 @@ jobs:
           #npm run test
           npm run build
         working-directory: ${{ github.workspace }}
-          
+
       - name: process build files
         run: |
           mv build/* deploy/${{ inputs.region1 }}/
           rm deploy/${{ inputs.region1 }}/README
         working-directory: ${{ github.workspace }}
-          
+
       - name: npm publish react app to region1
         uses: n3oltd/actions/.github/actions/npm-publish-react@main
-        with:          
+        with:
           access-token: ${{ env.GH_PAT }}
           working-directory: ${{ github.workspace }}/deploy/${{ inputs.region1 }}
