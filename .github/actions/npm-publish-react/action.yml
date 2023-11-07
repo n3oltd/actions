@@ -20,7 +20,7 @@ runs:
         ls -a
         echo $version
         echo "Print working directory: $PWD"
-        (cd ${{ inputs.working-directory }};
+        (cd ${{github.workspace}}/${{ inputs.working-directory }};
         echo "Print working directory: $PWD";
         echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
         echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
