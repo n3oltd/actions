@@ -53,7 +53,3 @@ jobs:
         with:
           access-token: ${{ env.GH_PAT }}
           working-directory: deploy/${{ inputs.region1 }}
-
-  build-push-docker-job:
-    
-    
