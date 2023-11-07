@@ -27,7 +27,8 @@ runs:
         cat .npmrc
         ls -a
         cat package.json
-        npm version $version
+        #npm version $version
+        npm version 2023.11.7-1
         npm publish
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       env:
