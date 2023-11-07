@@ -13,9 +13,8 @@ env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
-  build-publish:
-    
-    runs-on: ubuntu-latest     
+  build-publish:    
+    runs-on: React-App-Runner     
 
     steps:
       - name: checkout
@@ -54,3 +53,7 @@ jobs:
         with:
           access-token: ${{ env.GH_PAT }}
           working-directory: deploy/${{ inputs.region1 }}
+
+  build-push-docker-job:
+    
+    
