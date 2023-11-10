@@ -59,9 +59,9 @@ jobs:
           target: final
           file: ${{ inputs.docker-file }}
           build-args: |
-            "PROJECT:${{inputs.web}}"
-            "FEED_URL:https://nuget.pkg.github.com/n3oltd/index.json"
-            "PAT:${{secrets.NUGET_PAT}}"
+            "PROJECT=${{inputs.web}}"
+            "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
+            "PAT=${{secrets.NUGET_PAT}}"
           push: true
           tags: ${{ steps.meta-webapi.outputs.tags }}          
 
