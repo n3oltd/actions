@@ -1,0 +1,106 @@
+﻿########################
+### base
+########################
+FROM mcr.microsoft.com/dotnet/aspnet:7.0-jammy AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM mcr.microsoft.com/dotnet/sdk:7.0-jammy AS build
+
+ARG FEED_URL
+ARG PAT
+ARG PROJECT
+ARG PRINCE_LICENSE_ID
+ARG PRINCE_LICENSE_NAME
+ARG PRINCE_LICENSE_VENDOR
+ARG PRINCE_PRODUCT
+ARG PRINCE_VERSION
+ARG PRINCE_END_USER
+ARG PRINCE_DATE
+ARG PRINCE_SIGNATURE
+ARG PRINCE_OPTION_ID
+ARG CHPASSWORD
+
+WORKDIR /src
+
+ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED true
+ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"ArtifactsDocker\", \"password\":\"${PAT}\"}]}
+ENV PROJECT=${PROJECT}
+ENV DLL=.dll
+
+COPY . .
+WORKDIR "/src/${PROJECT}"
+
+RUN apt-get update
+RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
+RUN dotnet restore
+RUN dotnet build -c Release -o /app
+RUN rm -f /app/appsettings.json
+
+########################
+### publish
+########################
+FROM build AS publish
+
+ARG PROJECT
+
+RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
+RUN apt-get install --assume-yes wget
+RUN wget -P /app https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/start-app-and-ssh.sh
+
+########################
+### final
+########################
+FROM base AS final
+
+ARG PRINCE_LICENSE_ID
+ARG PRINCE_LICENSE_NAME
+ARG PRINCE_LICENSE_VENDOR
+ARG PRINCE_PRODUCT
+ARG PRINCE_VERSION
+ARG PRINCE_END_USER
+ARG PRINCE_DATE
+ARG PRINCE_SIGNATURE
+ARG PRINCE_OPTION_ID
+ARG CHPASSWORD
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-server && mkdir -p /run/sshd
+RUN apt-get install --assume-yes wget
+RUN wget -P /etc/ssh/sshd_config https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/sshd_config
+#COPY dockerassets/authorized_keys  root/.ssh/authorized_keys
+
+RUN apt-get update
+RUN echo "yes" | apt install ttf-mscorefonts-installer --assume-yes
+RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi fontconfig
+
+RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg  
+
+RUN apt-get clean
+ENV PRINCE=prince_15.1-1_ubuntu22.04_amd64
+ENV PRINCE_DEB=$PRINCE.deb
+RUN wget https://www.princexml.com/download/$PRINCE_DEB && gdebi -n $PRINCE_DEB && rm -r $PRINCE_DEB
+RUN mkdir -p /usr/local/lib/prince/license
+RUN echo "<license id=\"${PRINCE_LICENSE_ID}\">" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <name>${PRINCE_LICENSE_NAME}</name>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <vendor>${PRINCE_LICENSE_VENDOR}</vendor>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <product>${PRINCE_PRODUCT}</product>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <version>${PRINCE_VERSION}</version>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <end-user>${PRINCE_END_USER}</end-user>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <date>${PRINCE_DATE}</date>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <signature>${PRINCE_SIGNATURE}</signature>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <option id=\"upgrades\">${PRINCE_OPTION_ID}</option>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "</license>" >> /usr/local/lib/prince/license/license.dat
+
+WORKDIR /app
+ENV ASPNETCORE_URLS http://*:80
+COPY --from=publish /app .
+RUN echo "${CHPASSWORD}" | chpasswd
+RUN chmod +x /app/start-app-and-ssh.sh
+
+ENTRYPOINT ["/bin/bash", "-c", "/app/start-app-and-ssh.sh"]
+
+EXPOSE 80
+EXPOSE 2222
