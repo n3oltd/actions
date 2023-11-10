@@ -41,7 +41,7 @@ RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
 ########################
 ### final
 ########################
-FROM base AS final
+FROM publish AS final
 
 ARG PROJECT
 
