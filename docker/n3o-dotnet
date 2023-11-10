@@ -42,7 +42,7 @@ RUN dotnet publish "${PROJECT}.csproj" -c Release -o /app
 ########################
 ### final
 ########################
-FROM publish AS final
+FROM base AS final
 
 ARG PROJECT
 
@@ -53,8 +53,8 @@ RUN apt-get --yes install libgdiplus
 
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
+COPY --from=publish /app .
 ENV DLL="${PROJECT}.dll"
-
 RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
