@@ -56,6 +56,7 @@ RUN wget -P /app https://raw.githubusercontent.com/n3oltd/actions/main/docker/as
 ########################
 FROM base AS final
 
+ARG PROJECT
 ARG PRINCE_LICENSE_ID
 ARG PRINCE_LICENSE_NAME
 ARG PRINCE_LICENSE_VENDOR
