@@ -74,6 +74,7 @@ jobs:
             "PRINCE_DATE=${{ secrets.PRINCE_DATE }}"
             "PRINCE_SIGNATURE=${{ secrets.PRINCE_SIGNATURE }}"
             "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
+            "CHPASSWORD=${{ secrets.CHPASSWORD }}"
           push: true
           tags: ${{ steps.meta-webapi.outputs.tags }}
 
