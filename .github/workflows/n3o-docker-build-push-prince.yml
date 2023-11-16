@@ -1,0 +1,113 @@
+﻿name: 'docker-build-push-prince'
+
+on:
+  workflow_call:
+    inputs:
+      docker-file:
+        type: string
+        required: true
+
+      web:
+        type: string
+        required: true
+
+      worker:
+        type: string
+        required: true
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: acr login
+        uses: docker/login-action@v1
+        with:
+          registry: n3oltd.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: fetch dockerfile
+        uses: wei/wget@v1
+        with:
+          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
+
+      - id: meta-webapi
+        name: prepare web
+        if: inputs.web != ''
+        run: |
+          DOCKER_IMAGE_NAME=$(echo ${{ inputs.web }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
+          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
+          NOW=$(date +'%Y.%-m.%-d')
+          VERSION="$NOW.${{ github.run_number }}"
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: build and push web
+        uses: docker/build-push-action@v2
+        if: inputs.web != ''
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./src
+          target: final
+          file: ${{ inputs.docker-file }}
+          build-args: |
+            "PROJECT=${{inputs.web}}"
+            "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
+            "PAT=${{ env.GH_PAT }}"
+            "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
+            "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
+            "PRINCE_LICENSE_VENDOR=${{ secrets.PRINCE_LICENSE_VENDOR }}"
+            "PRINCE_PRODUCT=${{ secrets.PRINCE_PRODUCT }}"
+            "PRINCE_VERSION=${{ secrets.PRINCE_VERSION }}"
+            "PRINCE_END_USER=${{ secrets.PRINCE_END_USER }}"
+            "PRINCE_DATE=${{ secrets.PRINCE_DATE }}"
+            "PRINCE_SIGNATURE=${{ secrets.PRINCE_SIGNATURE }}"
+            "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
+          push: true
+          tags: ${{ steps.meta-webapi.outputs.tags }}
+
+      - id: meta-webworker
+        name: prepare worker
+        if: inputs.worker != ''
+        run: |
+          DOCKER_IMAGE_NAME=$(echo ${{ inputs.worker }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
+          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
+          NOW=$(date +'%Y.%-m.%-d')
+          VERSION="$NOW.${{ github.run_number }}"
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: build and push worker
+        uses: docker/build-push-action@v2
+        if: inputs.worker != ''
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./src
+          target: final
+          file: ${{ inputs.docker-file }}
+          build-args: |
+            "PROJECT=${{inputs.worker}}"
+            "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
+            "PAT=${{ env.GH_PAT }}"
+            "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
+            "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
+            "PRINCE_LICENSE_VENDOR=${{ secrets.PRINCE_LICENSE_VENDOR }}"
+            "PRINCE_PRODUCT=${{ secrets.PRINCE_PRODUCT }}"
+            "PRINCE_VERSION=${{ secrets.PRINCE_VERSION }}"
+            "PRINCE_END_USER=${{ secrets.PRINCE_END_USER }}"
+            "PRINCE_DATE=${{ secrets.PRINCE_DATE }}"
+            "PRINCE_SIGNATURE=${{ secrets.PRINCE_SIGNATURE }}"
+            "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
+          push: true
+          tags: ${{ steps.meta-webworker.outputs.tags }}
