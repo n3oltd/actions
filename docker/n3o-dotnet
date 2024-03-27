@@ -51,6 +51,10 @@ RUN apt-get update
 RUN apt-get --yes install zip unzip curl
 RUN apt-get --yes install libgdiplus
 
+# Needed for textmarketer for now
+RUN sed -i 's/DEFAULT@SECLEVEL=2/DEFAULT@SECLEVEL=1/g' /etc/ssl/openssl.cnf
+RUN sed -i 's/DEFAULT@SECLEVEL=2/DEFAULT@SECLEVEL=1/g' /usr/lib/ssl/openssl.cnf 
+
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
 COPY --from=publish /app .
