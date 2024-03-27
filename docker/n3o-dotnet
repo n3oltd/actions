@@ -51,9 +51,16 @@ RUN apt-get update
 RUN apt-get --yes install zip unzip curl
 RUN apt-get --yes install libgdiplus
 
-# Needed for textmarketer for now
-RUN sed -i 's/DEFAULT@SECLEVEL=2/DEFAULT@SECLEVEL=1/g' /etc/ssl/openssl.cnf
-RUN sed -i 's/DEFAULT@SECLEVEL=2/DEFAULT@SECLEVEL=1/g' /usr/lib/ssl/openssl.cnf 
+# Needed for Textmarketer for now
+# OpenSSL 3.0 disables UnsafeLegacyRenegotiation by default, must re-enable it for some endpoints (see https://github.com/dotnet/runtime/issues/80641)
+RUN sed -i 's/providers = provider_sect/providers = provider_sect\n\
+ssl_conf = ssl_sect\n\
+\n\
+[ssl_sect]\n\
+system_default = system_default_sect\n\
+\n\
+[system_default_sect]\n\
+Options = UnsafeLegacyRenegotiation/' /etc/ssl/openssl.cnf
 
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
