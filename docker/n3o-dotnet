@@ -57,6 +57,8 @@ COPY --from=publish /app .
 ENV DLL="${PROJECT}.dll"
 RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
+
+# Below currently needed by TextMarketer API
 RUN echo 'MinProtocol = TLSv1.2' >> /etc/ssl/openssl.cnf
 RUN echo 'Options = UnsafeLegacyRenegotiation' >> /etc/ssl/openssl.cnf
 RUN hash -r
