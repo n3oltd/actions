@@ -57,6 +57,9 @@ COPY --from=publish /app .
 ENV DLL="${PROJECT}.dll"
 RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
+RUN echo 'MinProtocol = TLSv1.2' >> /etc/ssl/openssl.cnf
+RUN echo 'Options = UnsafeLegacyRenegotiation' >> /etc/ssl/openssl.cnf
+RUN hash -r
 
 ENTRYPOINT ["./entrypoint.sh"]
 
