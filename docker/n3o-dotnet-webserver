@@ -67,6 +67,7 @@ RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
 
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
+ENV DataRegion_Id eu1refac
 COPY --from=publish /app .
 RUN echo "${CHPASSWORD}" | chpasswd
 RUN chmod +x /app/start-app-and-ssh.sh
