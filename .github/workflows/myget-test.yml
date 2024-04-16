@@ -1,0 +1,70 @@
+name: 'myget-test'
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        type: string
+        default: ubuntu-latest
+
+      dotnet-version:
+        type: string
+        default: 7.x
+
+      working-directory:
+        type: string
+        default: src
+
+      build-configuration:
+        type: string
+        default: Release
+
+      run-tests:
+        type: boolean
+        default: false
+
+      run-pack:
+        type: boolean
+        default: true
+
+jobs:
+  job1:
+    name: ${{ inputs.runs-on }}
+
+    runs-on: ${{ inputs.runs-on }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - id: prepare
+        name: Set version
+        run: |
+          NOW=$(date +'%Y.%-m.%-d')
+          VERSION="$NOW.${{ github.run_number }}"   
+          echo ::set-output name=VERSION::$(echo $VERSION)
+
+      - name: dotnet restore
+        run: dotnet restore
+
+      - name: dotnet build
+        run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }}
+
+      - name: dotnet test
+        if: ${{ inputs.run-tests }}
+        run: dotnet test --no-build --verbosity normal
+
+      - name: dotnet pack
+        if: ${{ inputs.run-pack }}
+        run: dotnet pack --configuration ${{ inputs.build-configuration }} /property:Version=${{ steps.prepare.outputs.VERSION }}
+
+      - name: dotnet nuget push
+        if: ${{ inputs.run-pack }}
+        run: dotnet nuget push "**/*.nupkg" --source "https://www.myget.org/F/n3o-umbraco/api/v2/package" --api-key "${{ secrets.MYGET_API_KEY }}" --skip-duplicate
