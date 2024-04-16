@@ -76,7 +76,7 @@ jobs:
         run: dotnet nuget push "**/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate
 
   myGet:
-    name: ${{ inputs.runs-on }}
+    name: MyGet
 
     runs-on: ${{ inputs.runs-on }}
 
