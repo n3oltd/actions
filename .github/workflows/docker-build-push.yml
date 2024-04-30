@@ -54,7 +54,7 @@ jobs:
           SHA=$(git rev-parse --short HEAD)
           VERSION="$NOW-$SHA"
           TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
-          echo name=tags::${TAGS} >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v2

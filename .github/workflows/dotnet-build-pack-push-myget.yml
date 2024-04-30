@@ -41,7 +41,7 @@ jobs:
         run: |
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"   
-          echo name=VERSION::$(echo $VERSION) >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: dotnet restore
         run: dotnet restore
