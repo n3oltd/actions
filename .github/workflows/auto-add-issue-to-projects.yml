@@ -15,7 +15,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'nadrummond')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/31'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: aminjafer-n3o
         uses: actions/add-to-project@v1.0.1
@@ -33,7 +33,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'ahmadn3o')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/46'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: AqsaDeen
         uses: actions/add-to-project@v1.0.1
@@ -42,7 +42,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'AqsaDeen')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/48'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: aroojarshad12
         uses: actions/add-to-project@v1.0.1
@@ -51,7 +51,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'aroojarshad12')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/35'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: RehanSalim-N3O
         uses: actions/add-to-project@v1.0.1
@@ -60,7 +60,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'RehanSalim-N3O')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/23'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: rn3o
         uses: actions/add-to-project@v1.0.1
@@ -69,7 +69,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'rn3o')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/24'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: ShaguftaN3O
         uses: actions/add-to-project@v1.0.1
@@ -78,7 +78,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'ShaguftaN3O')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/27'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: shakeebqayum
         uses: actions/add-to-project@v1.0.1
@@ -87,7 +87,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'shakeebqayum')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/45'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
           
       - name: sirajurrahmann
         uses: actions/add-to-project@v1.0.1
@@ -96,7 +96,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'sirajurrahmann')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/25'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: talhamalik4025
         uses: actions/add-to-project@v1.0.1
@@ -105,7 +105,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'talhamalik4025')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/28'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: waheed-n3o
         uses: actions/add-to-project@v1.0.1
@@ -114,7 +114,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'waheed-n3o')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/36'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: Wahidhere
         uses: actions/add-to-project@v1.0.1
@@ -123,7 +123,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'Wahidhere')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/39'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: zeeshanshaheenn3o
         uses: actions/add-to-project@v1.0.1
@@ -132,4 +132,4 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'zeeshanshaheenn3o')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/29'
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
