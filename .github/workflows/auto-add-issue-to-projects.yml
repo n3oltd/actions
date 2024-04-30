@@ -24,7 +24,7 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'aminjafer-n3o')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/30'
-          github-token: ${{ secrets.GITHUB_TOKEN  }}
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: ahmadn3o
         uses: actions/add-to-project@v1.0.1
