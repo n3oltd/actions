@@ -1,0 +1,46 @@
+﻿name: link builder publish
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: true
+
+      version:
+        type: string
+        required: true
+
+      prepack:
+        type: boolean
+        default: false
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory != '' && inputs.working-directory || '.' }}
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: setup-node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: npm install and build
+        run: |         
+          npm install          
+          npm run build        
+
+      - run: |
+          packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
+          npm version $packageVersion
+          npm publish --tag latest --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
