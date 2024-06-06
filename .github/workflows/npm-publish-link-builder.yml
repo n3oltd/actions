@@ -34,13 +34,13 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: npm install and build
-        run: |         
-          npm install          
-          npm run build        
+        run: |
+          npm install
+          npm run build      
 
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
-          npm version $packageVersion
+          npm version $packageVersion --git-tag-version false
           npm publish --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
