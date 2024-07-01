@@ -15,6 +15,10 @@ on:
         type: string
         required: false
 
+      working-directory:
+        type: string
+        default: src
+
     secrets:
       acr-username:
         required: true
@@ -60,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ./src
+          context: ./${{ inputs.working-directory }}
           target: final
           file: ${{ inputs.docker-file }}
           build-args: ${{ inputs.build-args }}
