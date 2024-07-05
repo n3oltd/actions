@@ -36,7 +36,16 @@ jobs:
       - name: npm install and build
         run: |
           npm install
-          npm run build      
+          npm run build
+
+      - run: |
+          if [ -f "$dir/LICENSE.md" ]; then cp "$dir/LICENSE.md" build/LICENSE.md; fi
+          mkdir build/umd
+          cp build/n3o-attribution.umd.js build/umd/n3o-attribution.umd.js
+          cp build/n3o-attribution.umd.js.gz build/umd/n3o-attribution.umd.js.gz
+          cp README.md build/README.md
+          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"n3o-attributions.js\" | .files = ["umd/n3o-attribution.umd.js", "umd/n3o-attribution.umd.gz"]" package.json > build/package.json          
+          cd build
 
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
