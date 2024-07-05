@@ -42,9 +42,8 @@ jobs:
           if [ -f "$dir/LICENSE.md" ]; then cp "$dir/LICENSE.md" build/LICENSE.md; fi
           mkdir build/umd
           mv build/n3o-attribution.js build/umd/n3o-attribution.js
-          mv build/n3o-attribution.js.gz build/umd/n3o-attribution.js.gz
           cp README.md build/README.md
-          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"n3o-attribution.js\" | .files = [\"umd/n3o-attribution.js\", \"umd/n3o-attribution.js.gz\"]" package.json > build/package.json          
+          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"n3o-attribution.js\" | .files = [\"umd/n3o-attribution.js\"]" package.json > build/package.json          
 
       - run: |
           cd build
