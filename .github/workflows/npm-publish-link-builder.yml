@@ -49,9 +49,10 @@ jobs:
           pwd
 
       - run: |
+          pwd
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
           npm version $packageVersion --git-tag-version false
           npm publish --tag latest --access public
-          pwd
+          
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
