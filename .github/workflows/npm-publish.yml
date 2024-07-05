@@ -52,10 +52,12 @@ jobs:
           cp README.md build/README.md
           jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"index.js\"" package.json > build/package.json
           cd build
+          pwd
 
       - run: |
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
           npm version $packageVersion
+          pwd
           npm publish --tag latest --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
