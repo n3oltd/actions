@@ -44,7 +44,7 @@ jobs:
           mv build/n3o-attribution.umd.cjs build/umd/n3o-attribution.umd.cjs
           mv build/n3o-attribution.umd.cjs.gz build/umd/n3o-attribution.umd.cjs.gz
           cp README.md build/README.md
-          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"n3o-attributions.js\" | .files = ["umd/n3o-attribution.umd.cjs", "umd/n3o-attribution.umd.cjs.gz"]" package.json > build/package.json          
+          jq "del(.devDependencies) | del(.scripts) | del(.dependencies) | .main = \"n3o-attributions.js\" | .files = [\"umd/n3o-attribution.umd.cjs\", \"umd/n3o-attribution.umd.cjs.gz\"]" package.json > build/package.json          
           cd build
 
       - run: |
