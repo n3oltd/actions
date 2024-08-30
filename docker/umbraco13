@@ -1,14 +1,14 @@
 ########################
 ### base
 ########################
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-noble AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0.7-noble AS base
 
 WORKDIR /app
 
 ########################
 ### build
 ########################
-FROM mcr.microsoft.com/dotnet/sdk:8.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0.7-noble AS build
 
 ARG PROJECT
 
@@ -55,4 +55,3 @@ RUN chmod +x ./entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
 
 EXPOSE 80
-EXPOSE 8080
