@@ -1,14 +1,14 @@
 ########################
 ### base
 ########################
-FROM mcr.microsoft.com/dotnet/aspnet:8.0.7-noble AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0.6-noble AS base
 
 WORKDIR /app
 
 ########################
 ### build
 ########################
-FROM mcr.microsoft.com/dotnet/sdk:8.0.7-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0.6-noble AS build
 
 ARG PROJECT
 
