@@ -84,6 +84,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_Timezone="${{ env.timezone }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OPENSSL_FORCE_FIPS_MODE="0"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
         env:
           app_name: "${{ inputs.site-name }}"
