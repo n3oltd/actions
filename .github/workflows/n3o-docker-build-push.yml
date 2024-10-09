@@ -50,8 +50,10 @@ jobs:
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
-          TAGS="${DOCKER_IMAGE}:${VERSION},latest"
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
 
       - name: build and push web
         uses: docker/build-push-action@v2
@@ -66,7 +68,7 @@ jobs:
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
           push: true
-          tags: ${{ steps.meta-webapi.outputs.tags }}          
+          tags: ${{ steps.meta-webapi.outputs.versiontag }} , ${{ steps.meta-webapi.outputs.latesttag }}       
 
       - id: meta-webworker
         name: prepare worker
@@ -76,8 +78,10 @@ jobs:
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
-          TAGS="${DOCKER_IMAGE}:${VERSION},latest"
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
 
       - name: build and push worker
         uses: docker/build-push-action@v2
@@ -92,4 +96,4 @@ jobs:
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
           push: true
-          tags: ${{ steps.meta-webworker.outputs.tags }}          
+          tags: ${{ steps.meta-webworker.outputs.versiontag }} , ${{ steps.meta-webworker.outputs.latesttag }}        
