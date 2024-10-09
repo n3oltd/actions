@@ -50,7 +50,7 @@ jobs:
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          TAGS="${DOCKER_IMAGE}:${VERSION},latest"
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: build and push web
@@ -76,7 +76,7 @@ jobs:
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          TAGS="${DOCKER_IMAGE}:${VERSION},latest"
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: build and push worker
