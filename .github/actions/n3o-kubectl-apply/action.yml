@@ -18,4 +18,4 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        kubectl apply -n {environment-id} -f .
+        kubectl apply -n ${{ environment-id }} -f .
