@@ -1,0 +1,24 @@
+name: kubectl-install-configure
+description: Install and configure kubectl for AKS
+
+inputs:
+  azure-credentials:
+    description: Azure Credentials
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: install kubectl
+      uses:  azure/setup-kubectl@v4
+      with:
+        version: 'latest'
+        id: install
+
+    - name: set kubectl context
+      uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ inputs.azure-credentials }}'
+        resource-group: 'eu1'
+        cluster-name: 'eu1-kubernetes'
+      id: login

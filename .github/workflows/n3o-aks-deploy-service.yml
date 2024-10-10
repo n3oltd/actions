@@ -1,0 +1,46 @@
+name: 'Deploy N3O services to AKS'
+
+on:
+  workflow_call:
+    inputs:
+      service-id:
+        type: string
+        required: true
+        
+      environment-id:
+        type: string
+        required: true
+
+      working-directory:
+        type: string
+        required: true
+
+jobs:
+  deploy-to-aks:
+    name: Deploy service to AKS
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            ${{ inputs.working-directory }}/${{ inputs.environmentId }}
+
+      - id: latest-json-metadata
+        name: Read latest Json metadata
+        working-directory: ${{ inputs.working-directory }}/${{ inputs.environmentId }}/${{ inputs.serviceId }}/latest
+        run: |
+          deploymentVersion=$(jq -r '.deploymentVersion' metadata.json)
+          echo "deploymentVersion=$deploymentVersion" >> $GITHUB_OUTPUT
+          
+      - name: Install and configure Kubectl with AKS
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
+        with:
+          gh-packages-token: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Apply yaml files to cluster
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply@main
+        with:
+          environment-id: ${{ inputs.environment-id }}
+          working-directory: ${{ inputs.working-directory }}/${{ inputs.environmentId }}/${{ inputs.serviceId }}/${{ steps.latest-json-metadata.outputs.deploymentVersion }}
