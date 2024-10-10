@@ -54,9 +54,10 @@ jobs:
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"       
-          echo "version_number=$VERSION" >> $GITHUB_OUTPUT 
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
 
       - name: build and push web server
         uses: docker/build-push-action@v2
@@ -71,4 +72,4 @@ jobs:
             "PAT=${{ env.GH_PAT }}"
             "CHPASSWORD=${{ secrets.CHPASSWORD }}"
           push: true
-          tags: ${{ steps.meta-webserver.outputs.tags }}
+          tags: ${{ steps.meta-webworker.outputs.versiontag }} , ${{ steps.meta-webworker.outputs.latesttag }}
