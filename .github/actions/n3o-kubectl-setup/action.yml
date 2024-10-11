@@ -1,9 +1,13 @@
-name: kubectl-install-configure
+name: kubectl-setup
 description: Install and configure kubectl for AKS
 
 inputs:
   azure-credentials:
     description: Azure Credentials
+    required: true
+
+  resource-group:
+    description: Azure Resource Group
     required: true
 
 runs:
@@ -19,6 +23,6 @@ runs:
       uses: azure/aks-set-context@v1
       with:
         creds: '${{ inputs.azure-credentials }}'
-        resource-group: 'eu1'
-        cluster-name: 'eu1-kubernetes'
+        resource-group: '${{ inputs.resource-group }}'
+        cluster-name: '${{ inputs.resource-group }}-kubernetes'
       id: login
