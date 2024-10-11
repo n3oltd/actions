@@ -1,0 +1,21 @@
+name: n3o-dotnet-tool install
+description: Installs the private n3o dotnet tool
+
+inputs:
+  gh-packages-token:
+    description: Token for GH Packages
+    required: true
+
+  gh-packages-user:
+    description: Username for the nuget source
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: dotnet tool install n3o-tool
+      shell: bash
+      run: |
+        dotnet new tool-manifest
+        dotnet nuget add source "https://nuget.pkg.github.com/n3oltd/index.json" -u ${{ inputs.gh-packages-user }} -p ${{ inputs.gh-packages-token }} --store-password-in-clear-text
+        dotnet tool install --no-cache n3o 

@@ -1,0 +1,21 @@
+name: n3o trigger service container build 
+description: triggers the container build for the service
+
+inputs:
+  repo-name:
+    description: the name of the repository 
+    required: true
+    
+  workflows-token:
+    description: github token required to run gh commands
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: dispatches the build container workflow for the service
+      shell: bash
+      run: |
+        gh workflow run build-container.yml --repo n3oltd/${{ inputs.repo-name }}
+        env:
+          GH_TOKEN: ${{ secrets.workflows-token }}
