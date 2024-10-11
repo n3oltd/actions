@@ -1,10 +1,9 @@
-name: kubectl-apply-commands
+name: kubectl-apply
 description: Applies the Kubectl commands
-#path will be set in the main workflow - namespace can be moved into the tool
 
 inputs:
-  environment-id:
-    description: The deployment environment id
+  namespace:
+    description: The namespace to deploy the files within
     required: true
 
   working-directory:
@@ -14,8 +13,8 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Apply the yaml files
+    - name: Apply the YAML files
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        kubectl apply -n ${{ inputs.environment-id }} -f '*.yaml'
+        kubectl apply -n ${{ inputs.namespace }} -f '*.yaml'
