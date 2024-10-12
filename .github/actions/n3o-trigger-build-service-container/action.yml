@@ -18,4 +18,4 @@ runs:
       run: |
         gh workflow run build-container.yml --repo n3oltd/${{ inputs.repo-name }}
         env:
-          GH_TOKEN: ${{ secrets.workflows-token }}
+          GH_TOKEN: ${{ inputs.workflows-token }}
