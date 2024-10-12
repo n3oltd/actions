@@ -17,5 +17,5 @@ runs:
       shell: bash
       run: |
         gh workflow run build-container.yml --repo n3oltd/${{ inputs.repo-name }}
-        env:
-          GH_TOKEN: ${{ inputs.workflows-token }}
+      env:
+        GH_TOKEN: ${{ inputs.workflows-token }}
