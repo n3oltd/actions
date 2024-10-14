@@ -78,7 +78,7 @@ jobs:
             "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
             "CHPASSWORD=${{ secrets.CHPASSWORD }}"
           push: true
-          tags: ${{ steps.meta-webworker.outputs.versiontag }} , ${{ steps.meta-webworker.outputs.latesttag }}
+          tags: ${{ steps.meta-webapi.outputs.versiontag }} , ${{ steps.meta-webapi.outputs.latesttag }}
 
       - id: meta-webworker
         name: prepare worker
