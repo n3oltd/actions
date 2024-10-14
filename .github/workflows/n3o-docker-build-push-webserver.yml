@@ -72,4 +72,4 @@ jobs:
             "PAT=${{ env.GH_PAT }}"
             "CHPASSWORD=${{ secrets.CHPASSWORD }}"
           push: true
-          tags: ${{ steps.meta-webworker.outputs.versiontag }} , ${{ steps.meta-webworker.outputs.latesttag }}
+          tags: ${{ steps.meta-webserver.outputs.versiontag }} , ${{ steps.meta-webserver.outputs.latesttag }}
