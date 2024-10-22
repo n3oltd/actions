@@ -1,10 +1,18 @@
-FROM postgres:17
+########################
+### base
+########################
+FROM postgres:17 AS base
+
+########################
+### final
+########################
+FROM base AS final
 
 RUN apt-get update && apt-get -y install pgbackrest cron sudo
 
 RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/postgres-entrypoint.sh
 RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
 
-EXPOSE 5432
-
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
+
+EXPOSE 5432
