@@ -16,7 +16,4 @@ pgbackrest --stanza=DataServer --log-level-console=info stanza-create
 echo "0 3 * * 0 postgres pgbackrest --stanza=DataServer backup --type=full" >> /etc/crontab
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=DataServer backup --type=diff" >> /etc/crontab
 
-cron
-#sudo service cron start
-
 tail -f /dev/null
