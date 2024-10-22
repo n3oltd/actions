@@ -46,4 +46,4 @@ jobs:
           target: final
           file: postgres
           push: true
-          tags: ${{ steps.meta-webserver.outputs.versiontag }} , ${{ steps.meta-webserver.outputs.latesttag }}
+          tags: ${{ steps.meta-postgres.outputs.versiontag }} , ${{ steps.meta-postgres.outputs.latesttag }}
