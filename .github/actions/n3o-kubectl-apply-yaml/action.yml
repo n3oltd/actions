@@ -18,5 +18,5 @@ runs:
       env:
         YAML_CONTENTS: ${{ inputs.yaml }}      
       run: |
-        echo "$YAML_CONTENTS" > secrets.yml
-        kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
+        echo "$YAML_CONTENTS" > contents.yml
+        kubectl apply -n "${{ inputs.namespace }}" -f contents.yml
