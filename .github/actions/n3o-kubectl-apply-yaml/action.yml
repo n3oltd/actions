@@ -1,0 +1,21 @@
+name: kubectl-apply-secret
+description: Applies the Kubectl commands
+
+inputs:
+  namespace:
+    description: The namespace to deploy the files within
+    required: false
+
+  yaml:
+    description: The yaml to apply
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Apply the secret to the cluster
+      shell: bash
+      env:
+        YAML_CONTENTS: ${{ inputs.yaml }}      
+      run: |
+        echo "$YAML_CONTENTS" | kubectl apply -n ${{ inputs.namespace }} -f -

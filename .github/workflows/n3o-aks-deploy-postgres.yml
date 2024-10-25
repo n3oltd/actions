@@ -19,20 +19,32 @@ jobs:
           sparse-checkout: |
             ${{ inputs.data-region }}/postgres
 
-      - id: latest-json-metadata
-        name: Read latest JSON metadata
+      - id: get-deployment-version
+        name: Get Deployment Version
         working-directory: ${{ inputs.data-region }}/postgres/latest
         run: |
           deploymentVersion=$(jq -r '.deploymentVersion' metadata.json)
           echo "deploymentVersion=$deploymentVersion" >> $GITHUB_OUTPUT
+          
+      - id: get-secret-name
+        name: Get Secret Name
+        working-directory: ${{ inputs.data-region }}/postgres/latest
+        run: |
+          secretName=$(jq -r '.secretName' metadata.json)
+          echo "secretName=$secretName" >> $GITHUB_OUTPUT
           
       - name: Install and configure kubectl with AKS
         uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
         with:
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           resource-group: ${{ inputs.data-region }}
-
-      - name: Apply YAML files to cluster
-        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply@main
+          
+      - name: Apply Secrets YAML to the cluster
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-yaml@main
         with:
-          working-directory: ${{ inputs.data-region }}/postgres/${{ steps.latest-json-metadata.outputs.deploymentVersion }}
+          yaml: ${{ secrets[steps.get-secret-name.outputs.secretName] }}
+            
+      - name: Apply YAML files to cluster
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
+        with:
+          working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}

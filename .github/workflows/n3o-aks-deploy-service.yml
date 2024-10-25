@@ -41,7 +41,7 @@ jobs:
           resource-group: ${{ inputs.data-region }}
 
       - name: Apply YAML files to cluster
-        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply@main
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
         with:
           namespace: ${{ inputs.namespace }}
           working-directory: ${{ inputs.data-region }}/${{ inputs.namespace }}/${{ inputs.service-id }}/${{ steps.latest-json-metadata.outputs.deploymentVersion }}
