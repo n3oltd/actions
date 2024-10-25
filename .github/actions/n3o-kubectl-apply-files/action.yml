@@ -1,9 +1,9 @@
 name: kubectl-apply-files
-description: Applies the Kubectl commands
+description: Use kubectl to apply the specified YAML files
 
 inputs:
   namespace:
-    description: The namespace to deploy the files within
+    description: The namespace to pass to kubectl
     required: false
 
   working-directory:
@@ -13,7 +13,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Apply the YAML files
+    - name: apply-yaml
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
