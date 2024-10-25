@@ -18,8 +18,5 @@ runs:
       env:
         YAML_CONTENTS: ${{ inputs.yaml }}      
       run: |
-        if [[ -n "${{ inputs.namespace }}" ]]; then
-          echo "$YAML_CONTENTS" | kubectl apply -n "${{ inputs.namespace }}" -f -
-        else
-          echo "$YAML_CONTENTS" | kubectl apply -f -
-        fi
+        echo "$YAML_CONTENTS" > secrets.yml
+        kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
