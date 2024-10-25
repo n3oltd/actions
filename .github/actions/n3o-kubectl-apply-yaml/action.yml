@@ -1,19 +1,19 @@
 name: kubectl-apply-yaml
-description: Applies the Kubectl Yaml
+description: Use kubectl to apply the specified YAML
 
 inputs:
   namespace:
-    description: The namespace to deploy the Yaml
+    description: The namespace to pass to kubectl
     required: false
 
   yaml:
-    description: The yaml to apply
+    description: The YAML to apply
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Apply the Yaml to the cluster
+    - name: apply-yaml
       shell: bash
       env:
         YAML_CONTENTS: ${{ inputs.yaml }}      
