@@ -20,4 +20,4 @@ runs:
       run: |
         echo "$YAML_CONTENTS" > secrets.yml
         cat secrets.yml
-#       kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
+#        kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
