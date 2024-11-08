@@ -3,6 +3,11 @@
 on:
   workflow_call:
     inputs:
+      build-configuration:
+        type: string
+        description: The build configuration to run
+        default: Release
+      
       working-directory:
         type: string
         default: src
@@ -31,5 +36,6 @@ jobs:
         uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
         with:
           access-token: ${{ env.GH_PAT }}
+          build-configuration: ${{ inputs.build-configuration }}
           working-directory: ${{ inputs.working-directory }}
           

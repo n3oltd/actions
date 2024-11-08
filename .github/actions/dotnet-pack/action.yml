@@ -2,6 +2,10 @@ name: dotnet-pack
 description: Create NuGet packages
 
 inputs:
+  build-configuration:
+    description: The build configuration to run
+    default: Release
+  
   projects:
     description: The list of projects to pack as a JSON array
     required: true
@@ -21,5 +25,5 @@ runs:
         for project in $projects
         do
           echo "Packing: $project"
-          dotnet pack --configuration Release "${{ inputs.working-directory }}/$project/$project.csproj" /p:PackageVersion=$version 
+          dotnet pack --configuration "${{inputs.build-configuration}}" "${{ inputs.working-directory }}/$project/$project.csproj" /p:PackageVersion=$version 
         done

@@ -5,6 +5,10 @@ inputs:
   access-token:
     description: A valid PAT with suitable permissions
     required: true
+    
+  build-configuration:
+    description: The build configuration to run
+    default: Release
   
   working-directory:
     description: "The working directory"
@@ -28,4 +32,4 @@ runs:
       shell: bash
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
       run: |
-        dotnet build --no-restore -c Release 
+        dotnet build --no-restore -c "${{inputs.build-configuration}}" 
