@@ -14,6 +14,18 @@ on:
       worker:
         type: string
         required: true
+        
+      web-image-name:
+        type: string
+        default: ''
+      
+      worker-image-name:
+        type: string
+        default: ''
+      
+      configuration:
+        type: string
+        default: Release
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -41,12 +53,29 @@ jobs:
         uses: wei/wget@v1
         with:
           args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
+          
+      - name: Set default values for web and worker image name
+        id: set-defaults
+        run: |
+          # Set web-image-name to `web` input if not provided
+          if [[ -z "${{ inputs.web-image-name }}" ]]; then
+            echo "web-image-name=${{ inputs.web }}" >> $GITHUB_ENV
+          else
+            echo "web-image-name=${{ inputs.web-image-name }}" >> $GITHUB_ENV
+          fi
+          
+          # Set worker-image-name to `worker` input if not provided
+          if [[ -z "${{ inputs.worker-image-name }}" ]]; then
+            echo "worker-image-name=${{ inputs.worker }}" >> $GITHUB_ENV
+          else
+            echo "worker-image-name=${{ inputs.worker-image-name }}" >> $GITHUB_ENV
+          fi
 
       - id: meta-webapi
         name: prepare web
         if: inputs.web != ''
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ inputs.web }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
+          DOCKER_IMAGE_NAME=$(echo ${{ env.web-image-name }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
@@ -67,6 +96,7 @@ jobs:
             "PROJECT=${{inputs.web}}"
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
+            "CONFIGURATION=${{ inputs.configuration }}"
           push: true
           tags: ${{ steps.meta-webapi.outputs.versiontag }} , ${{ steps.meta-webapi.outputs.latesttag }}       
 
@@ -74,7 +104,7 @@ jobs:
         name: prepare worker
         if: inputs.worker != ''
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ inputs.worker }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
+          DOCKER_IMAGE_NAME=$(echo ${{ env.worker-image-name }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
@@ -95,5 +125,6 @@ jobs:
             "PROJECT=${{inputs.worker}}"
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
+            "CONFIGURATION=${{ inputs.configuration }}"
           push: true
           tags: ${{ steps.meta-webworker.outputs.versiontag }} , ${{ steps.meta-webworker.outputs.latesttag }}        

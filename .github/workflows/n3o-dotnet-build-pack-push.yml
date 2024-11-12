@@ -61,6 +61,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/dotnet-pack@main
         with:
           projects: ${{ inputs.nuget-packages }}
+          build-configuration: ${{ inputs.build-configuration }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet push
