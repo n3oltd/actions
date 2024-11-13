@@ -38,7 +38,7 @@ FROM build AS publish
 
 ARG PROJECT
 
-RUN dotnet publish "${PROJECT}.csproj" -c ${CONFIGURATION} -o /app
+RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app
 
 ########################
 ### final
