@@ -28,7 +28,7 @@ WORKDIR "/src/${PROJECT}"
 RUN apt-get update
 RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
 RUN dotnet restore
-RUN dotnet build -c ${CONFIGURATION} -o /app
+RUN dotnet build -c "${CONFIGURATION}" -o /app
 RUN rm -f /app/appsettings.json
 
 ########################
