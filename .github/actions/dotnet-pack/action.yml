@@ -5,6 +5,10 @@ inputs:
   build-configuration:
     description: The build configuration to run
     default: Release
+
+  version-suffix:
+    description: The Suffix to add to the package version
+    default: ''
   
   projects:
     description: The list of projects to pack as a JSON array
@@ -20,7 +24,7 @@ runs:
     - name: dotnet-pack
       shell: bash
       run: |
-        version=$(date +"%Y.%m.%d").${{ github.run_number }}
+        version=$(date +"%Y.%m.%d").${{ github.run_number }}${{ inputs.version-suffix }}
         projects=$(echo '${{ inputs.projects }}' | jq -c -r '.[]')
         for project in $projects
         do
