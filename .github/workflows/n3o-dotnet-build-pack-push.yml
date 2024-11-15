@@ -21,6 +21,10 @@ on:
       working-directory:
         type: string
         default: src
+      
+      version-suffix:
+        type: string
+        default: ''
         
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -63,6 +67,7 @@ jobs:
           projects: ${{ inputs.nuget-packages }}
           build-configuration: ${{ inputs.build-configuration }}
           working-directory: ${{ inputs.working-directory }}
+          version-suffix: ${{ inputs.version-suffix }}
 
       - name: dotnet push
         uses: n3oltd/actions/.github/actions/dotnet-push@main
