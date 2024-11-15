@@ -31,7 +31,6 @@ RUN apt-get install --assume-yes wget
 RUN cat .npmrc
 RUN npm install
 #RUN wget -qO- https://raw.githubusercontent.com/Microsoft/artifacts-credprovider/master/helpers/installcredprovider.sh | bash
-RUN dotnet restore
 RUN dotnet build -c Release -o /app
 RUN rm -f /app/appsettings.json
 
