@@ -19,8 +19,7 @@ ENV PROJECT=${PROJECT}
 COPY . .
 WORKDIR "/src/${PROJECT}"
 
-RUN dotnet restore
-RUN dotnet build --no-restore --configuration Release --output /build
+RUN dotnet build --configuration Release --output /build
 
 ########################
 ### publish
