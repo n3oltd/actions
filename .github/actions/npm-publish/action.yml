@@ -26,8 +26,12 @@ runs:
         packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
         for packageDirectory in $packageDirectories
         do
-          ( cd $packageDirectory;            
-            npm version $version; 
+          ( cd $packageDirectory;
+            if [ "${{ inputs.version-suffix }}" != "" ];then
+              npm version $version --preid=${{ inputs.version-suffix }}
+            else
+              npm version $version; 
+            fi
             echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
             echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
             npm publish --tag=${{ inputs.version-suffix }} )
