@@ -27,7 +27,7 @@ runs:
         for packageDirectory in $packageDirectories
         do
           ( cd $packageDirectory;
-            if [ "${{ inputs.version-suffix }}" != "" ];then
+            if [ "${{ inputs.version-suffix }}" != "latest" ];then
               npm version $version --preid=${{ inputs.version-suffix }}
             else
               npm version $version; 
