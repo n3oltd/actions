@@ -82,3 +82,4 @@ jobs:
         with:
           package-directories: ${{ inputs.npm-packages }}
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          version-suffix: ${{ inputs.version-suffix }}
