@@ -5,22 +5,22 @@ WATERMARK_FILE="/var/lib/postgresql/data/postgres"
 if [ ! -f "$WATERMARK_FILE" ]; then
 
     #Enable archiving
-    echo "archive_mode = on" >> /var/lib/postgresql/data/postgresql.conf
-    echo "archive_command = 'pgbackrest --stanza=n3o archive-push %p'" >> /var/lib/postgresql/data/postgresql.conf
-    echo "wal_level = replica" >> /var/lib/postgresql/data/postgresql.conf
-    echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgresql.conf
+    echo "archive_mode = on" >> /var/lib/postgresql/data/postgres/postgresql.conf
+    echo "archive_command = 'pgbackrest --stanza=n3o archive-push %p'" >> /var/lib/postgresql/data/postgres/postgresql.conf
+    echo "wal_level = replica" >> /var/lib/postgresql/data/postgres/postgresql.conf
+    echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgres/postgresql.conf
 
     #Add SSL certificate and key
     echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
     echo "${SSL_KEY}" > /var/lib/postgresql/server.key
 
     #get hba config
-    cp /etc/postgres_config/pg_hba.conf  /var/lib/postgresql/data/pg_hba.conf
+    cp /etc/postgres_config/pg_hba.conf  /var/lib/postgresql/data/postgres/pg_hba.conf
 
     # Enable SSL
-    echo "ssl = on" >> /var/lib/postgresql/data/postgresql.conf
-    echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgresql.conf
-    echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/data/postgresql.conf
+    echo "ssl = on" >> /var/lib/postgresql/data/postgres/postgresql.conf
+    echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgres/postgresql.conf
+    echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/data/postgres/postgresql.conf
 
     #pgbackrest config file
     echo "[n3o]" >> /etc/pgbackrest/pgbackrest.conf
