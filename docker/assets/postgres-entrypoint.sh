@@ -13,6 +13,9 @@ if [ ! -f "$WATERMARK_FILE" ]; then
     #Add SSL certificate and key
     echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
     echo "${SSL_KEY}" > /var/lib/postgresql/server.key
+    
+    chown postgres:postgres /var/lib/postgresql/server.key
+    chmod 600 /var/lib/postgresql/server.key
 
     #get hba config
     cp /etc/postgres_config/pg_hba.conf  /var/lib/postgresql/data/postgres/pg_hba.conf
@@ -57,6 +60,9 @@ if [ ! -f "$WATERMARK_FILE" ]; then
 
     # Start cron daemon
     cron
+    
+    # Login as su user
+    su - postgres
 
 else
     docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=200 &
