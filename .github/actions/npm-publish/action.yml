@@ -14,7 +14,7 @@ inputs:
     type: string
     description: The Suffix to add to the package version
     required: false
-    default: 'latest'
+    default: ''
 
 runs:
   using: "composite"
@@ -27,7 +27,7 @@ runs:
         for packageDirectory in $packageDirectories
         do
           ( cd $packageDirectory;
-            if [ "${{ inputs.version-suffix }}" != "latest" ];then
+            if [ "${{ inputs.version-suffix }}" != "" ];then
               npm version $version --preid=${{ inputs.version-suffix }}
             else
               npm version $version; 
