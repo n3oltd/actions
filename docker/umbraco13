@@ -37,7 +37,7 @@ FROM base AS final
 
 RUN apt-get update
 RUN echo "yes" | apt install ttf-mscorefonts-installer --assume-yes
-RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi fontconfig
+RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi fontconfig ffmpeg
 
 ARG PROJECT
 
