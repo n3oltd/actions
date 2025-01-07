@@ -17,9 +17,6 @@ if [ ! -f "$WATERMARK_FILE" ]; then
     chown postgres:postgres /var/lib/postgresql/server.key
     chmod 600 /var/lib/postgresql/server.key
 
-    #get hba config
-    cp /etc/postgres_config/pg_hba.conf  /var/lib/postgresql/data/postgres/pg_hba.conf
-
     # Enable SSL
     echo "ssl = on" >> /var/lib/postgresql/data/postgres/postgresql.conf
     echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgres/postgresql.conf
