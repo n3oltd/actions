@@ -21,6 +21,7 @@ echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/da
 #pgbackrest config file
 echo "[n3o]" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-path = /var/lib/postgresql/data" >> /etc/pgbackrest/pgbackrest.conf
+echo "pg1-host-user=${POSTGRES_USER}" >> /etc/pgbackrest/pgbackrest.conf
 
 echo "[global]" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-retention-full-type=time" >> /etc/pgbackrest/pgbackrest.conf
@@ -44,10 +45,5 @@ pg_ctl reload -D /var/lib/postgresql/data
 sleep 10
 
 pgbackrest --stanza=n3o --log-level-console=info stanza-create
-
-echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> /etc/crontab
-echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> /etc/crontab
-
-cron
 
 tail -f /dev/null
