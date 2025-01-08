@@ -13,6 +13,11 @@ RUN apt-get update && apt-get -y install pgbackrest cron sudo wget
 RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/postgres-entrypoint.sh
 RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
 
+RUN mkdir -p /var/lib/postgresql
+RUN chown -R postgres:postgres /var/lib/postgresql
+
+USER postgres
+
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
 
 EXPOSE 5432
