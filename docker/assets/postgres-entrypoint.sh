@@ -46,4 +46,10 @@ sleep 10
 
 pgbackrest --stanza=n3o --log-level-console=info stanza-create
 
+crontab -l > postgres_crontab
+echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
+echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> postgres_crontab
+crontab postgres_crontab
+rm postgres_crontab
+
 tail -f /dev/null
