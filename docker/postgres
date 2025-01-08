@@ -16,6 +16,9 @@ RUN chmod +x /usr/local/bin/postgres-entrypoint.sh
 RUN mkdir -p /var/lib/postgresql
 RUN chown -R postgres:postgres /var/lib/postgresql
 
+RUN mkdir -p /etc/pgbackrest
+RUN chown -R postgres:postgres /etc/pgbackrest
+
 USER postgres
 
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
