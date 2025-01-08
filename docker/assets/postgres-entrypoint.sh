@@ -9,6 +9,7 @@ echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgres/postgresql.conf
 # Enable SSL
 echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
 echo "${SSL_KEY}" > /var/lib/postgresql/server.key
+chmod 600 /var/lib/postgresql/server.key
 
 echo "ssl = on" >> /var/lib/postgresql/data/postgres/postgresql.conf
 echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgres/postgresql.conf
