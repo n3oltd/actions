@@ -41,8 +41,9 @@ if [ ! -f "$WATERMARK_FILE" ]; then
     echo "repo1-type=azure" >> /etc/pgbackrest/pgbackrest.conf
     echo "process-max=4" >> /etc/pgbackrest/pgbackrest.conf
 
-    docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=200 &
-    sleep 10
+    su --preserve-environment - postgres
+
+    docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=200 & sleep 10
 
     pg_ctl reload -D /var/lib/postgresql/data
 
@@ -57,9 +58,6 @@ if [ ! -f "$WATERMARK_FILE" ]; then
 
     # Start cron daemon
     cron
-    
-    # Login as su user
-    su - postgres
 
 else
     docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=200 &
