@@ -43,9 +43,6 @@ jobs:
       - run: |     
           cp README.md dist/README.md
           cp package.json dist/package.json
-          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
-          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc   
-          cat .npmrc
 
       - run: |          
           cd dist
@@ -55,3 +52,5 @@ jobs:
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
           npm version $packageVersion --git-tag-version false
           npm publish --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
