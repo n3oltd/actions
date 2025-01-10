@@ -35,6 +35,7 @@ jobs:
         with:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
+          token: ${{ env.GH_PAT }}
 
       - name: npm install and build
         run: |
@@ -56,3 +57,4 @@ jobs:
           npm publish --userconfig .npmrc --tag latest
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
+          npm_config_loglevel: verbose
