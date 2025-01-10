@@ -38,7 +38,7 @@ jobs:
           npm run build
 
       - run: |     
-          cp README.md build/README.md                   
+          cp README.md dist/README.md                   
 
       - run: |          
           cd dist
