@@ -45,6 +45,7 @@ jobs:
           cd dist
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_TOKEN }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          cp .npmrc dist/.npmrc
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
           npm version $packageVersion --git-tag-version false
           npm publish --tag latest
