@@ -57,7 +57,7 @@ jobs:
           pwd
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
           npm version $packageVersion --git-tag-version false
-          npm publish --userconfig .npmrc --tag latest
+          npm publish 
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
           npm_config_loglevel: verbose
