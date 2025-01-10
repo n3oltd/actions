@@ -56,6 +56,7 @@ jobs:
           cat .npmrc
           pwd
           packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
+          echo $packageVersion
           npm version $packageVersion --git-tag-version false
           npm publish 
         env:
