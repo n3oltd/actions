@@ -25,6 +25,6 @@ runs:
         for project in $projects
         do
           echo "Project: $project"
-          $csProj = find . -path "\*$project.nupkg"
+          csProj=$(find . -path "\*$project.nupkg")
           (dotnet nuget push "$csProj" -k ${{inputs.access-token}} --source "https://nuget.pkg.github.com/n3oltd/index.json" --skip-duplicate)
         done    
