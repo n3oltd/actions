@@ -32,5 +32,6 @@ runs:
         for project in $projects
         do
           echo "Packing: $project"
-          dotnet pack --configuration "${{inputs.build-configuration}}" "${{ inputs.working-directory }}/$project/$project.csproj" /p:PackageVersion=$version 
+          $csProj = find . -path "\*$project/$project.csproj"
+          dotnet pack --configuration "${{inputs.build-configuration}}" "$csProj" /p:PackageVersion=$version 
         done
