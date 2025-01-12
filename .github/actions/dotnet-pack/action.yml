@@ -12,7 +12,9 @@ inputs:
   
   projects:
     description: The list of projects to pack as a JSON array
-    required: true
+
+  projectFiles:
+    description: The list of projects to pack as a JSON array
 
   working-directory:
     description: "The working directory"
@@ -33,4 +35,10 @@ runs:
         do
           echo "Packing: $project"
           dotnet pack --configuration "${{inputs.build-configuration}}" "${{ inputs.working-directory }}/$project/$project.csproj" /p:PackageVersion=$version 
+        done
+        projectFiles=$(echo '${{ inputs.projectFiles }}' | jq -c -r '.[]')
+        for projectFile in $projectFiles
+        do
+          echo "Packing: $projectFile"
+          dotnet pack --configuration "${{inputs.build-configuration}}" "${{ inputs.working-directory }}/$projectFile" /p:PackageVersion=$version 
         done
