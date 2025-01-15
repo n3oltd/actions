@@ -38,7 +38,7 @@ echo "repo1-azure-key=${AZURE_KEY}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-type=azure" >> /etc/pgbackrest/pgbackrest.conf
 echo "process-max=4" >> /etc/pgbackrest/pgbackrest.conf
 
-docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=200 & sleep 10
+docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=2000 & sleep 10
 
 pg_ctl reload -D /var/lib/postgresql/data
 
