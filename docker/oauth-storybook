@@ -10,9 +10,8 @@ WORKDIR /app
 ########################
 FROM node:18 AS build
 
-WORKDIR /
-COPY . .
 WORKDIR /app
+COPY . .
 
 RUN npm install
 RUN npm run build-storybook
