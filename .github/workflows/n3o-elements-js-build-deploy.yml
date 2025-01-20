@@ -50,9 +50,9 @@ jobs:
       - name: Azure CLI script
         uses: azure/CLI@v1
         with:
-          azcliversion: 2.30.0
+          azcliversion: 2.66.0
           inlineScript: |
-            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="elements" --source="${{ env.source_folder }}" --destination-path="${{ env.subscription_number }}/js" --overwrite=True
+            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="elements" --source="${{ env.source_folder }}" --destination-path="${{ env.subscription_number }}/js" --overwrite="true"
         env:
           source_folder: "${{ inputs.source-folder }}"
           storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING }}"
