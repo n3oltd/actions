@@ -11,7 +11,7 @@ WORKDIR /app
 FROM node:18 AS build
 
 WORKDIR /
-COPY ./ /app
+COPY . .
 WORKDIR /app
 
 RUN npm install
