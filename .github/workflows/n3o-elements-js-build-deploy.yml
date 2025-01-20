@@ -1,0 +1,56 @@
+name: 'Build & Deploy Elements JS'
+
+on:
+  workflow_call:
+    inputs:
+      source-folder:
+        type: string
+        default: dist
+
+      subscription-number:
+        type: string
+        required: true
+
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup-node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          token: ${{ env.GH_PAT }}
+
+      - name: Fetch elements.json
+        uses: wei/wget@v1
+        with:
+          args: -O elements.json https://static.n3o.cloud/elements/${{ inputs.subscription-number }}/elements.json
+
+      - name: npm install and build
+        run: |
+          npm install
+          npm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds:  ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure CLI script
+        uses: azure/CLI@v1
+        with:
+          azcliversion: 2.30.0
+          inlineScript: |
+            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="elements" --source="${{ env.source_folder }}" --destination-path="${{ env.subscription_number }}/js" --overwrite true
+        env:
+          source_folder: "${{ inputs.source-folder }}"
+          storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING }}"
+          subscription_number: "${{ inputs.subscription-number }}"
