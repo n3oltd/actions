@@ -1,0 +1,30 @@
+########################
+### base
+########################
+FROM quay.io/oauth2-proxy/oauth2-proxy:latest AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM node:18 AS build
+
+WORKDIR /
+
+COPY . .
+
+RUN npm ci
+npm run build-storybook
+
+########################
+### final
+########################
+FROM base AS final
+
+ENV OAUTH2_PROXY_HTTP_ADDRESS "0.0.0.0:8080"
+ENV OAUTH2_PROXY_UPSTREAMS file:///var/www/#/
+
+COPY --from=build /storybook-static /var/www
+
+EXPOSE 8080
