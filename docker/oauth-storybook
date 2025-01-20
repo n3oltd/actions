@@ -10,8 +10,7 @@ WORKDIR /site
 ########################
 FROM node:18 AS build
 
-WORKDIR /
-COPY . /site
+COPY / /site
 
 WORKDIR /site
 RUN npm install
