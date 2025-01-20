@@ -15,7 +15,7 @@ WORKDIR /
 COPY . .
 
 RUN npm ci
-npm run build-storybook
+RUN npm run build-storybook
 
 ########################
 ### final
