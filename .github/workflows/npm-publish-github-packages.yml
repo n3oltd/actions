@@ -47,10 +47,9 @@ jobs:
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           if [ "${{ inputs.version-suffix }}" != "" ];then
             npm version $version --preid=${{ inputs.version-suffix }}
-            npm publish --tag=${{ inputs.version-suffix }}
           else
             npm version $version;
-            npm publish 
           fi
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
