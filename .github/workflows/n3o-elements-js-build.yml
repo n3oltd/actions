@@ -1,5 +1,8 @@
 name: 'Build Elements JS'
 
+on:
+  workflow_call:
+
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
