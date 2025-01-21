@@ -33,7 +33,7 @@ jobs:
       - name: Fetch configuration.json
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://static.n3o.cloud/elements/${{ inputs.subscription-number }}/configuration.json
+          args: -O configuration.json https://cdn.n3o.cloud/elements/${{ inputs.subscription-number }}/configuration.json
 
       - name: npm install and build
         run: |
