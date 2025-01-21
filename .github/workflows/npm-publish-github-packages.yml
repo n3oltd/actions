@@ -50,6 +50,6 @@ jobs:
           else
             npm version $version;
           fi
-          npm publish
+          npm publish --git-tag-version false
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
