@@ -1,0 +1,32 @@
+name: 'Build Elements JS'
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup-node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          token: ${{ env.GH_PAT }}
+
+      - name: Fetch configuration.json
+        uses: wei/wget@v1
+        with:
+          args: -O configuration.json https://cdn.n3o.cloud/elements/1/configuration.json
+
+      - name: npm install and build
+        run: |
+          npm install
+          npm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
