@@ -30,7 +30,8 @@ jobs:
           npm install
           npm run build
 
-      - run: |     
+      - name: npm publish
+        run: |
           cp README.md dist/README.md
           cp package.json dist/package.json
           npm config set registry https://npm.pkg.github.com
@@ -38,6 +39,6 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           npm version $version
-          npm publish
+          npm publish --tag latest
         env:
           NPM_CONFIG_LOGLEVEL: verbose
