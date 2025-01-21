@@ -1,19 +1,17 @@
-﻿name: link builder publish
+﻿name: Publish NPM package to GitHub Packages
 
 on:
   workflow_call:
     inputs:
+      version-suffix:
+        type: string
+        description: The Suffix to add to the package version
+        required: false
+        default: ''
+
       working-directory:
         type: string
-        required: true
-
-      version:
-        type: string
-        required: true
-
-      prepack:
-        type: boolean
-        default: false
+        default: src
         
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -21,10 +19,6 @@ env:
 jobs:
   build-publish:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ${{ inputs.working-directory != '' && inputs.working-directory || '.' }}
 
     steps:
       - name: checkout
@@ -47,15 +41,16 @@ jobs:
           cp package.json dist/package.json
           npm config set registry https://npm.pkg.github.com
 
-      - run: |        
+      - run: |
+          version=$(date +"%Y.%m.%d")-${{ github.run_number }}        
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
-          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc    
-          cat .npmrc
-          pwd
-          packageVersion="$(echo "${{ inputs.version }}" | sed 's/v\(.*\)/\1/')"
-          echo $packageVersion
-          npm version $packageVersion --git-tag-version false
-          npm publish 
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          if [ "${{ inputs.version-suffix }}" != "" ];then
+            npm version $version --preid=${{ inputs.version-suffix }}
+            npm publish --tag=${{ inputs.version-suffix }}
+          else
+            npm version $version;
+            npm publish 
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
-          npm_config_loglevel: verbose
