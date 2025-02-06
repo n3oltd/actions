@@ -1,0 +1,16 @@
+name: n3o deploy gooddata push
+description: Pushes a release to GoodData
+
+inputs:
+  workspace-id:
+    description: The ID of the workspace to push
+    required: true
+
+runs:
+  using: "composite"
+  steps: 
+    - name: n3o deploy gooddata push
+      shell: bash
+      run: |
+        dotnet tool run n3o deploy gooddata push -w ${{ inputs.workspace-id }} --verbose 
+      

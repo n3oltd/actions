@@ -1,0 +1,33 @@
+﻿name: gooddata push
+
+on:
+  workflow_call:
+    inputs:
+      workspace-id:
+        type: string
+        description: The workspace ID
+        required: true
+        
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.x'
+
+      - name: n3o install
+        uses: n3oltd/actions/.github/actions/n3o-install@main
+
+      - name: n3o deploy gooddata push
+        uses: n3oltd/actions/.github/actions/n3o-deploy-gooddata-push@main
+        with:
+          workspace-id: ${{ workspace-id }}
