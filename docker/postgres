@@ -19,6 +19,9 @@ RUN chown -R postgres:postgres /var/lib/postgresql
 RUN mkdir -p /etc/pgbackrest
 RUN chown -R postgres:postgres /etc/pgbackrest
 
+RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/entity-row.sql
+RUN chmod +x /usr/local/bin/entity-row.sql
+
 USER postgres
 
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
