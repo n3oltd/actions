@@ -43,8 +43,6 @@ pg_ctl restart -D /var/lib/postgresql/data/postgres
 
 sleep 10
 
-psql -U "${POSTGRES_USER}" -d postgres -f /usr/local/bin/entity-row.sql
-
 pgbackrest --stanza=n3o --log-level-console=info stanza-create
 
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
