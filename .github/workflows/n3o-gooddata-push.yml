@@ -26,8 +26,12 @@ jobs:
 
       - name: n3o install
         uses: n3oltd/actions/.github/actions/n3o-install@main
+        with:
+          access-token: ${{ env.GH_PAT }}
 
       - name: n3o deploy gooddata push
         uses: n3oltd/actions/.github/actions/n3o-deploy-gooddata-push@main
         with:
           workspace-id: ${{ inputs.workspace-id }}
+
+  
