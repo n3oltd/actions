@@ -30,4 +30,4 @@ jobs:
       - name: n3o deploy gooddata push
         uses: n3oltd/actions/.github/actions/n3o-deploy-gooddata-push@main
         with:
-          workspace-id: ${{ workspace-id }}
+          workspace-id: ${{ inputs.workspace-id }}
