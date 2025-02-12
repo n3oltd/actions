@@ -19,11 +19,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
 
-      - name: ls and pwd
-        run: |
-          ls
-          pwd
-
       - name: setup-dotnet
         uses: actions/setup-dotnet@v3
         with:
