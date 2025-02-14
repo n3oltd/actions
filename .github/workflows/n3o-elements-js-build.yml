@@ -30,6 +30,6 @@ jobs:
       - name: npm install and build
         run: |
           npm install
-          npm run build
+          npm run build:lib
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
