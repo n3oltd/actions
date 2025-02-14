@@ -34,7 +34,7 @@ jobs:
       - name: npm install and build
         run: |
           npm install
-          npm run build
+          npm run build:lib
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
 
@@ -48,7 +48,7 @@ jobs:
         with:
           azcliversion: 2.66.0
           inlineScript: |
-            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="elements" --source="dist" --destination-path="${{ env.subscription_number }}/js" --overwrite="true"
+            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="elements" --source="dist/elements" --destination-path="${{ env.subscription_number }}/js" --overwrite="true"
         env:
           storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING }}"
           subscription_number: "${{ inputs.subscription-number }}"
