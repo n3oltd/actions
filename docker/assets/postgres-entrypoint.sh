@@ -36,7 +36,6 @@ mkdir /etc/pgbackrest/backup-repo
 echo "repo1-azure-account=${AZURE_ACCOUNT}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-azure-container=${AZURE_CONTAINER}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-azure-key=${AZURE_KEY}" >> /etc/pgbackrest/pgbackrest.conf
-echo "repo1-azure-endpoint=blob.core.windows.net" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-type=azure" >> /etc/pgbackrest/pgbackrest.conf
 echo "process-max=4" >> /etc/pgbackrest/pgbackrest.conf
 
@@ -45,7 +44,7 @@ pg_ctl restart -D /var/lib/postgresql/data/postgres
 
 sleep 10
 
-pgbackrest --stanza=n3o --log-level-console=info stanza-create --repo1-path=/var/lib/pgbackrest/data/backup-repo
+pgbackrest --stanza=n3o --log-level-console=debug --type=$1 stanza-create --repo1-path=/var/lib/pgbackrest/data/backup-repo
 
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> postgres_crontab
