@@ -43,7 +43,7 @@ jobs:
         name: Decrypt the secrets yml
         working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
         run: |
-          secretsYml=$(n3o n3o utilities decrypt --path "./postgresSecrets.yaml" --key secrets[steps.get-secret-name.outputs.secretName])
+          secretsYml=$(n3o utilities decrypt --path "./postgresSecrets.yaml" --key secrets[steps.get-secret-name.outputs.secretName])
           echo "secretsYml=$secretsYml" >> $GITHUB_OUTPUT
       
       - name: Apply Secrets YAML to the cluster
