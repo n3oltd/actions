@@ -38,11 +38,18 @@ jobs:
         with:
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           resource-group: ${{ inputs.data-region }}
-          
+
+      - id: decrypt-secrets
+        name: Decrypt the secrets yml
+        working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
+        run: |
+          secretsYml=$(n3o n3o utilities decrypt --path "./postgresSecrets.yaml" --key secrets[steps.get-secret-name.outputs.secretName])
+          echo "secretsYml=$secretsYml" >> $GITHUB_OUTPUT
+      
       - name: Apply Secrets YAML to the cluster
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-yaml@main
         with:
-          yaml: ${{ secrets[steps.get-secret-name.outputs.secretName] }}
+          yaml: ${{ steps.decrypt-secrets.outputs.secretsYml }}
             
       - name: Apply YAML files to cluster
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
