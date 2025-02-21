@@ -22,6 +22,7 @@ echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/da
 echo "[n3o]" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-path = /var/lib/postgresql/data" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-host-user=${POSTGRES_USER}" >> /etc/pgbackrest/pgbackrest.conf
+echo "pg1-user=${POSTGRES_USER}" >> /etc/pgbackrest/pgbackrest.conf
 
 echo "[global]" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-retention-full-type=time" >> /etc/pgbackrest/pgbackrest.conf
