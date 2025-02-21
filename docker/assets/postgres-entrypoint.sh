@@ -45,7 +45,7 @@ pg_ctl restart -D /var/lib/postgresql/data/postgres
 
 sleep 10
 
-pgbackrest --stanza=n3o --log-level-console=info stanza-create
+pgbackrest --stanza=n3o --log-level-console=info stanza-create --repo1-path=/var/lib/pgbackrest/data/backup-repo
 
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> postgres_crontab
