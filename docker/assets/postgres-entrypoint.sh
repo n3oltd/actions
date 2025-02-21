@@ -36,7 +36,7 @@ mkdir /etc/pgbackrest/backup-repo
 echo "repo1-azure-account=${AZURE_ACCOUNT}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-azure-container=${AZURE_CONTAINER}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-azure-key=${AZURE_KEY}" >> /etc/pgbackrest/pgbackrest.conf
-
+echo "repo1-azure-endpoint=blob.core.windows.net" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-type=azure" >> /etc/pgbackrest/pgbackrest.conf
 echo "process-max=4" >> /etc/pgbackrest/pgbackrest.conf
 
