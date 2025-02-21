@@ -30,6 +30,7 @@ echo "repo1-retention-full=90" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-retention-diff=2" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-cipher-pass=${BACKUPS_PASSWORD}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-cipher-type=aes-256-cbc" >> /etc/pgbackrest/pgbackrest.conf
+echo "repo1-path=/" >> /etc/pgbackrest/pgbackrest.conf
 mkdir /etc/pgbackrest/backup-repo
 echo "repo1-path=/var/lib/pgbackrest/data/backup-repo" >> /etc/pgbackrest/pgbackrest.conf
 
