@@ -32,7 +32,6 @@ echo "repo1-cipher-pass=${BACKUPS_PASSWORD}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-cipher-type=aes-256-cbc" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-path=/" >> /etc/pgbackrest/pgbackrest.conf
 mkdir /etc/pgbackrest/backup-repo
-echo "repo1-path=/var/lib/pgbackrest/data/backup-repo" >> /etc/pgbackrest/pgbackrest.conf
 
 echo "repo1-azure-account=${AZURE_ACCOUNT}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-azure-container=${AZURE_CONTAINER}" >> /etc/pgbackrest/pgbackrest.conf
