@@ -1,0 +1,25 @@
+name: kubectl-apply-file-yaml
+description: Applies the Kubectl Yaml  file
+
+inputs:
+  namespace:
+    description: The namespace to deploy the Yaml
+    default: "default"
+    required: false
+
+  file-name:
+    description: The yaml to apply
+    required: true
+    
+  working-directory:
+    description: "The working directory"
+    default: src
+
+runs:
+  using: "composite"
+  steps:
+    - name: Apply the Yaml to the cluster
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        kubectl apply -n "${{ inputs.namespace }}" -f ${{ inputs.file-name }}
