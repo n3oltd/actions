@@ -18,7 +18,7 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: |
         if [ -n "${{ inputs.namespace }}" ]; then
-          kubectl apply -f '*.yaml' -n "${{ inputs.namespace }}"
+          find . -maxdepth 1 -name '*.yaml' ! -name 'postgresSecrets.yaml' -exec kubectl apply -f {} -n "${{ inputs.namespace }}" \;
         else
-          kubectl apply -f '*.yaml'
+          find . -maxdepth 1 -name '*.yaml' ! -name 'postgresSecrets.yaml' -exec kubectl apply -f {} \;
         fi
