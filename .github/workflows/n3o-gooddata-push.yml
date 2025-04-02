@@ -22,7 +22,7 @@ jobs:
       - name: setup-dotnet
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '9.x'
 
       - name: n3o install
         uses: n3oltd/actions/.github/actions/n3o-dotnet-tool-install@main
