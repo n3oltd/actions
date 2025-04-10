@@ -8,7 +8,7 @@ WORKDIR /app
 ########################
 ### build
 ########################
-FROM mcr.microsoft.com/dotnet/sdk:8.0.6-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0.301-noble AS build
 
 ARG PROJECT
 
