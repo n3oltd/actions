@@ -62,6 +62,15 @@ jobs:
           project-url: 'https://github.com/orgs/n3oltd/projects/58'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
+      - name: Rahimullah-Shaheen
+        uses: actions/add-to-project@v1.0.1
+        if: |
+          github.event.action == 'assigned' &&
+          contains(github.event.issue.assignees.*.login, 'Rahimullah-Shaheen')
+        with:
+          project-url: 'https://github.com/orgs/n3oltd/projects/74'
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
+
       - name: RehanSalim-N3O
         uses: actions/add-to-project@v1.0.1
         if: |
