@@ -13,7 +13,7 @@ FROM node:18 AS build
 COPY / /site
 
 WORKDIR /site
-RUN npm install
+RUN npm install --legacy-peer-deps
 RUN npm run build-storybook
 
 ########################
