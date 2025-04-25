@@ -53,7 +53,7 @@ rm postgres_crontab
 
 tail -f /dev/null
 
-while sleep 20; do
+while sleep 60; do
   if ! pgrep -f postgres > /dev/null; then
     echo "Postgres not running"
     exit 1
