@@ -18,6 +18,11 @@ jobs:
         with:
           sparse-checkout: |
             ${{ inputs.data-region }}/postgres
+      
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.x'
 
       - id: get-deployment-version
         name: Get Deployment Version
