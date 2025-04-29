@@ -1,22 +1,22 @@
 #!/bin/bash
 
-touch /var/lib/postgresql/data/postgres/postgresql.auto.conf
-touch /var/lib/postgresql/data/postgres/postgresql.conf
+touch /var/lib/postgresql/data/postgresql.auto.conf
+touch /var/lib/postgresql/data/postgresql.conf
 
 #Enable archiving
-echo "archive_mode = on" >> /var/lib/postgresql/data/postgres/postgresql.conf
-echo "archive_command = 'pgbackrest --stanza=n3o archive-push %p'" >> /var/lib/postgresql/data/postgres/postgresql.conf
-echo "wal_level = replica" >> /var/lib/postgresql/data/postgres/postgresql.conf
-echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgres/postgresql.conf
+echo "archive_mode = on" >> /var/lib/postgresql/data/postgresql.conf
+echo "archive_command = 'pgbackrest --stanza=n3o archive-push %p'" >> /var/lib/postgresql/data/postgresql.conf
+echo "wal_level = replica" >> /var/lib/postgresql/data/postgresql.conf
+echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgresql.conf
 
 # Enable SSL
 echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
 echo "${SSL_KEY}" > /var/lib/postgresql/server.key
 chmod 600 /var/lib/postgresql/server.key
 
-echo "ssl = on" >> /var/lib/postgresql/data/postgres/postgresql.conf
-echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgres/postgresql.conf
-echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/data/postgres/postgresql.conf
+echo "ssl = on" >> /var/lib/postgresql/data/postgresql.conf
+echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgresql.conf
+echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/data/postgresql.conf
 
 #pgbackrest config file
 echo "[n3o]" >> /etc/pgbackrest/pgbackrest.conf
