@@ -18,6 +18,11 @@ echo "ssl = on" >> /var/lib/postgresql/data/postgresql.conf
 echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/data/postgresql.conf
 echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/data/postgresql.conf
 
+#configure connection settings
+echo "statement_timeout = 30000" >> /var/lib/postgresql/data/postgresql.conf
+echo "tcp_keepalives_idle = 30" >> /var/lib/postgresql/data/postgresql.conf
+echo "idle_session_timeout = 60000" >> /var/lib/postgresql/data/postgresql.conf
+
 #pgbackrest config file
 echo "[n3o]" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-path = /var/lib/postgresql/data/postgres" >> /etc/pgbackrest/pgbackrest.conf
