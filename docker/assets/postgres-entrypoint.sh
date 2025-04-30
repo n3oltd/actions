@@ -52,6 +52,10 @@ psql -U "${POSTGRES_USER}" -d postgres -f /usr/local/bin/entity-row.sql
 
 pgbackrest --stanza=n3o --log-level-console=info stanza-create
 
+sleep 10
+
+pgbackrest --stanza=n3o backup --type=full
+
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> postgres_crontab
 crontab postgres_crontab
