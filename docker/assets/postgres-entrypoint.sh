@@ -51,6 +51,10 @@ sleep 10
 
 pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/postgres-backup
 
+sleep 10
+
+pgbackrest --stanza=n3o backup --type=full
+
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> postgres_crontab
 crontab postgres_crontab
