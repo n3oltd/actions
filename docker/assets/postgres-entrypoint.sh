@@ -53,12 +53,14 @@ pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/po
 
 sleep 10
 
-pgbackrest --stanza=n3o backup --type=full
+pgbackrest --stanza=n3o backup --type=full --archive-timeout=600
 
-echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> postgres_crontab
-echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> postgres_crontab
-crontab postgres_crontab
-rm postgres_crontab
+sleep 30
+
+echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> "$CRON_FILE"
+echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> "$CRON_FILE"
+crontab "$CRON_FILE"
+rm "$CRON_FILE"
 
 tail -f /dev/null
 
