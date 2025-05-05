@@ -49,7 +49,7 @@ pg_ctl restart -D /var/lib/postgresql/data/postgres
 
 sleep 10
 
-pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/postgres-backup
+pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/
 
 sleep 10
 
