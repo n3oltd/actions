@@ -1,0 +1,61 @@
+name: 'dotnet-upgrade-nuget-build-commit'
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        default: src
+      
+      services-list:
+        description: List of services to upgrade Nuget packages
+        required: true
+        type: string
+        
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.x'
+          
+      - name: n3o tool install
+        uses: n3oltd/actions/.github/actions/n3o-tool-install@main
+        
+      - name: update nuget packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        run: |
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+          services=$(echo '${{ inputs.services-list }}' | jq -c -r '.[]')
+
+          for service in $services; do
+            echo "Processing service: $service"
+
+            mkdir -p "$service"
+            git clone "https://github.com/your-org/$service.git" "$service"
+
+            (
+              cd "$service"
+              git config user.name "github-actions"
+              git config user.email "github-actions@github.com"
+              
+              dotnet tool run n3o nuget upgrade-our-packages -v -p "src"
+
+              if [ -n "$(git status --porcelain)" ]; then
+                git add .
+                git commit -m "Upgraded NuGet packages"
+                git push origin main
+              else
+                echo "No changes to commit in $service"
+              fi
+            )
+          done
+      
