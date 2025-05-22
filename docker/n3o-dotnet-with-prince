@@ -79,7 +79,7 @@ RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi 
 RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg  
 
 RUN apt-get clean
-ENV PRINCE=prince_15.4.1-1_ubuntu24.04_amd64
+ENV PRINCE=prince_16-1_ubuntu24.04_amd64
 ENV PRINCE_DEB=$PRINCE.deb
 RUN wget https://www.princexml.com/download/$PRINCE_DEB && gdebi -n $PRINCE_DEB && rm -r $PRINCE_DEB
 RUN mkdir -p /usr/local/lib/prince/license
