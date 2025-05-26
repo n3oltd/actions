@@ -32,6 +32,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_REPO_PACKAGES_TOKEN }} 
         run: |
+          dotnet nuget update source n3oltd -u n3oltd -p ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-tex
           git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
           services=$(echo '${{ inputs.services-list }}' | jq -c -r '.[]')
