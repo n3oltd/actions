@@ -48,7 +48,7 @@ jobs:
               git config user.name "github-actions"
               git config user.email "github-actions@github.com"
               
-              dotnet tool run n3o nuget upgrade-our-packages -v -p "src"
+              dotnet tool run n3o nuget upgrade-our-packages -v
 
               if [ -n "$(git status --porcelain)" ]; then
                 git add .
