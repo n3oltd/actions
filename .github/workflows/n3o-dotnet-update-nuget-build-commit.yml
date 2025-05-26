@@ -44,7 +44,7 @@ jobs:
 
             (
               cd "$service"
-              dotnet nuget update source n3oltd -u n3oltd -p ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-text
+              dotnet nuget update source n3oltd -u n3oltd -p ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-text --configfile ./nuget.config
               git config user.name "github-actions"
               git config user.email "github-actions@github.com"
               
