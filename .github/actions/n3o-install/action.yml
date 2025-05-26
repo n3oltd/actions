@@ -2,10 +2,6 @@ name: n3o install
 description: Installs the n3o dotnet tool
 
 inputs:
-  working-directory:
-    description: Working Directory
-    required: true
-
   access-token:
     description: access token for the nuget source
     required: true

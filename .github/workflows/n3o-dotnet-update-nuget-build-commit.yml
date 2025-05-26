@@ -22,9 +22,11 @@ jobs:
         with:
           dotnet-version: '9.x'
           
-      - name: n3o tool install
-        uses: n3oltd/actions/.github/actions/n3o-tool-install@main
-        
+      - name: n3o private tool install
+        uses: n3oltd/actions/.github/actions/n3o-install@main
+        with: 
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+      
       - name: update nuget packages
         env:
           GH_TOKEN: ${{ secrets.GH_REPO_PACKAGES_TOKEN }} 
