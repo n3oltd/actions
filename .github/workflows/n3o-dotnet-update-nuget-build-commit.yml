@@ -17,9 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
       - name: setup-dotnet
         uses: actions/setup-dotnet@v3
         with:
@@ -40,7 +37,7 @@ jobs:
             echo "Processing service: $service"
 
             mkdir -p "$service"
-            git clone "https://github.com/your-org/$service.git" "$service"
+            git clone "https://github.com/n3oltd/$service.git" "$service"
 
             (
               cd "$service"
