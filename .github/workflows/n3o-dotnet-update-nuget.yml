@@ -48,7 +48,7 @@ jobs:
               git config user.name "N3O Bot"
               git config user.email "no-reply@n3o.ltd"
               
-              dotnet tool run n3o nuget upgrade-our-packages -v
+              dotnet tool run n3o nuget upgrade-our-packages
 
               if [ -n "$(git status --porcelain)" ]; then
                 git add .
