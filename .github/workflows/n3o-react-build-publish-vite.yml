@@ -1,0 +1,53 @@
+﻿name: react app build and publish
+
+on:
+  workflow_call:
+    inputs:
+      region1:
+        description: First region
+        required: true
+        type: string
+        default: 'eu1'
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  build-publish:    
+    runs-on: React-App-Runner     
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: setup-node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: npm install and build for region 1
+        run: |
+          export REACT_APP_REGION_PREFIX=${{ inputs.region1 }}
+          export PUBLIC_URL=${{ inputs.region1 }}
+          export GENERATE_SOURCEMAP=true
+          export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          rm .npmrc          
+          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          cat .npmrc
+          npm ci --legacy-peer-deps
+          #npm run test
+          npm run build
+        working-directory: ${{ github.workspace }}
+
+      - name: process build files
+        run: |
+          mv build/* deploy/${{ inputs.region1 }}/
+          rm deploy/${{ inputs.region1 }}/README
+        working-directory: ${{ github.workspace }}
+
+      - name: npm publish react app to region1
+        uses: n3oltd/actions/.github/actions/npm-publish-react@main
+        with:
+          access-token: ${{ env.GH_PAT }}
+          working-directory: deploy/${{ inputs.region1 }}
