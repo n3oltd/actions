@@ -25,7 +25,7 @@ jobs:
       - name: Delete old versions
         uses: actions/delete-package-versions@v5
         with:
-          package-name: ${{ inputs.package_name }}
-          package-type: ${{ inputs.package_type }}
-          min-versions-to-keep: ${{ inputs.min_versions_to_keep }}
+          package-name: ${{ inputs.package-name }}
+          package-type: ${{ inputs.package-type }}
+          min-versions-to-keep: ${{ inputs.min-versions-to-keep }}
           token: ${{ secrets.GH_PACKAGES_TOKEN }}
