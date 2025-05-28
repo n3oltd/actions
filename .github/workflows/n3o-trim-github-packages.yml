@@ -3,13 +3,13 @@ name: Trim Github Packages
 on:
   workflow_call:
     inputs:
-      package_name:
+      package-name:
         required: true
         type: string
-      package_type:
+      package-type:
         required: true
         type: string
-      min_versions_to_keep:
+      min-versions-to-keep:
         required: false
         type: number
         default: 300
