@@ -1,0 +1,31 @@
+name: Trim Github Packages 
+
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        required: true
+        type: string
+      package_type:
+        required: true
+        type: string
+      min_versions_to_keep:
+        required: false
+        type: number
+        default: 300
+
+jobs:
+  delete-old-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Delete old versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ inputs.package_name }}
+          package-type: ${{ inputs.package_type }}
+          min-versions-to-keep: ${{ inputs.min_versions_to_keep }}
+          token: ${{ secrets.GH_PACKAGES_TOKEN }}
