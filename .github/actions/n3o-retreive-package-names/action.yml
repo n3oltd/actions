@@ -1,0 +1,61 @@
+name: Retrieve Package Names As Matrix
+description: Reads the CI workflow and creates a matrix of NuGet and NPM packages
+
+inputs:
+  ci-workflow-path:
+    description: Path to the main CI workflow file
+    required: false
+    default: .github/workflows/main-ci.yml
+
+outputs:
+  package_matrix:
+    description: Combined matrix of NuGet and NPM packages
+    value: ${{ steps.set-matrix.outputs.package_matrix }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Read CI Workflow File
+      id: read-ci
+      shell: bash
+      run: |
+        CI_FILE="${{ inputs.ci-workflow-path }}"
+        if [[ -f "$CI_FILE" ]]; then
+          nuget=$(yq '.jobs."main-build-job".with."nuget-packages"' "$CI_FILE")
+          npm=$(yq '.jobs."main-build-job".with."npm-packages"' "$CI_FILE")
+          echo "nuget=$nuget" >> $GITHUB_ENV
+          echo "npm=$npm" >> $GITHUB_ENV
+        else
+          echo "CI workflow not found" && exit 1
+        fi
+
+    - name: Generate Package Matrix
+      id: set-matrix
+      shell: bash
+      run: |
+        nuget_json=$(echo "$nuget" | jq -c 'map({name: ., type: "nuget"})')
+
+        npm_names_json="[]"
+        for path in $(echo "$npm" | jq -r '.[]'); do
+          trimmed=$(echo "$path" | sed -E 's|^src/||; s|/Clients||; s|/v[0-9.]+||g; s|/TypeScript$||')
+
+          segments=()
+          IFS='/' read -ra parts <<< "$trimmed"
+          for segment in "${parts[@]}"; do
+            if [[ "$segment" == *.* ]]; then
+              IFS='.' read -ra dot_parts <<< "$segment"
+              for part in "${dot_parts[@]}"; do
+                segments+=("$(echo "$part" | tr '[:upper:]' '[:lower:]')")
+              done
+            else
+              kebab=$(echo "$segment" | sed -E 's/([a-z0-9])([A-Z])/\1-\2/g' | tr '[:upper:]' '[:lower:]')
+              segments+=("$kebab")
+            fi
+          done
+
+          pkg_name=$(IFS='.'; echo "${segments[*]}")
+          npm_names_json=$(echo "$npm_names_json" | jq --arg name "$pkg_name" '. + [{name: $name, type: "npm"}]')
+        done
+
+        all_packages=$(jq -c -n --argjson n "$nuget_json" --argjson m "$npm_names_json" '$n + $m')
+        echo "package_matrix=$all_packages" >> $GITHUB_OUTPUT
