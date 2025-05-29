@@ -25,7 +25,7 @@ ENV DLL=.dll
 COPY . .
 WORKDIR "/src/${PROJECT}"
 
-RUN apt-get update --fix-missing
+RUN apt-get update
 RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
 RUN dotnet build -c "${CONFIGURATION}" -o /app
 RUN rm -f /app/appsettings.json
@@ -46,7 +46,7 @@ FROM base AS final
 
 ARG PROJECT
 
-RUN apt-get update --fix-missing
+RUN apt-get update
 
 RUN apt-get --yes install zip unzip curl
 RUN apt-get --yes install libgdiplus
