@@ -9,10 +9,6 @@ on:
       package-type:
         required: true
         type: string
-      min-versions-to-keep:
-        required: false
-        type: number
-        default: 300
 
 jobs:
   delete-old-versions:
@@ -27,5 +23,5 @@ jobs:
         with:
           package-name: ${{ inputs.package-name }}
           package-type: ${{ inputs.package-type }}
-          min-versions-to-keep: ${{ inputs.min-versions-to-keep }}
+          min-versions-to-keep: 90
           token: ${{ secrets.GH_PACKAGES_DELETE_TOKEN }}
