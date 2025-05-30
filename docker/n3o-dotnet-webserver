@@ -54,6 +54,9 @@ FROM base AS final
 ARG PROJECT
 ARG CHPASSWORD
 
+#to remove - ubuntu archive hosting issue
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources || true 
+
 RUN apt-get update
 RUN apt-get install --assume-yes --no-install-recommends openssh-server && mkdir -p /run/sshd
 RUN apt-get install --assume-yes wget

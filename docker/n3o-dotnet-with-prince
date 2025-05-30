@@ -67,7 +67,8 @@ ARG PRINCE_SIGNATURE
 ARG PRINCE_OPTION_ID
 ARG CHPASSWORD
 
-RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources || true
+#to remove - ubuntu archive hosting issue
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources || true 
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssh-server && mkdir -p /run/sshd
 RUN apt-get install --assume-yes wget

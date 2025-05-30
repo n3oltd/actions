@@ -46,7 +46,21 @@ FROM base AS final
 
 ARG PROJECT
 
+#to remove - ubuntu archive hosting issue
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources || true 
+
 RUN apt-get update
+
+RUN mkdir -p /dotnet-tools
+
+RUN curl -Lo /dotnet-tools/dotnet-trace https://aka.ms/dotnet-trace/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-dump https://aka.ms/dotnet-dump/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-gcdump https://aka.ms/dotnet-gcdump/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-counters https://aka.ms/dotnet-counters/linux-x64
+
+RUN chmod +x /dotnet-tools/dotnet-*
+
+ENV PATH="/dotnet-tools:$PATH"
 
 RUN apt-get --yes install zip unzip curl
 RUN apt-get --yes install libgdiplus
