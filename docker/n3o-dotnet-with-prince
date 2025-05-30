@@ -80,16 +80,16 @@ RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi 
 
 RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg  
 
-RUN apt-get install -y --no-install-recommends dotnet-sdk-9.0
-ENV DOTNET_ROOT=/usr/share/dotnet
-ENV PATH="$PATH:/root/.dotnet/tools"
+RUN mkdir -p /dotnet-tools
 
-RUN dotnet tool install -g dotnet-counters \
-    && dotnet tool install -g dotnet-dump \
-    && dotnet tool install -g dotnet-gcdump \
-    && dotnet tool install -g dotnet-monitor \
-    && dotnet tool install -g dotnet-stack \
-    && dotnet tool install -g dotnet-trace
+RUN curl -Lo /dotnet-tools/dotnet-trace https://aka.ms/dotnet-trace/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-dump https://aka.ms/dotnet-dump/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-gcdump https://aka.ms/dotnet-gcdump/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-counters https://aka.ms/dotnet-counters/linux-x64
+
+RUN chmod +x /dotnet-tools/dotnet-*
+
+ENV PATH="/dotnet-tools:$PATH"
 
 RUN apt-get clean
 ENV PRINCE=prince_16-1_ubuntu24.04_amd64
