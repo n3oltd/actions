@@ -47,15 +47,15 @@ echo "process-max=4" >> /etc/pgbackrest/pgbackrest.conf
 docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=10000 & sleep 10
 pg_ctl restart -D /var/lib/postgresql/data/postgres
 
-sleep 10
+# sleep 10
 
-pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/
+# pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/
 
-sleep 10
+# sleep 10
 
-pgbackrest --stanza=n3o backup --type=full --archive-timeout=600
+# pgbackrest --stanza=n3o backup --type=full --archive-timeout=600
 
-sleep 30
+# sleep 30
 
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> "$CRON_FILE"
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> "$CRON_FILE"
