@@ -27,7 +27,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        if ${{ inputs.replace-yaml }}
+        if ${{ inputs.replace-yaml }}; then
           kubectl replace -n "${{ inputs.namespace }}" -f ${{ inputs.file-name }}
         else
           kubectl apply -n "${{ inputs.namespace }}" -f ${{ inputs.file-name }}

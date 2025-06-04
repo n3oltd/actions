@@ -26,7 +26,7 @@ runs:
         echo "$YAML_CONTENTS" > secrets.yml
         cat secrets.yml
         
-        if ${{ inputs.replace-yaml }}
+        if ${{ inputs.replace-yaml }}; then
           echo "Running kubectl replace..."
           kubectl replace -n "${{ inputs.namespace }}" -f secrets.yml
         else
