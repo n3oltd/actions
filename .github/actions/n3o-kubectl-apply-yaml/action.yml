@@ -9,6 +9,11 @@ inputs:
   yaml:
     description: The yaml to apply
     required: true
+    
+  replace-yaml:
+    description: Whether to use kubectl replace or not
+    required: false
+    type: boolean    
 
 runs:
   using: "composite"
@@ -20,4 +25,11 @@ runs:
       run: |        
         echo "$YAML_CONTENTS" > secrets.yml
         cat secrets.yml
-        kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
+        
+        if ${{ inputs.replace-yaml }}
+          echo "Running kubectl replace..."
+          kubectl replace -n "${{ inputs.namespace }}" -f secrets.yml
+        else
+          echo "Running kubectl apply..."
+          kubectl apply -n "${{ inputs.namespace }}" -f secrets.yml
+        fi

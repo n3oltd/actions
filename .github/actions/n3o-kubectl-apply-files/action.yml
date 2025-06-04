@@ -9,16 +9,33 @@ inputs:
   working-directory:
     description: The directory where the YAML files are located
     required: true
+    
+  replace-yaml:
+    description: Whether to use kubectl replace or not
+    required: false
+    type: boolean
 
 runs:
   using: "composite"
   steps:
     - name: apply-yaml
       shell: bash
+      if: ${{ !inputs.replace-yaml }}
       working-directory: ${{ inputs.working-directory }}
       run: |
         if [ -n "${{ inputs.namespace }}" ]; then
           find . -maxdepth 1 -name '*.yaml' ! -name 'postgresSecrets.yaml' -exec kubectl apply -f {} -n "${{ inputs.namespace }}" \;
         else
           find . -maxdepth 1 -name '*.yaml' ! -name 'postgresSecrets.yaml' -exec kubectl apply -f {} \;
+        fi
+        
+    - name: replace-yaml
+      shell: bash
+      if: ${{ inputs.replace-yaml }}
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ -n "${{ inputs.namespace }}" ]; then
+          find . -maxdepth 1 -name '*.yaml' ! -name 'postgresSecrets.yaml' -exec kubectl replace -f {} -n "${{ inputs.namespace }}" \;
+        else
+          find . -maxdepth 1 -name '*.yaml' ! -name 'postgresSecrets.yaml' -exec kubectl replace -f {} \;
         fi

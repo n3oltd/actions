@@ -11,6 +11,11 @@ inputs:
     description: The yaml to apply
     required: true
     
+  replace-yaml:
+    description: Whether to use kubectl replace or not
+    required: false
+    type: boolean
+  
   working-directory:
     description: "The working directory"
     default: src
@@ -22,4 +27,8 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        kubectl apply -n "${{ inputs.namespace }}" -f ${{ inputs.file-name }}
+        if ${{ inputs.replace-yaml }}
+          kubectl replace -n "${{ inputs.namespace }}" -f ${{ inputs.file-name }}
+        else
+          kubectl apply -n "${{ inputs.namespace }}" -f ${{ inputs.file-name }}
+        fi

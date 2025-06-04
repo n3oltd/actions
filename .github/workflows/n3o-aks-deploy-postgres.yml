@@ -62,9 +62,11 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-file-yaml@main
         with:
           file-name: postgresSecretsDecrypted.yaml
+          replace-yaml: true
           working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
             
       - name: Apply YAML files to cluster
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
         with:
+          replace-yaml: true
           working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
