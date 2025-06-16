@@ -1,9 +1,9 @@
-name: 'Build & Deploy Elements JS'
+name: 'Build & Deploy Platforms JS'
 
 on:
   workflow_call:
     inputs:
-      subscription-number:
+      subscription-code:
         type: string
         required: true
 
@@ -29,7 +29,7 @@ jobs:
       - name: Fetch configuration.json
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://cdn.n3o.cloud/elements/${{ inputs.subscription-number }}/configuration.json
+          args: -O configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: npm install and build
         run: |
@@ -48,7 +48,7 @@ jobs:
         with:
           azcliversion: 2.66.0
           inlineScript: |
-            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="elements" --source="dist/elements" --destination-path="${{ env.subscription_number }}/js" --overwrite="true"
+            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="dist/platforms" --destination-path="platforms/js" --overwrite="true"
         env:
           storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING }}"
-          subscription_number: "${{ inputs.subscription-number }}"
+          subscription_code: "${{ inputs.subscription-code }}"
