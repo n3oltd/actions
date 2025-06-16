@@ -1,4 +1,4 @@
-name: 'Build Elements JS'
+name: 'Build Platforms JS'
 
 on:
   workflow_call:
@@ -22,10 +22,10 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           token: ${{ env.GH_PAT }}
 
-      - name: Fetch configuration.json
+      - name: "Fetch build/configuration.json"
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://cdn.n3o.cloud/elements/1/configuration.json
+          args: -O configuration.json https://cdn.n3o.cloud/connect-1/build/configuration.json
 
       - name: npm install and build
         run: |
