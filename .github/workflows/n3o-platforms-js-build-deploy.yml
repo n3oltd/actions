@@ -29,14 +29,14 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           token: ${{ env.GH_PAT }}
 
-      - name: Fetch configuration.json (PROD)
-        if: ${{ inputs.environment == 'PROD' }}
+      - name: Fetch configuration.json (Production)
+        if: ${{ inputs.environment == 'prod' }}
         uses: wei/wget@v1
         with:
           args: -O configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: Fetch configuration.json (QA)
-        if: ${{ inputs.environment == 'QA' }}
+        if: ${{ inputs.environment == 'qa' }}
         uses: wei/wget@v1
         with:
           args: -O configuration.json https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
@@ -53,11 +53,11 @@ jobs:
         with:
           creds:  ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set storage_connection_string based on environment
+      - name: Set Storage Connection String
         run: |
-          if [ "${{ inputs.environment }}" = "PROD" ]; then
+          if [ "${{ inputs.environment }}" = "prod" ]; then
             echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV
-          elif [ "${{ inputs.environment }}" = "QA" ]; then
+          elif [ "${{ inputs.environment }}" = "qa" ]; then
             echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_QA }}" >> $GITHUB_ENV
           else
             echo "Invalid environment: ${{ inputs.environment }}"
