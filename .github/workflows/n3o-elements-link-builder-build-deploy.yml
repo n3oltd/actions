@@ -41,4 +41,4 @@ jobs:
           inlineScript: |
             az storage blob upload -f "build/link-builder.js" --connection-string="${{ env.storage_connection_string }}" --container-name="elements" --content-type="text/javascript" --overwrite="true"
         env:
-          storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING }}"
+          storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_PROD }}"
