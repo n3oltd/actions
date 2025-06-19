@@ -39,7 +39,7 @@ jobs:
         if: ${{ inputs.environment == 'QA' }}
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://beta-cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+          args: -O configuration.json https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: npm install and build
         run: |
