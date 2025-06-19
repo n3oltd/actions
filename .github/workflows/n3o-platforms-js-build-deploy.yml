@@ -6,6 +6,9 @@ on:
       subscription-code:
         type: string
         required: true
+      environment:
+        type: string
+        required: true
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -26,10 +29,17 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           token: ${{ env.GH_PAT }}
 
-      - name: Fetch configuration.json
+      - name: Fetch configuration.json (PROD)
+        if: ${{ inputs.environment == 'PROD' }}
         uses: wei/wget@v1
         with:
           args: -O configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+
+      - name: Fetch configuration.json (QA)
+        if: ${{ inputs.environment == 'QA' }}
+        uses: wei/wget@v1
+        with:
+          args: -O configuration.json https://beta-cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: npm install and build
         run: |
@@ -43,6 +53,17 @@ jobs:
         with:
           creds:  ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Set storage_connection_string based on environment
+        run: |
+          if [ "${{ inputs.environment }}" = "PROD" ]; then
+            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV
+          elif [ "${{ inputs.environment }}" = "QA" ]; then
+            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_QA }}" >> $GITHUB_ENV
+          else
+            echo "Invalid environment: ${{ inputs.environment }}"
+            exit 1
+          fi
+
       - name: Azure CLI script
         uses: azure/CLI@v1
         with:
@@ -50,5 +71,4 @@ jobs:
           inlineScript: |
             az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="dist/platforms" --destination-path="platforms/js" --overwrite="true"
         env:
-          storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING }}"
           subscription_code: "${{ inputs.subscription-code }}"
