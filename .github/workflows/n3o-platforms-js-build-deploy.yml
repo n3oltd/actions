@@ -71,4 +71,4 @@ jobs:
           inlineScript: |
             az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="dist/platforms" --destination-path="platforms/js" --overwrite="true"
         env:
-          VITE_SUBSCRIPTION_CODE="${{ inputs.subscription-code }}"
+          VITE_SUBSCRIPTION_CODE: "${{ inputs.subscription-code }}"
