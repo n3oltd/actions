@@ -70,6 +70,7 @@ jobs:
         with:
           azcliversion: 2.66.0
           inlineScript: |
+            az storage blob delete-batch --connection-string "${{ env.storage_connection_string }}" --source "connect-${{ env.subscription_code }}"  --pattern "platforms/js/*" 
             az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="dist/platforms" --destination-path="platforms/js" --overwrite="true"
         env:
           subscription_code: "${{ inputs.subscription-code }}"
