@@ -33,13 +33,13 @@ jobs:
         if: ${{ inputs.environment == 'prod' }}
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+          args: -O src/configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: Fetch configuration.json (QA)
         if: ${{ inputs.environment == 'qa' }}
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+          args: -O src/configuration.json https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: npm install and build
         run: |
