@@ -48,6 +48,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
+          VITE_ENVIRONMENT: ${{ inputs.environment }}
 
       - name: Azure Login
         uses: azure/login@v1
