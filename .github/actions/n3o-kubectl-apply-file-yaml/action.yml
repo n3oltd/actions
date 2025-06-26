@@ -15,6 +15,7 @@ inputs:
     description: Whether to use kubectl replace or not
     required: false
     type: boolean
+    default: false
   
   working-directory:
     description: "The working directory"
