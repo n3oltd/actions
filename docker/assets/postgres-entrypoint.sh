@@ -56,6 +56,9 @@ pg_ctl restart -D /var/lib/postgresql/data/postgres
 # pgbackrest --stanza=n3o backup --type=full --archive-timeout=600
 
 # sleep 30
+CRON_FILE="/etc/pgbackrest/cron_job"
+touch "$CRON_FILE"
+chmod 0644 "$CRON_FILE"
 
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> "$CRON_FILE"
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> "$CRON_FILE"
