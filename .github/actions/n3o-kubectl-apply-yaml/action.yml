@@ -13,7 +13,8 @@ inputs:
   replace-yaml:
     description: Whether to use kubectl replace or not
     required: false
-    type: boolean    
+    type: boolean
+    default: false
 
 runs:
   using: "composite"
