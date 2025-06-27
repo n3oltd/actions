@@ -4,12 +4,23 @@ touch /var/lib/postgresql/data/postgresql.auto.conf
 touch /var/lib/postgresql/data/postgresql.conf
 
 #Enable archiving
+# Remove exosting config values
+sed -i "/archive_mode/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/archive_command/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/wal_level/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgresql.conf
+
 echo "archive_mode = on" >> /var/lib/postgresql/data/postgresql.conf
 echo "archive_command = 'pgbackrest --stanza=n3o archive-push %p'" >> /var/lib/postgresql/data/postgresql.conf
 echo "wal_level = replica" >> /var/lib/postgresql/data/postgresql.conf
 echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgresql.conf
 
 # Enable SSL
+# Remove exosting config values
+sed -i "/ssl/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgresql.conf
+
 echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
 echo "${SSL_KEY}" > /var/lib/postgresql/server.key
 chmod 600 /var/lib/postgresql/server.key
@@ -19,15 +30,33 @@ echo "ssl_cert_file = '/var/lib/postgresql/server.crt'" >> /var/lib/postgresql/d
 echo "ssl_key_file = '/var/lib/postgresql/server.key'" >> /var/lib/postgresql/data/postgresql.conf
 
 #configure connection settings
+sed -i "/statement_timeout/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/tcp_keepalives_idle/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/idle_session_timeout/d" /var/lib/postgresql/data/postgresql.conf
+
 echo "statement_timeout = 30000" >> /var/lib/postgresql/data/postgresql.conf
 echo "tcp_keepalives_idle = 30" >> /var/lib/postgresql/data/postgresql.conf
 echo "idle_session_timeout = 60000" >> /var/lib/postgresql/data/postgresql.conf
 
 #pgbackrest config file
+sed -i '/^\[n3o\]/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^pg1-path/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^pg1-host-user/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^pg1-user/d' /etc/pgbackrest/pgbackrest.conf
+
 echo "[n3o]" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-path = /var/lib/postgresql/data/postgres" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-host-user=${POSTGRES_USER}" >> /etc/pgbackrest/pgbackrest.conf
 echo "pg1-user=${POSTGRES_USER}" >> /etc/pgbackrest/pgbackrest.conf
+
+
+sed -i '/^\[global\]/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-retention-full-type/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-retention-full=/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-retention-diff/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-cipher-pass/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-cipher-type/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-path/d' /etc/pgbackrest/pgbackrest.conf
 
 echo "[global]" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-retention-full-type=time" >> /etc/pgbackrest/pgbackrest.conf
@@ -37,6 +66,12 @@ echo "repo1-cipher-pass=${BACKUPS_PASSWORD}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-cipher-type=aes-256-cbc" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-path=/${AZURE_CONTAINER}" >> /etc/pgbackrest/pgbackrest.conf
 mkdir /etc/pgbackrest/backup-repo
+
+sed -i '/^repo1-azure-account/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-azure-container/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-azure-key/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^repo1-type/d' /etc/pgbackrest/pgbackrest.conf
+sed -i '/^process-max/d' /etc/pgbackrest/pgbackrest.conf
 
 echo "repo1-azure-account=${AZURE_ACCOUNT}" >> /etc/pgbackrest/pgbackrest.conf
 echo "repo1-azure-container=${AZURE_CONTAINER}" >> /etc/pgbackrest/pgbackrest.conf
