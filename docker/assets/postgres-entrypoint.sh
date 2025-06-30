@@ -4,7 +4,6 @@ touch /var/lib/postgresql/data/postgresql.auto.conf
 touch /var/lib/postgresql/data/postgresql.conf
 
 #Enable archiving
-# Remove exosting config values
 sed -i "/archive_mode/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/archive_command/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/wal_level/d" /var/lib/postgresql/data/postgresql.conf
@@ -16,7 +15,6 @@ echo "wal_level = replica" >> /var/lib/postgresql/data/postgresql.conf
 echo "max_wal_senders = 3" >> /var/lib/postgresql/data/postgresql.conf
 
 # Enable SSL
-# Remove exosting config values
 sed -i "/ssl/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgresql.conf
