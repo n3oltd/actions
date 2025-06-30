@@ -82,19 +82,28 @@ echo "process-max=4" >> /etc/pgbackrest/pgbackrest.conf
 docker-entrypoint.sh postgres -c shared_buffers=256MB -c max_connections=10000 & sleep 10
 pg_ctl restart -D /var/lib/postgresql/data/postgres
 
-# sleep 10
+# Create the one-time pgbackrest initialisation script to create a stanza
+INIT_SCRIPT="/etc/pgbackrest/pgbackrest-init.sh"
 
-# pgbackrest --stanza=n3o --log-level-console=debug stanza-create --repo1-path=/
+# Remove any existing stale file
+rm -f "$INIT_SCRIPT"
 
-# sleep 10
+#echo "#!/bin/bash" > "$INIT_SCRIPT"
+echo "if [ ! -f /var/lib/postgresql/.cron_installed ]; then" >> "$INIT_SCRIPT"
+echo "  echo "Running pgBackRest stanza-create and first backup"" >> "$INIT_SCRIPT"
+echo "  pgbackrest --stanza=n3o stanza-create" >> "$INIT_SCRIPT"
+echo "  pgbackrest --stanza=n3o backup" >> "$INIT_SCRIPT"
+echo "  touch /var/lib/postgresql/.cron_installed" >> "$INIT_SCRIPT"
+echo "fi" >> "$INIT_SCRIPT"
 
-# pgbackrest --stanza=n3o backup --type=full --archive-timeout=600
+chmod +x "$INIT_SCRIPT"
 
-# sleep 30
+# Add Cron Jobs
 CRON_FILE="/etc/pgbackrest/cron_job"
 touch "$CRON_FILE"
 chmod 0644 "$CRON_FILE"
 
+echo "*/10 * * * * postgres /etc/pgbackrest/pgbackrest-init.sh" >> "$CRON_FILE"
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> "$CRON_FILE"
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> "$CRON_FILE"
 crontab "$CRON_FILE"
