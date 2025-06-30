@@ -85,10 +85,8 @@ pg_ctl restart -D /var/lib/postgresql/data/postgres
 # Create the one-time pgbackrest initialisation script to create a stanza
 INIT_SCRIPT="/etc/pgbackrest/pgbackrest-init.sh"
 
-# Remove any existing stale file
 rm -f "$INIT_SCRIPT"
 
-#echo "#!/bin/bash" > "$INIT_SCRIPT"
 echo "if [ ! -f /var/lib/postgresql/.cron_installed ]; then" >> "$INIT_SCRIPT"
 echo "  echo "Running pgBackRest stanza-create and first backup"" >> "$INIT_SCRIPT"
 echo "  pgbackrest --stanza=n3o stanza-create" >> "$INIT_SCRIPT"
