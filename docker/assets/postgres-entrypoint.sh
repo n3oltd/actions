@@ -98,7 +98,7 @@ chmod +x "$INIT_SCRIPT"
 CRON_FILE="/etc/pgbackrest/cron_job"
 touch "$CRON_FILE"
 chmod 0644 "$CRON_FILE"
-
+cron
 echo "*/10 * * * * postgres /etc/pgbackrest/pgbackrest-init.sh" >> "$CRON_FILE"
 echo "0 3 * * 0 postgres pgbackrest --stanza=n3o backup --type=full" >> "$CRON_FILE"
 echo "0 3 * * 1-6 postgres pgbackrest --stanza=n3o backup --type=diff" >> "$CRON_FILE"
