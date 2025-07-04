@@ -20,6 +20,8 @@ RUN chown -R postgres:postgres /var/lib/postgresql
 RUN mkdir -p /etc/pgbackrest
 RUN chown -R postgres:postgres /etc/pgbackrest
 
+CMD cron && tail -f /var/log/cron.log
+
 USER postgres
 
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
