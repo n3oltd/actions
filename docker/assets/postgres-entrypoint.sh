@@ -4,7 +4,6 @@ touch /var/lib/postgresql/data/postgresql.auto.conf
 touch /var/lib/postgresql/data/postgresql.conf
 touch /etc/pgbackrest/pgbackrest.conf
 
-#Enable archiving
 sed -i "/archive_mode/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/archive_command/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/wal_level/d" /var/lib/postgresql/data/postgresql.conf
@@ -20,11 +19,9 @@ sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgresql.conf
   echo "ssl_key_file = '/var/lib/postgresql/server.key'"  
 } >> /var/lib/postgresql/data/postgresql.conf
 
-# Enable SSL
 sed -i "/ssl/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgresql.conf
 sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgresql.conf
-
 echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
 echo "${SSL_KEY}" > /var/lib/postgresql/server.key
 chmod 600 /var/lib/postgresql/server.key
@@ -67,7 +64,7 @@ exec docker-entrypoint.sh postgres \
           -c idle_session_timeout="${POSTGRES_IDLE_SESSION_TIMEOUT}"&
 
 until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
-  echo "waiting for Postgres to be ready..."
+  echo "Waiting for Postgres to be ready..."
   sleep 2
 done
 
