@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y wget pgbouncer postgresql-client bash p
 
 WORKDIR /etc/pgbouncer
 
-RUN wget -P /usr/local/bin/entrypoint.sh https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
+RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
