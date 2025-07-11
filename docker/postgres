@@ -20,6 +20,10 @@ RUN chown -R postgres:postgres /var/lib/postgresql
 RUN mkdir -p /etc/pgbackrest
 RUN chown -R postgres:postgres /etc/pgbackrest
 
+RUN touch /var/log/cron.log
+CMD cron && tail -f /var/log/cron.log
+RUN echo "postgres ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
 USER postgres
 
 ENTRYPOINT ["/usr/local/bin/postgres-entrypoint.sh"]
