@@ -1,0 +1,21 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y pgbouncer postgresql-client bash procps && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /etc/pgbouncer
+
+RUN wget -P /usr/local/bin/entrypoint.sh https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
+RUN mkdir -p /var/log/pgbouncer
+
+RUN mkdir -p /var/run/pgbouncer && chown -R postgres:postgres /var/run/pgbouncer
+
+ENV AUTH_TYPE=md5
+
+USER postgres
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
+EXPOSE 5432

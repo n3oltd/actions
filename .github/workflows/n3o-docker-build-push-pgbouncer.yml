@@ -1,0 +1,49 @@
+﻿name: 'docker-build-push-pgbouncer'
+
+on:
+  workflow_call:
+
+jobs:
+  build-push-docker-image-job:    
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+                            
+      - id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: acr login
+        uses: docker/login-action@v1
+        with:
+          registry: n3oltd.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: fetch dockerfile
+        uses: wei/wget@v1
+        with:
+          args: -O pgbouncer https://raw.githubusercontent.com/n3oltd/actions/main/docker/pgbouncer
+
+      - id: meta-pgbouncer
+        name: prepare pgbouncer
+        run: |
+          DOCKER_IMAGE_NAME=n3o-pgbouncer
+          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
+          NOW=$(date +'%Y.%-m.%-d')
+          VERSION="$NOW.${{ github.run_number }}"       
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
+
+      - name: build and push pgbouncer
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          target: final
+          file: pgbouncer
+          push: true
+          tags: ${{ steps.meta-pgbouncer.outputs.versiontag }} , ${{ steps.meta-pgbouncer.outputs.latesttag }}
