@@ -8,7 +8,7 @@ FROM debian:bookworm-slim AS base
 ########################
 FROM base AS final
 
-RUN apt-get update && apt-get install -y pgbouncer postgresql-client bash procps && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y wget pgbouncer postgresql-client bash procps && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /etc/pgbouncer
 
