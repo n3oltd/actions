@@ -1,4 +1,12 @@
-FROM debian:bookworm-slim
+########################
+### base
+########################
+FROM debian:bookworm-slim AS base
+
+########################
+### final
+########################
+FROM base AS final
 
 RUN apt-get update && apt-get install -y pgbouncer postgresql-client bash procps && rm -rf /var/lib/apt/lists/*
 
