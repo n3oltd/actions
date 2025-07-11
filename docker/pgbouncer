@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y wget pgbouncer postgresql-client bash p
 WORKDIR /etc/pgbouncer
 
 RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
 
 RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
 RUN mkdir -p /var/log/pgbouncer
@@ -24,6 +24,6 @@ ENV AUTH_TYPE=md5
 
 USER postgres
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/pgbouncer-entrypoint.sh"]
 CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
 EXPOSE 5432
