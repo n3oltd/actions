@@ -14,14 +14,14 @@ inputs:
     description: Whether to use kubectl replace or not
     required: false
     type: boolean
-    default: false
+    default: 'false'
 
 runs:
   using: "composite"
   steps:
     - name: apply-yaml
       shell: bash
-      if: ${{ !inputs.replace-yaml }}
+      if: ${{ inputs.replace-yaml != 'true'}}
       working-directory: ${{ inputs.working-directory }}
       run: |
         if [ -n "${{ inputs.namespace }}" ]; then
@@ -32,7 +32,7 @@ runs:
         
     - name: replace-yaml
       shell: bash
-      if: ${{ inputs.replace-yaml }}
+      if: ${{ inputs.replace-yaml == 'true'}}
       working-directory: ${{ inputs.working-directory }}
       run: |
         if [ -n "${{ inputs.namespace }}" ]; then
