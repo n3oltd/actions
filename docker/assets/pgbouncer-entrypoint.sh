@@ -39,6 +39,7 @@ server_fast_close = 1
 client_idle_timeout = 600
 ignore_startup_parameters = extra_float_digits
 stats_period = 0
+verbose = 0
 EOF
 
 exec "$@"
