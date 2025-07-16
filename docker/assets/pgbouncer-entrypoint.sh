@@ -31,6 +31,7 @@ auth_file = /etc/pgbouncer/userlist.txt
 logfile = /dev/stdout
 pidfile = /var/run/pgbouncer/pgbouncer.pid
 pool_mode = transaction
+max_client_conn = ${MAX_CONNECTIONS}
 max_db_connections = ${MAX_CONNECTIONS}
 max_user_connections = ${MAX_CONNECTIONS}
 server_reset_query = DISCARD ALL
