@@ -30,7 +30,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           echo "always-auth=true" >> .npmrc
-        working-directory: ${{ github.workspace }}/src/K2.WebServer
+        working-directory: ${{ github.workspace }}/src/Karakoram.WebServer
                   
       - id: buildx
         uses: docker/setup-buildx-action@v1
