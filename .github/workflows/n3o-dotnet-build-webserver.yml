@@ -35,7 +35,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           echo "always-auth=true" >> .npmrc
-        working-directory: ${{ inputs.working-directory }}/K2.WebServer          
+        working-directory: ${{ inputs.working-directory }}/Karakoram.WebServer          
 
       - name: dotnet build
         uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
