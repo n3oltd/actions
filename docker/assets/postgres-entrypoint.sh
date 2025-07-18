@@ -1,13 +1,45 @@
 #!/bin/bash
 
 touch /var/lib/postgresql/data/postgresql.auto.conf
-touch /var/lib/postgresql/data/postgresql.conf
+touch /var/lib/postgresql/data/postgres/postgresql.conf
 touch /etc/pgbackrest/pgbackrest.conf
+touch /etc/pgbackrest/run-backup.sh
 
-sed -i "/archive_mode/d" /var/lib/postgresql/data/postgresql.conf
-sed -i "/archive_command/d" /var/lib/postgresql/data/postgresql.conf
-sed -i "/wal_level/d" /var/lib/postgresql/data/postgresql.conf
-sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgresql.conf
+cat > /etc/pgbackrest/run-backup.sh <<'EOF'
+#!/bin/sh
+set -ex
+
+if pgbackrest --stanza=n3o info 2>&1 | grep -q "missing stanza path"; then
+  echo "[INFO] Stanza is missing. Running stanza-create..."
+  pgbackrest --stanza=n3o --log-level-console=info stanza-create
+else
+  echo "[INFO] Stanza exists. Skipping stanza-create."
+fi
+
+echo "[INFO] Running full backup..."
+pgbackrest --stanza=n3o --type=full --log-level-console=info backup --archive-timeout=3h
+EOF
+
+chmod +x /etc/pgbackrest/run-backup.sh
+
+# Archive configurations
+sed -i "/archive_mode/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/archive_command/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/wal_level/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgres/postgresql.conf
+
+# PgBadger configuration
+sed -i "/logging_collector/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_directory/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_filename/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_rotation_age/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_rotation_size/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_line_prefix/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_min_duration_statement/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_checkpoints/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_connections/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_disconnections/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/log_lock_waits/d" /var/lib/postgresql/data/postgres/postgresql.conf
 
 {
   echo "archive_mode = on"
@@ -16,12 +48,24 @@ sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgresql.conf
   echo "max_wal_senders = 3"
   echo "ssl = on"
   echo "ssl_cert_file = '/var/lib/postgresql/server.crt'"
-  echo "ssl_key_file = '/var/lib/postgresql/server.key'"  
-} >> /var/lib/postgresql/data/postgresql.conf
+  echo "ssl_key_file = '/var/lib/postgresql/server.key'"
+  
+  echo "logging_collector = on"
+  echo "log_directory = 'log'"
+  echo "log_filename = 'postgresql-%Y-%m-%d.log'"
+  echo "log_rotation_age = 1d"
+  echo "log_rotation_size = 0"
+  echo "log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '"
+  echo "log_min_duration_statement = 0"
+  echo "log_checkpoints = on"
+  echo "log_connections = on"
+  echo "log_disconnections = on"
+  echo "log_lock_waits = on"
+} >> /var/lib/postgresql/data/postgres/postgresql.conf
 
-sed -i "/ssl/d" /var/lib/postgresql/data/postgresql.conf
-sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgresql.conf
-sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgresql.conf
+sed -i "/ssl/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
 echo "${SSL_CERTIFICATE}" > /var/lib/postgresql/server.crt
 echo "${SSL_KEY}" > /var/lib/postgresql/server.key
 chmod 600 /var/lib/postgresql/server.key
@@ -56,12 +100,15 @@ mkdir /etc/pgbackrest/backup-repo
 # Unit of tcp_keepalives_idle is seconds and idle_session_timeout is milliseconds
 
 # shellcheck disable=SC2093
+
+chown "${POSTGRES_USER}":"${POSTGRES_USER}" /var/lib/postgresql/data
+
 exec docker-entrypoint.sh postgres \
           -c shared_buffers="${POSTGRES_SHARED_BUFFERS}" \
           -c max_connections="${POSTGRES_MAX_CONNECTIONS}" \
           -c work_mem="${POSTGRES_WORK_MEM}" \
           -c tcp_keepalives_idle="${POSTGRES_TCP_KEEPALIVES_IDLE}" \
-          -c idle_session_timeout="${POSTGRES_IDLE_SESSION_TIMEOUT}"&
+          -c idle_session_timeout="${POSTGRES_IDLE_SESSION_TIMEOUT}" &
 
 until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   echo "Waiting for Postgres to be ready..."

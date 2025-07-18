@@ -8,7 +8,7 @@ FROM postgres:17 AS base
 ########################
 FROM base AS final
 
-RUN apt-get update && apt-get -y install pgbackrest cron sudo wget
+RUN apt-get update && apt-get -y install pgbackrest pgbadger cron sudo wget
 RUN apt-get -y install procps && rm -rf /var/lib/apt/lists/*
 
 RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/postgres-entrypoint.sh
