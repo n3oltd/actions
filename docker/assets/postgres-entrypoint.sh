@@ -5,30 +5,11 @@ touch /var/lib/postgresql/data/postgres/postgresql.conf
 touch /etc/pgbackrest/pgbackrest.conf
 touch /etc/pgbackrest/run-backup.sh
 
-cat > /etc/pgbackrest/run-backup.sh <<'EOF'
-#!/bin/sh
-set -ex
-
-if pgbackrest --stanza=n3o info 2>&1 | grep -q "missing stanza path"; then
-  echo "[INFO] Stanza is missing. Running stanza-create..."
-  pgbackrest --stanza=n3o --log-level-console=info stanza-create
-else
-  echo "[INFO] Stanza exists. Skipping stanza-create."
-fi
-
-echo "[INFO] Running full backup..."
-pgbackrest --stanza=n3o --type=full --log-level-console=info backup --archive-timeout=3h
-EOF
-
-chmod +x /etc/pgbackrest/run-backup.sh
-
-# Archive configurations
 sed -i "/archive_mode/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/archive_command/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/wal_level/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgres/postgresql.conf
 
-# PgBadger configuration
 sed -i "/logging_collector/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/log_directory/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/log_filename/d" /var/lib/postgresql/data/postgres/postgresql.conf
