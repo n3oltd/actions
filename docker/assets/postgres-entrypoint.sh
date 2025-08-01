@@ -79,11 +79,6 @@ mkdir /etc/pgbackrest/backup-repo
 } >> /etc/pgbackrest/pgbackrest.conf
 
 # Unit of tcp_keepalives_idle is seconds and idle_session_timeout is milliseconds
-
-# shellcheck disable=SC2093
-
-chown "${POSTGRES_USER}":"${POSTGRES_USER}" /var/lib/postgresql/data
-
 exec docker-entrypoint.sh postgres \
           -c shared_buffers="${POSTGRES_SHARED_BUFFERS}" \
           -c max_connections="${POSTGRES_MAX_CONNECTIONS}" \
