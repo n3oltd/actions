@@ -9,6 +9,9 @@ on:
       environment:
         type: string
         required: true
+      deploy-all:
+        type: boolean        
+        default: false
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -33,13 +36,13 @@ jobs:
         if: ${{ inputs.environment == 'prod' }}
         uses: wei/wget@v1
         with:
-          args: -O src/configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+          args: -O packages/n3o-packages/elements/src/configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: Fetch configuration.json (QA)
         if: ${{ inputs.environment == 'qa' }}
         uses: wei/wget@v1
         with:
-          args: -O src/configuration.json https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+          args: -O packages/n3o-packages/elements/src/configuration.json https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
 
       - name: npm install and build
         run: |
@@ -66,7 +69,7 @@ jobs:
             exit 1
           fi
 
-      - name: Azure CLI script
+      - name: Deploy Platforms - Azure CLI script
         uses: azure/CLI@v1
         with:
           azcliversion: 2.66.0
@@ -75,3 +78,14 @@ jobs:
             az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="dist/platforms" --destination-path="platforms/js" --overwrite="true"
         env:
           subscription_code: "${{ inputs.subscription-code }}"
+
+      - name: Deploy Link Builder - Azure CLI script
+        if: ${{ inputs.deploy-all }}
+        uses: azure/CLI@v1
+        with:
+          azcliversion: 2.66.0
+          inlineScript: |
+            az storage blob upload -f "build/link-builder.js" --connection-string="${{ env.storage_connection_string }}" --container-name="elements" --content-type="text/javascript" --overwrite="true"
+        env:
+          storage_connection_string: "${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_PROD }}"
+         
