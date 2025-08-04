@@ -1,0 +1,51 @@
+name: 'Build & Push Platforms JS to GH Registry'
+
+on:
+  workflow_call:
+    inputs:
+      subscription-code:
+        type: string
+        required: true
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup-node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          token: ${{ env.GH_PAT }}
+
+      - name: Fetch configuration.json
+        uses: wei/wget@v1
+        with:
+          args: -O src/configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+
+      - name: npm install and build
+        run: |
+          npm install --legacy-peer-deps
+          npx turbo build
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
+          VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
+
+      - name: npm publish platforms
+        run: |
+          version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+          name="@n3oltd/platforms-js-${{ inputs.subscription-code }}"
+          jq "del(.devDependencies, .scripts, .dependencies) | .name = \"$name\"" packages/n3o-elements/package.json > packages/n3o-elements/dist/platforms/package.json
+          ( cd packages/n3o-elements/dist/platforms;
+            npm version $version;
+            echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc;
+            echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
+            npm publish; )
