@@ -34,7 +34,7 @@ jobs:
       - name: npm install and build
         run: |
           npm install --legacy-peer-deps
-          npx turbo build
+          npx turbo build:lib --filter=@n3oltd/n3o-elements
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
