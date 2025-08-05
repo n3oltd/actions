@@ -1,0 +1,85 @@
+name: 'Deploy Platforms JS to CDN'
+
+on:
+  workflow_call:
+    inputs:
+      subscription-code:
+        type: string
+        required: true
+      
+      environment:
+        type: string
+        required: true
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  deploy-platforms:
+    name: Deploy Platforms to CDN
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            platforms/js/${{ inputs.environment }}
+
+      - id: latest-json-metadata
+        name: Read latest JSON metadata
+        working-directory: platforms/js/${{ inputs.environment }}/latest
+        run: |
+          serviceVersion=$(jq -r '.serviceVersion' metadata.json)
+          echo "serviceVersion=serviceVersion" >> $GITHUB_OUTPUT
+    
+      - name: install platforms package and push to cdn
+        run: |
+          mkdir temp-app
+          cd temp-app
+          echo '{}' > package.json
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_TOKEN }}" >> .npmrc
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          npm install "@n3oltd/platforms-js-${{ inputs.subscription-code }}@${{ steps.latest-json-metadata.outputs.deploymentVersion }}"
+          
+      - name: Fetch config.json (Production)
+        if: ${{ inputs.environment == 'prod' }}
+        uses: wei/wget@v1
+        with:
+          args: -O config.json https://cdn.n3o.cloud/connect/build/config.json
+          
+      - name: Fetch config.json (Qa)
+        if: ${{ inputs.environment == 'qa' }}
+        uses: wei/wget@v1
+        with:
+          args: -O config.json https://cdn-beta.n3o.cloud/connect/build/config.json
+      
+      - name: copy config.json into directory
+        run: |
+          cp config.json temp-app/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds:  ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Storage Connection String
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV
+          elif [ "${{ inputs.environment }}" = "qa" ]; then
+            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_QA }}" >> $GITHUB_ENV
+          else
+            echo "Invalid environment: ${{ inputs.environment }}"
+            exit 1
+          fi
+
+      - name: Azure CLI script
+        uses: azure/CLI@v1
+        with:
+          azcliversion: 2.66.0
+          inlineScript: |
+            az storage blob delete-batch --connection-string "${{ env.storage_connection_string }}" --source "connect-${{ env.subscription_code }}"  --pattern "platforms/js/*" 
+            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="temp-app/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms" --destination-path="platforms/js" --overwrite="true"
+        env:
+          subscription_code: "${{ inputs.subscription-code }}"
+          
