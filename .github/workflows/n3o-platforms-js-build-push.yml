@@ -44,7 +44,7 @@ jobs:
         run: |
           version=$(date +"%Y.%m.%d")-${{ github.run_number }}
           name="@n3oltd/platforms-js-${{ inputs.subscription-code }}"
-          jq ".name = \"$name\"" package.json > tmp.json && mv tmp.json package.json
+          jq "del(.devDependencies, .scripts, .dependencies) | .name = \"$name\"" package.json > tmp.json && mv tmp.json package.json
           npm version $version;
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc;
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
