@@ -25,11 +25,11 @@ jobs:
       - name: "Fetch build/configuration.json"
         uses: wei/wget@v1
         with:
-          args: -O configuration.json https://cdn.n3o.cloud/connect-1/build/configuration.json
+          args: -O packages/n3o-elements/src/configuration.json https://cdn.n3o.cloud/connect-1/build/configuration.json
 
       - name: npm install and build
         run: |
           npm install
-          npm run build:lib
+          npx turbo build          
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
