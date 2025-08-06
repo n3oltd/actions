@@ -45,13 +45,13 @@ jobs:
         if: ${{ inputs.environment == 'prod' }}
         uses: wei/wget@v1
         with:
-          args: -O config.json https://cdn.n3o.cloud/connect/build/config.json
+          args: -O config.json https://cdn.n3o.cloud/connect/environment/config.json
           
       - name: Fetch config.json (Qa)
         if: ${{ inputs.environment == 'qa' }}
         uses: wei/wget@v1
         with:
-          args: -O config.json https://cdn-beta.n3o.cloud/connect/build/config.json
+          args: -O config.json https://cdn-beta.n3o.cloud/connect/environment/config.json
       
       - name: copy config.json into directory
         run: |
