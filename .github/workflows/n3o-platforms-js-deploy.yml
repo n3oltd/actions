@@ -33,7 +33,7 @@ jobs:
           packageVersion=$(jq -r '.packageVersion' metadata.json)
           echo "packageVersion=packageVersion" >> $GITHUB_OUTPUT
     
-      - name: install package and push to cdn
+      - name: install platforms package
         run: |
           mkdir work-dir
           cd work-dir
