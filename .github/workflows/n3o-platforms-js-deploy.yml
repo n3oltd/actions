@@ -44,27 +44,18 @@ jobs:
           
       - name: Fetch config.json (Production)
         if: ${{ inputs.environment == 'prod' }}
-        uses: wei/wget@v1
-#This should not be wget, but should instead be a simple cp or mv command to copy/move the file
-#from inside the npm package itself to the root folder (e.g. /config/qa.json -> /config.json)
-        with:
-          args: -O config.json https://cdn.n3o.cloud/connect/environment/config.json
-          
-      - name: Fetch config.json (QA)
-        if: ${{ inputs.environment == 'qa' }}
-        uses: wei/wget@v1
-        with:
-          args: -O config.json https://cdn-beta.n3o.cloud/connect/environment/config.json
-
-      - name: Fetch config.json (Staging)
-        if: ${{ inputs.environment == 'staging' }}
-        uses: wei/wget@v1
-        with:
-          args: -O config.json https://cdn-staging.n3o.cloud/connect/environment/config.json
-      
-      - name: Copy config.json into directory
         run: |
-          cp config.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms
+          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.prod.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
+          
+      - name: Copy config.json (QA)
+        if: ${{ inputs.environment == 'qa' }}
+        run: |
+          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.qa.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
+
+      - name: Copy config.json (Staging)
+        if: ${{ inputs.environment == 'staging' }}
+        run: |
+          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.staging.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
 
       - name: Azure Login
         uses: azure/login@v1
