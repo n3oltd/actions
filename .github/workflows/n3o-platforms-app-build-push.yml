@@ -1,0 +1,37 @@
+name: 'Build & Push Platforms APP'
+
+on:
+  workflow_call:
+    inputs:
+      subscription-code:
+        type: string
+        required: true
+        
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  build-android-bundle:
+    name: Build Push Android Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Fetch configuration.json
+        uses: wei/wget@v1
+        with:
+          args: -O apps/platforms-app/src/configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+
+      - name: NPM install and build
+        run: |
+          npm clean-install
+          npm run build
+
+      - name: Push JS Bundle to Capgo
+        run: |
+          version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+          npx @capgo/cli@latest bundle upload ltd.n3o.platforms-${{ inputs.subscription-code }} -b $version --apikey=${{ secrets.CAPGO_API_KEY }} --path ./apps/platforms-app/dist
+          npx @capgo/cli@latest bundle upload ltd.n3o.platforms-${{ inputs.subscription-code }} -b $version --apikey=${{ secrets.CAPGO_API_KEY }} --path ./apps/platforms-app/dist
