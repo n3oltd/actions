@@ -11,9 +11,6 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/platforms-app
     
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +27,17 @@ jobs:
       #    #extract 
       #    #use values from config file
       #    #npx capacitor-assets generate
-
+      
+      - name: npm install and build
+        run: |
+          npm clean-install
+          npm run build          
+          
+      - name: sync capacitor plugins
+        run: |
+          npx cap sync
+        working-directory: apps/platforms-app
+        
       - uses: actions/setup-java@v4
         with:
           distribution: "zulu"
@@ -40,7 +47,8 @@ jobs:
       - name: Decode Keystore File
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/my-release-key.keystore
-
+        working-directory: apps/platforms-app
+        
       - name: Create Signing Config
         run: |
           echo "
@@ -60,6 +68,7 @@ jobs:
               }
           }
           " >> android/app/build.gradle
+        working-directory: apps/platforms-app
 
       - name: Build APK        
         run: ./gradlew assembleRelease --no-daemon
