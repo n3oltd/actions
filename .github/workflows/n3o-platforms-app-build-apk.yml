@@ -11,6 +11,9 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/platforms-app
     
     steps:
       - uses: actions/checkout@v4
@@ -58,13 +61,12 @@ jobs:
           }
           " >> android/app/build.gradle
 
-      - name: Build APK
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+      - name: Build APK        
+        run: ./android/gradlew assembleRelease --no-daemon
 
       #this can be replaced with fastlane
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: capacitor-apk
-          path: android/app/build/outputs/apk/release/app-*.apk
+          path: apps/platforms-app/android/app/build/outputs/apk/release/app-*.apk
