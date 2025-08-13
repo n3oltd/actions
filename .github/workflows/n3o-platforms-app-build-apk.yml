@@ -62,7 +62,8 @@ jobs:
           " >> android/app/build.gradle
 
       - name: Build APK        
-        run: ./android/gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
+        working-directory: apps/platforms-app/android
 
       #this can be replaced with fastlane
       - name: Upload APK Artifact
