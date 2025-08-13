@@ -1,0 +1,66 @@
+name: 'Build & Push Platforms App APK'
+
+on:
+  workflow_call:
+    inputs:
+      subscription-code:
+        type: string
+        required: true
+        
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Fetch assets (config + images)
+        uses: wei/wget@v1
+        with:
+          args: -O apps/platforms-app/assets/zip https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/assets/zip
+
+      - name: Process assets
+        run: |
+          #extract 
+          #use values from config file
+          #npx capacitor-assets generate
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "21"
+          cache: "gradle"          
+
+      - name: Decode Keystore File
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/my-release-key.keystore
+
+      - name: Create Signing Config
+        run: |
+          echo "
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('my-release-key.keystore')
+                      storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
+                      keyAlias '${{ secrets.ANDROID_KEY_ALIAS }}'
+                      keyPassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          " >> android/app/build.gradle
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      #this can be replaced with fastlane
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: capacitor-apk
+          path: android/app/build/outputs/apk/release/app-*.apk
