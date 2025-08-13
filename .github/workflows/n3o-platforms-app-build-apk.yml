@@ -13,16 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Fetch assets (config + images)
-        uses: wei/wget@v1
-        with:
-          args: -O apps/platforms-app/assets/zip https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/assets/zip
+      #- name: Fetch assets (config + images)
+      #        uses: wei/wget@v1
+      # with:
+      #   args: -O apps/platforms-app/assets/zip https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/assets/zip
 
-      - name: Process assets
-        run: |
-          #extract 
-          #use values from config file
-          #npx capacitor-assets generate
+      #- name: Process assets
+      #  run: |
+      #    #extract 
+      #    #use values from config file
+      #    #npx capacitor-assets generate
 
       - uses: actions/setup-java@v4
         with:
