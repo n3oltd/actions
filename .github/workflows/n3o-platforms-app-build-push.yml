@@ -33,5 +33,5 @@ jobs:
       - name: Push JS Bundle to Capgo
         run: |
           version=$(date +"%Y.%m.%d")-${{ github.run_number }}          
-          npx @capgo/cli@latest bundle upload ltd.n3o.platforms-mh -b $version --apikey=${{ secrets.CAPGO_API_KEY }} --path ./apps/platforms-app/dist         
+          npx @capgo/cli@latest bundle upload ltd.n3o.platforms-mh -b $version --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }} --path ./apps/platforms-app/dist         
         #change this to subscription  
