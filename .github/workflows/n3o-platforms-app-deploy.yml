@@ -1,0 +1,39 @@
+name: 'Deploy Platforms App'
+
+on:
+  workflow_call:
+    inputs:
+      subscription-code:
+        type: string
+        required: true
+      
+      environment:
+        type: string
+        required: true
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  deploy-platforms:
+    name: Deploy Platforms
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            platforms-app/${{ inputs.environment }}
+            
+      - id: latest-json-metadata
+        name: Read latest JSON metadata
+        working-directory: platforms-app/${{ inputs.environment }}/latest
+        run: |
+          bundleName=$(jq -r '.bundleName' metadata.json)
+          echo "bundleName=bundleName" >> $GITHUB_OUTPUT
+      
+      - name: Capgo Set App Channel
+        run:
+          npx @capgo/cli@latest channel set ${{ inputs.environment }} cloud.n3o.platforms.${{ inputs.subscription-code }} --bundle ${{ steps.step_id.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
+          
