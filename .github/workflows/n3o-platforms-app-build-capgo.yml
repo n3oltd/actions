@@ -28,7 +28,7 @@ jobs:
       - name: NPM install and build
         run: |
           npm clean-install
-          npm run build
+        #  npm run build
 
       - name: Push JS Bundle to Capgo
         run: |
