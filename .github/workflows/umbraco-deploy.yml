@@ -89,7 +89,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OPENSSL_FORCE_FIPS_MODE="0"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
-            [ -n "${db_engage_connection_string}" ] && az webapp config connection-string set --name ${{ app_name }} --resource-group ${{ resource_group }} --settings umbracoEngageDbDSN="${{ db_engage_connection_string }}" --connection-string-type SQLServer
+            [ -n "${db_engage_connection_string}" ] && az webapp config connection-string set --name ${app_name} --resource-group ${resource_group} --settings umbracoEngageDbDSN="${db_engage_connection_string}" --connection-string-type SQLServer
         env:
           app_name: "${{ inputs.site-name }}"
           custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
