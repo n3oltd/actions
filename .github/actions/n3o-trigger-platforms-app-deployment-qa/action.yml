@@ -1,0 +1,17 @@
+name: Trigger Platforms App Deployment (QA)
+description: Triggers the Platforms App deployment to QA
+
+inputs:
+  workflows-token:
+    description: GitHub token (required to run gh commands)
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: run
+      shell: bash
+      run: |
+        gh workflow run platforms-app-qa-deployment.yml --repo n3oltd/deployments
+      env:
+        GH_TOKEN: ${{ inputs.workflows-token }}
