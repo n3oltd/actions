@@ -50,6 +50,9 @@ on:
       db-connection-string:
         required: true
 
+      db-engage-connection-string:
+        required: false
+
       storage-connection-string:
         required: false
 
@@ -75,6 +78,7 @@ jobs:
             az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
             az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
             az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN_ProviderName="Microsoft.Data.SqlClient" --connection-string-type SQLAzure
+            az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoEngageDbDSN="${{ env.db_engage_connection_string }}" --connection-string-type SQLServer
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings ASPNETCORE_FORWARDEDHEADERS_ENABLED="true" 
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings N3O_DateFormat="${{ env.date_format }}"
@@ -90,6 +94,7 @@ jobs:
           app_name: "${{ inputs.site-name }}"
           custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
           db_connection_string: "${{ secrets.db-connection-string }}"
+          db_engage_connection_string: "${{ secrets.db-engage-connection-string }}"
           aspnetcore_environment: "${{ inputs.environment-id }}"
           date_format: "${{ inputs.localization-date-format }}"
           language: "${{ inputs.localization-language }}"
