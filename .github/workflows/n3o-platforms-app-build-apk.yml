@@ -1,4 +1,4 @@
-name: 'Build & Push Platforms App APK'
+name: 'Build Platforms App APK'
 
 on:
   workflow_call:
@@ -11,8 +11,8 @@ env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
   
 jobs:
-  build-android:
-    name: Build Android APK
+  build-apk:
+    name: Build APK
     runs-on: ubuntu-latest
     
     steps:
@@ -22,17 +22,17 @@ jobs:
 
       - name: Fetch configuration.json
         run: |
-          wget -O configuration.json "https://cdn-beta.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json"
+          wget -O configuration.json "https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json"
 
-      - name: Download mobileApp assets
+      - name: Download assets
         run: |
-          urls=$(jq -r '.theme.mobileApp | to_entries[] | .value' configuration.json)
+          asset=$(jq -r '.theme.mobileApp | to_entries[] | .value' configuration.json)
           for url in $urls; do
             fname=$(basename "${url%%\?*}")   # strip query params
             wget -O "apps/platforms-app/assets/$fname" "$url"
           done
           
-      - name: Export env variables from config
+      - name: Set environment variables
         id: setenv
         run: |
           APP_NAME=$(jq -r '.app.appName' configuration.json)
@@ -49,7 +49,7 @@ jobs:
           npm clean-install
           npm run build    
           
-      - name: sync capacitor plugins
+      - name: Sync capacitor plugins
         run: |
           npx trapeze run config.yml -y
           npx cap sync
@@ -62,7 +62,7 @@ jobs:
           java-version: "21"
           cache: "gradle"          
 
-      - name: Decode Keystore File
+      - name: Decode keystore file
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/my-release-key.keystore
         working-directory: apps/platforms-app
@@ -92,9 +92,9 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon
         working-directory: apps/platforms-app/android
 
-      #this can be replaced with fastlane
-      - name: Upload APK Artifact
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: capacitor-apk
+          name: platforms-app-${{ inputs.subscription-code }}
           path: apps/platforms-app/android/app/build/outputs/apk/release/app-*.apk
