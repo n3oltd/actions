@@ -1,13 +1,13 @@
-name: 'Deploy Platforms App'
+name: 'Deploy Mobile App'
 
 on:
   workflow_call:
     inputs:
-      subscription-code:
+      app-id:
         type: string
         required: true
       
-      environment:
+      environment-id:
         type: string
         required: true
 
@@ -16,7 +16,7 @@ env:
 
 jobs:
   deploy-platforms:
-    name: Deploy Platforms
+    name: Deploy Mobile App
     
     runs-on: ubuntu-latest
     
@@ -24,16 +24,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            platforms-app/${{ inputs.environment }}
+            mobile-apps/${{ inputs.app-id }}/${{ inputs.environment-id }}
             
       - id: latest-json-metadata
         name: Read latest JSON metadata
-        working-directory: mobile-app/cloud.n3o.platforms${{ inputs.subscription-code }}/${{ inputs.environment }}/latest
+        working-directory:  mobile-apps/${{ inputs.app-id }}/${{ inputs.environment-id }}/latest
         run: |
           bundleName=$(jq -r '.bundleName' metadata.json)
           echo "bundleName=bundleName" >> $GITHUB_OUTPUT
       
-      - name: Capgo Set App Channel
+      - name: Set Capgo channel
         run:
-          npx @capgo/cli@latest channel set ${{ inputs.environment }} cloud.n3o.platforms${{ inputs.subscription-code }} --bundle ${{ steps.step_id.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
+          npx @capgo/cli@latest channel set ${{ inputs.environment-id }} ${{ inputs.app-id }} --bundle ${{ steps.step_id.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
           

@@ -7,7 +7,7 @@ on:
         type: string
         required: true
       
-      environment:
+      environment-id:
         type: string
         required: true
 
@@ -24,11 +24,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            platforms-js/${{ inputs.environment }}
+            platforms-js/${{ inputs.environment-id }}
 
       - id: latest-json-metadata
         name: Read latest JSON metadata
-        working-directory: platforms-js/${{ inputs.environment }}/latest
+        working-directory: platforms-js/${{ inputs.environment-id }}/latest
         run: |
           packageVersion=$(jq -r '.packageVersion' metadata.json)
           echo "packageVersion=packageVersion" >> $GITHUB_OUTPUT
@@ -43,17 +43,17 @@ jobs:
           npm install "@n3oltd/platforms-js-${{ inputs.subscription-code }}@${{ steps.latest-json-metadata.outputs.deploymentVersion }}"
           
       - name: Fetch config.json (Production)
-        if: ${{ inputs.environment == 'prod' }}
+        if: ${{ inputs.environment-id == 'prod' }}
         run: |
           cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.prod.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
           
       - name: Copy config.json (QA)
-        if: ${{ inputs.environment == 'qa' }}
+        if: ${{ inputs.environment-id == 'qa' }}
         run: |
           cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.qa.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
 
       - name: Copy config.json (Staging)
-        if: ${{ inputs.environment == 'staging' }}
+        if: ${{ inputs.environment-id == 'staging' }}
         run: |
           cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.staging.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
 
@@ -64,14 +64,14 @@ jobs:
 
       - name: Set Storage Connection String
         run: |
-          if [ "${{ inputs.environment }}" = "prod" ]; then
+          if [ "${{ inputs.environment-id }}" = "prod" ]; then
             echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV
-          elif [ "${{ inputs.environment }}" = "qa" ]; then
+          elif [ "${{ inputs.environment-id }}" = "qa" ]; then
             echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_QA }}" >> $GITHUB_ENV
-          elif [ "${{ inputs.environment }}" = "staging" ]; then
+          elif [ "${{ inputs.environment-id }}" = "staging" ]; then
             echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_STAGING }}" >> $GITHUB_ENV
           else
-            echo "Invalid environment: ${{ inputs.environment }}"
+            echo "Invalid environment: ${{ inputs.environment-id }}"
             exit 1
           fi
 
