@@ -28,12 +28,12 @@ jobs:
             
       - id: latest-json-metadata
         name: Read latest JSON metadata
-        working-directory: mobile-app/cloud.n3o.platforms.${{ inputs.subscription-code }}/${{ inputs.environment }}/latest
+        working-directory: mobile-app/cloud.n3o.platforms${{ inputs.subscription-code }}/${{ inputs.environment }}/latest
         run: |
           bundleName=$(jq -r '.bundleName' metadata.json)
           echo "bundleName=bundleName" >> $GITHUB_OUTPUT
       
       - name: Capgo Set App Channel
         run:
-          npx @capgo/cli@latest channel set ${{ inputs.environment }} cloud.n3o.platforms.${{ inputs.subscription-code }} --bundle ${{ steps.step_id.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
+          npx @capgo/cli@latest channel set ${{ inputs.environment }} cloud.n3o.platforms${{ inputs.subscription-code }} --bundle ${{ steps.step_id.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
           

@@ -28,9 +28,9 @@ jobs:
       - name: NPM install and build
         run: |
           npm clean-install
-        #  npm run build
+          npm run build
 
       - name: Push JS Bundle to Capgo
         run: |
           version="$(date +'%Y.%-m.%-d')+${{ github.run_number }}"
-          npx @capgo/cli@latest bundle upload cloud.n3o.platforms.${{ inputs.subscription-code }} -b $version --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }} --path ./apps/platforms-app/dist --package-json=./apps/platforms-app/package.json
+          npx @capgo/cli@latest bundle upload cloud.n3o.platforms${{ inputs.subscription-code }} -b $version --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }} --path ./apps/platforms-app/dist --package-json=./apps/platforms-app/package.json
