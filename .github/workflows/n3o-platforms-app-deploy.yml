@@ -28,7 +28,7 @@ jobs:
             
       - id: latest-json-metadata
         name: Read latest JSON metadata
-        working-directory: platforms-app/${{ inputs.environment }}/latest
+        working-directory: mobile-app/cloud.n3o.platforms.${{ inputs.subscription-code }}/${{ inputs.environment }}/latest
         run: |
           bundleName=$(jq -r '.bundleName' metadata.json)
           echo "bundleName=bundleName" >> $GITHUB_OUTPUT
