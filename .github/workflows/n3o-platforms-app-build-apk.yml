@@ -53,6 +53,7 @@ jobs:
         run: |
           npx trapeze run config.yml -y
           npx cap sync
+          npx capacitor-assets generate
         working-directory: apps/platforms-app
         
       - uses: actions/setup-java@v4
