@@ -51,7 +51,7 @@ jobs:
           
       - name: sync capacitor plugins
         run: |
-          npx trapeze run config.yml
+          npx trapeze run config.yml -y
           npx cap sync
         working-directory: apps/platforms-app
         
