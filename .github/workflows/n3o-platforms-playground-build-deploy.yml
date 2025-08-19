@@ -38,7 +38,7 @@ jobs:
 
       - name: Set Storage Connection String
         run: |
-          echo "storage_connection_string=${{ secrets.AZURE_STORAGE_ELEMENTS_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV          
+          echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV          
 
       - name: Azure CLI script
         uses: azure/CLI@v1
