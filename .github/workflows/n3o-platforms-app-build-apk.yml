@@ -56,42 +56,13 @@ jobs:
           npx capacitor-assets generate
         working-directory: apps/platforms-app
         
-      - uses: actions/setup-java@v4
+      - name: Build Android APK
+        uses: n3oltd/actions/.github/actions/n3o-build-apk@main
         with:
-          distribution: "zulu"
-          java-version: "21"
-          cache: "gradle"          
-
-      - name: Decode keystore file
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/my-release-key.keystore
-        working-directory: apps/platforms-app
-        
-      - name: Create Signing Config
-        run: |
-          echo "
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file('my-release-key.keystore')
-                      storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
-                      keyAlias '${{ secrets.ANDROID_KEY_ALIAS }}'
-                      keyPassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                  }
-              }
-          }
-          " >> android/app/build.gradle
-        working-directory: apps/platforms-app
-
-      - name: Build APK        
-        run: ./gradlew assembleRelease --no-daemon
-        working-directory: apps/platforms-app/android
-
+          working-directory: apps/platforms-app
+          android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          android-keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

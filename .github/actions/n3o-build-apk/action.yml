@@ -1,0 +1,59 @@
+name: n3o-build-apk
+description: Builds the apk of the app
+
+inputs:
+  working-directory:
+    description: "The working directory"
+    default: src
+    
+  android-keystore-base64:
+    description: "The keystore in base64"
+    required: true
+    
+  android-key-alias:
+    description: "The android key alias"
+    required: true
+    
+  android-keystore-password:
+    description: "The android keystore password"
+    required: true
+    
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: "zulu"
+        java-version: "21"
+        cache: "gradle"
+
+    - name: Decode keystore file
+      run: |
+        echo "${{ inputs.android-keystore-base64 }}" | base64 -d > android/app/my-release-key.keystore
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Create Signing Config
+      run: |
+        echo "
+        android {
+            signingConfigs {
+                release {
+                    storeFile file('my-release-key.keystore')
+                    storePassword '${{ inputs.android-keystore-password }}'
+                    keyAlias '${{ inputs.android-key-alias }}'
+                    keyPassword '${{ inputs.android-keystore-password }}'
+                }
+            }
+            buildTypes {
+                release {
+                    signingConfig signingConfigs.release
+                }
+            }
+        }
+        " >> android/app/build.gradle
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Build APK
+      run: ./gradlew assembleRelease --no-daemon
+      working-directory: ${{ inputs.working-directory }}/android
