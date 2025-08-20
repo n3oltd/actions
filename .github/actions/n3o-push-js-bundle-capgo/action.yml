@@ -1,0 +1,27 @@
+name: n3o-push-js-bundle-capgo
+description: Pushes the bundle to Capgo
+
+inputs:
+  bundle-name:
+    description: the name of the bundle
+    required: true
+    
+  capgo-upload-api-key:
+    description: the capgo api key to upload
+    required: true
+    
+  upload-files-path:
+    description: the path of the files to upload
+    required: true
+    
+  package-json-path:
+    decription: the location of the package json
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Push JS Bundle to Capgo
+      run: |
+        version="$(date +'%Y.%-m.%-d')+${{ github.run_number }}"
+        npx @capgo/cli@latest bundle upload ${{ inputs.bundle-name }} -b $version --apikey=${{ inputs.capgo-upload-api-key }} --path ${{ inputs.upload-files-path }} --package-json=${{ inputs.package-json-path }}
