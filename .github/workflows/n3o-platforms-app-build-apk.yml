@@ -26,11 +26,27 @@ jobs:
 
       - name: Download assets
         run: |
-          asset=$(jq -r '.theme.mobileApp | to_entries[] | .value' configuration.json)
-          for url in $urls; do
-            fname=$(basename "${url%%\?*}")   # strip query params
+          CONFIG_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json"
+          CONFIG_FILE="configuration.json"
+          wget -O $CONFIG_FILE $CONFIG_URL
+          
+          urls=$(jq -r '.theme.mobileApp | to_entries[] | "\(.value.url) \(.value.filename)"' $CONFIG_FILE)
+
+          for entry in $urls; do
+            url=$(echo $entry | awk '{print $1}')
+            fname=$(echo $entry | awk '{print $2}')
             wget -O "apps/platforms-app/assets/$fname" "$url"
           done
+
+          ICON_BG=$(jq -r '.theme.colors.iconBackgroundColor' $CONFIG_FILE)
+          ICON_BG_DARK=$(jq -r '.theme.colors.iconBackgroundColorDark' $CONFIG_FILE)
+          SPLASH_BG=$(jq -r '.theme.colors.splashBackgroundColor' $CONFIG_FILE)
+          SPLASH_BG_DARK=$(jq -r '.theme.colors.splashBackgroundColorDark' $CONFIG_FILE)
+          
+          echo "ICON_BG=$ICON_BG" >> $GITHUB_ENV
+          echo "ICON_BG_DARK=$ICON_BG_DARK" >> $GITHUB_ENV
+          echo "SPLASH_BG=$SPLASH_BG" >> $GITHUB_ENV
+          echo "SPLASH_BG_DARK=$SPLASH_BG_DARK" >> $GITHUB_ENV
           
       - name: Set environment variables
         id: setenv
@@ -53,7 +69,11 @@ jobs:
         run: |
           npx trapeze run config.yml -y
           npx cap sync
-          npx capacitor-assets generate
+          npx @capacitor-assets generate \
+            --iconBackgroundColor "${ICON_BG}" \
+            --iconBackgroundColorDark "${ICON_BG_DARK}" \
+            --splashBackgroundColor "${SPLASH_BG}" \
+            --splashBackgroundColorDark "${SPLASH_BG_DARK}"
         working-directory: apps/platforms-app
         
       - name: Build Android APK
