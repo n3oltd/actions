@@ -33,7 +33,7 @@ jobs:
       - name: NPM 
         uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
         with:
-          bundle-name: upload cloud.n3o.platforms${{ inputs.subscription-code }}
+          bundle-name: cloud.n3o.platforms${{ inputs.subscription-code }}
           capgo-upload-api-key: ${{ secrets.CAPGO_API_KEY_UPLOAD }}
           upload-files-path: './apps/platforms-app/dist'
           package-json-path: './apps/platforms-app/package.json'
