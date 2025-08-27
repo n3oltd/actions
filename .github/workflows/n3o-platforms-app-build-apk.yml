@@ -63,7 +63,7 @@ jobs:
       - name: npm install and build
         run: |
           npm clean-install
-          npm run build    
+          npm run build:platforms-app
           
       - name: Sync capacitor plugins
         run: |
