@@ -28,7 +28,7 @@ jobs:
       - name: NPM install and build
         run: |
           npm clean-install
-          npm run build
+          npm run build:platforms-app
        
       - name: NPM 
         uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
