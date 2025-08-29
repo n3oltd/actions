@@ -55,6 +55,7 @@ jobs:
           PACKAGE_NAME=$(jq -r '.app.packageName' configuration.json)
           VERSION_NAME=$(date +"%Y.%m.%d")-${{ github.run_number }}
           CI_BUILD_NUMBER=${{ github.run_number }}
+          # APP_SCHEME
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
           echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
@@ -83,9 +84,6 @@ jobs:
           android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           android-keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          google-play-key-base64: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+          package-name: ${{ env.PACKAGE_NAME}}
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: platforms-app-${{ inputs.subscription-code }}
-          path: apps/platforms-app/android/app/build/outputs/apk/release/app-*.apk

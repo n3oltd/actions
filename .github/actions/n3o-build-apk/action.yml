@@ -9,7 +9,15 @@ inputs:
   android-keystore-base64:
     description: "The keystore in base64"
     required: true
-    
+
+  google-play-key-base64:
+    description: "The json key for Google Play in base64"
+    required: true
+
+  package-name:
+    description: "package-name"
+    required: false 
+
   android-key-alias:
     description: "The android key alias"
     required: true
@@ -28,32 +36,25 @@ runs:
         java-version: "21"
         cache: "gradle"
 
-    - name: Decode keystore file
+    - name: Setup ruby and fastlane
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: "3.2"
+
+    - name: Decode key files
       run: |
-        echo "${{ inputs.android-keystore-base64 }}" | base64 -d > android/app/my-release-key.keystore
+        echo "${{ inputs.android-keystore-base64 }}" | base64 -d > android/fastlane/release-key.keystore
+        echo '${{ inputs.google-play-key-base64 }}' | base64 -d > android/fastlane/service-account.json
       working-directory: ${{ inputs.working-directory }}
 
-    - name: Create Signing Config
+    - name: Build & upload APK to internal track
       run: |
-        echo "
-        android {
-            signingConfigs {
-                release {
-                    storeFile file('my-release-key.keystore')
-                    storePassword '${{ inputs.android-keystore-password }}'
-                    keyAlias '${{ inputs.android-key-alias }}'
-                    keyPassword '${{ inputs.android-keystore-password }}'
-                }
-            }
-            buildTypes {
-                release {
-                    signingConfig signingConfigs.release
-                }
-            }
-        }
-        " >> android/app/build.gradle
+        bundle install
+        bundle exec fastlane internal
+      env:
+        KEYSTORE_PASSWORD: ${{ inputs.android-keystore-password }}
+        KEY_ALIAS: ${{ inputs.android-key-alias }}
+        KEY_PASSWORD: ${{ inputs.android-keystore-password }}
+        PACKAGE_NAME: ${{ inputs.package-name }} 
       working-directory: ${{ inputs.working-directory }}
 
-    - name: Build APK
-      run: ./gradlew assembleRelease --no-daemon
-      working-directory: ${{ inputs.working-directory }}/android
