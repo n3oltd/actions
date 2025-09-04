@@ -5,6 +5,9 @@ inputs:
   workflows-token:
     description: GitHub token (required to run gh commands)
     required: true
+  subscription-id:
+    description: The subscription id
+    required: true
 
 runs:
   using: "composite"
@@ -12,6 +15,6 @@ runs:
     - name: run
       shell: bash
       run: |
-        gh workflow run platforms-app-qa-deployment.yml --repo n3oltd/deployments
+        gh workflow run mobile-app-platforms${{ inputs.subscription-id }}-qa-deployment.yml --repo n3oltd/deployments
       env:
         GH_TOKEN: ${{ inputs.workflows-token }}
