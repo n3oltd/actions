@@ -6,7 +6,7 @@ on:
       working-directory:
         type: string
         default: src
-        
+
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
@@ -29,13 +29,14 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npm run build
+        working-directory: ${{ inputs.working-directory }}
 
       - name: npm publish
         run: |
           cp README.md dist/README.md
           cp package.json dist/package.json
           npm config set registry https://npm.pkg.github.com
-          version=$(date +"%Y.%m.%d")-${{ github.run_number }}        
+          version=$(date +"%Y.%m.%d")-${{ github.run_number }}
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
           npm version $version --git-tag-version=false
