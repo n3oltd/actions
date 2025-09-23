@@ -85,7 +85,7 @@ jobs:
         if: inputs.web != ''
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ./apps
+          context: .
           target: final
           file: ${{ inputs.docker-file }}
           push: true
