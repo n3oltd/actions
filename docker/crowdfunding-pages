@@ -17,6 +17,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm i -g turbo
 COPY . .
+RUN ls -al
 RUN turbo prune @n3oltd/crowdfunding-pages --docker
 
 # Add lockfile and package.json's of isolated subworkspace
