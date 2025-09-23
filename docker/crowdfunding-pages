@@ -57,9 +57,9 @@ USER nextjs
 ENV CONFIGURATION_URL="https://cdn-beta.n3o.cloud/connect-6e/build/configuration.json"
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
-ls -al ./apps/
 COPY --from=installer --chown=nextjs:nodejs /apps/crowdfunding-pages/.next/standalone ./
 COPY --from=installer --chown=nextjs:nodejs /apps/crowdfunding-pages/.next/static ./apps/crowdfunding-pages/.next/static
+ls -al ./apps/
 COPY --from=installer --chown=nextjs:nodejs /apps/crowdfunding-pages/public ./apps/crowdfunding-pages/public
 
 CMD node apps/crowdfunding-pages/server.js
