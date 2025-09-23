@@ -1,0 +1,30 @@
+name: 'Build Crowdfunding Pages'
+
+on:
+  workflow_call:
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  build:
+    name: Build and Push
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup-node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          token: ${{ env.GH_PAT }}
+
+      - name: npm install and build
+        run: |
+          npm ci
+          npx turbo build:lib --filter=@n3oltd/crowdfunding-pages
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
