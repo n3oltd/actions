@@ -42,9 +42,9 @@ COPY --from=builder /app/out/full/ .
 RUN npm run build:crowdfunding-pages
 
 ########################
-### runner
+### final
 ########################
-FROM base AS runner
+FROM base AS final
 WORKDIR /app
 
 # Don't run production as root
