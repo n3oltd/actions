@@ -1,0 +1,92 @@
+﻿name: 'docker-build-push-crowdfunding-pages'
+
+on:
+  workflow_call:
+    inputs:
+      docker-file:
+        type: string
+        required: true
+
+      web:
+        type: string
+        required: true
+        
+      web-image-name:
+        type: string
+        default: ''
+      
+      worker-image-name:
+        type: string
+        default: ''
+      
+      configuration:
+        type: string
+        default: Release
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  job1:
+    name: ubuntu-latest
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: acr login
+        uses: docker/login-action@v1
+        with:
+          registry: n3oltd.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: fetch dockerfile
+        uses: wei/wget@v1
+        with:
+          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
+          
+      - name: Set default values for web and worker image name
+        id: set-defaults
+        run: |
+          # Set web-image-name to `web` input if not provided
+          if [[ -z "${{ inputs.web-image-name }}" ]]; then
+            echo "web-image-name=${{ inputs.web }}" >> $GITHUB_ENV
+          else
+            echo "web-image-name=${{ inputs.web-image-name }}" >> $GITHUB_ENV
+          fi
+          
+          # Set worker-image-name to `worker` input if not provided
+          if [[ -z "${{ inputs.worker-image-name }}" ]]; then
+            echo "worker-image-name=${{ inputs.worker }}" >> $GITHUB_ENV
+          else
+            echo "worker-image-name=${{ inputs.worker-image-name }}" >> $GITHUB_ENV
+          fi
+
+      - id: meta-webapi
+        name: prepare web
+        if: inputs.web != ''
+        run: |
+          DOCKER_IMAGE_NAME=$(echo ${{ inputs.web-image-name }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
+          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
+          NOW=$(date +'%Y.%-m.%-d')
+          VERSION="$NOW.${{ github.run_number }}"
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
+
+      - name: build and push web
+        uses: docker/build-push-action@v2
+        if: inputs.web != ''
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./src
+          target: final
+          file: ${{ inputs.docker-file }}
+          push: true
+          tags: ${{ steps.meta-webapi.outputs.versiontag }} , ${{ steps.meta-webapi.outputs.latesttag }}
