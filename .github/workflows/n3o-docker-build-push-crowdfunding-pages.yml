@@ -71,7 +71,7 @@ jobs:
         name: prepare web
         if: inputs.web != ''
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ inputs.web-image-name }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
+          DOCKER_IMAGE_NAME=$(echo ${{ env.web-image-name }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
