@@ -3,9 +3,6 @@
 ########################
 FROM node:22-alpine AS base
 
-# This Dockerfile is copy-pasted into our main docs at /docs/handbook/deploying-with-docker.
-# Make sure you update both files!
-
 ########################
 ### build
 ########################
@@ -17,7 +14,6 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm i -g turbo
 COPY . .
-RUN ls -al
 RUN turbo prune @n3oltd/crowdfunding-pages --docker
 
 # Add lockfile and package.json's of isolated subworkspace
@@ -32,14 +28,6 @@ RUN npm ci
 
 # Build the project
 COPY --from=builder /app/out/full/ .
-
-# Uncomment and use build args to enable remote caching
-# ARG TURBO_TEAM
-# ENV TURBO_TEAM=$TURBO_TEAM
-
-# ARG TURBO_TOKEN
-# ENV TURBO_TOKEN=$TURBO_TOKEN
-
 RUN npm run build:crowdfunding-pages
 
 ########################
@@ -53,12 +41,13 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 USER nextjs
 
-# this is hardcode todo change this
+# TODO: this is hardcode, change this
 ENV CONFIGURATION_URL="https://cdn-beta.n3o.cloud/connect-6e/build/configuration.json"
+
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/.next/standalone ./
 COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/.next/static ./apps/crowdfunding-pages/.next/static
-# COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/public ./apps/crowdfunding-pages/public
+COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/public ./apps/crowdfunding-pages/public
 
 CMD node apps/crowdfunding-pages/server.js
