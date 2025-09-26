@@ -1,4 +1,4 @@
-name: 'Build Crowdfunding Pages'
+name: 'Build Platforms Pages'
 
 on:
   workflow_call:
