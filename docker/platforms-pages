@@ -14,7 +14,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm i -g turbo
 COPY . .
-RUN turbo prune @n3oltd/crowdfunding-pages --docker
+RUN turbo prune @n3oltd/platforms-pages --docker
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
@@ -28,7 +28,7 @@ RUN npm ci
 
 # Build the project
 COPY --from=builder /app/out/full/ .
-RUN npm run build:crowdfunding-pages
+RUN npm run build:platforms-pages
 
 ########################
 ### final
@@ -46,8 +46,8 @@ ENV SUBSCRIPTION_CODE="6e"
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/.next/standalone ./
-COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/.next/static ./apps/crowdfunding-pages/.next/static
-COPY --from=installer --chown=nextjs:nodejs /app/apps/crowdfunding-pages/public ./apps/crowdfunding-pages/public
+COPY --from=installer --chown=nextjs:nodejs /app/apps/platforms-pages/.next/standalone ./
+COPY --from=installer --chown=nextjs:nodejs /app/apps/platforms-pages/.next/static ./apps/platforms-pages/.next/static
+COPY --from=installer --chown=nextjs:nodejs /app/apps/platforms-pages/public ./apps/platforms-pages/public
 
-CMD node apps/crowdfunding-pages/server.js
+CMD node apps/platforms-pages/server.js
