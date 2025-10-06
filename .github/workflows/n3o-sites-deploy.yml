@@ -1,4 +1,4 @@
-name: Deploy Platforms Pages
+name: Deploy N3O Site
 
 on:
   workflow_call:
