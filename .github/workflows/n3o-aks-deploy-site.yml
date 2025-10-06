@@ -1,0 +1,43 @@
+name: Deploy Site to AKS
+
+on:
+  workflow_call:
+    inputs:
+      data-region:
+        type: string
+        required: true
+      
+      site-name:
+        type: string
+        required: true
+
+jobs:
+  deploy-to-aks:
+    name: Deploy Site to AKS
+
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            ${{ inputs.data-region }}/sites/${{ inputs.site-name }}
+            
+      - id: get-deployment-version
+        name: Get Deployment Version
+        working-directory: ${{ inputs.data-region }}/sites/${{ inputs.site-name }}/latest
+        run: |
+          deploymentVersion=$(jq -r '.deploymentVersion' metadata.json)
+          echo "deploymentVersion=$deploymentVersion" >> $GITHUB_OUTPUT
+          
+      - name: Install and configure kubectl with AKS
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
+        with:
+          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: ${{ inputs.data-region }}
+          
+      - name: Apply YAML files to cluster
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
+        with:
+          working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
+          replace-yaml: false
