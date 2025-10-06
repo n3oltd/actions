@@ -1,4 +1,4 @@
-name: 'Build Platforms Pages'
+name: Build Platforms Pages
 
 on:
   workflow_call:
@@ -25,6 +25,6 @@ jobs:
       - name: npm install and build
         run: |
           npm ci
-          npx turbo build --filter=@n3oltd/crowdfunding-pages
+          npx turbo build --filter=@n3oltd/platforms-pages
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}

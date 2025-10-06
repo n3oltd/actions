@@ -1,4 +1,4 @@
-name: Deploy Web Server to AKS
+name: Deploy Platforms Pages
 
 on:
   workflow_call:
@@ -6,8 +6,8 @@ on:
       data-region:
         type: string
         required: true
-      
-      server-id:
+
+      environment-id:
         type: string
         required: true
 
@@ -21,11 +21,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            ${{ inputs.data-region }}/web-servers/${{ inputs.server-id }}
+            ${{ inputs.data-region }}/platforms-pages/${{ inputs.environment-id }}
             
       - id: get-deployment-version
         name: Get Deployment Version
-        working-directory: ${{ inputs.data-region }}/web-servers/${{ inputs.server-id }}/latest
+        working-directory: ${{ inputs.data-region }}/platforms-pages/${{ inputs.environment-id }}/latest
         run: |
           deploymentVersion=$(jq -r '.deploymentVersion' metadata.json)
           echo "deploymentVersion=$deploymentVersion" >> $GITHUB_OUTPUT
@@ -39,5 +39,5 @@ jobs:
       - name: Apply YAML
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
         with:
-          working-directory: ${{ inputs.data-region }}/web-servers/${{ inputs.server-id }}/${{ steps.get-deployment-version.outputs.deploymentVersion }}
+          working-directory: ${{ inputs.data-region }}/platforms-pages/${{ inputs.environment-id }}/${{ steps.get-deployment-version.outputs.deploymentVersion }}
           replace-yaml: false
