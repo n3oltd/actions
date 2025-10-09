@@ -32,7 +32,7 @@ jobs:
 
       - id: latest-json-metadata
         name: Read latest JSON metadata
-        working-directory: platforms-js/${{ inputs.environment-id }}/latest
+        working-directory: ${{ inputs.data-region }}/platforms-js/${{ inputs.environment-id }}/latest
         run: |
           packageVersion=$(jq -r '.packageVersion' metadata.json)
           echo "packageVersion=packageVersion" >> $GITHUB_OUTPUT
