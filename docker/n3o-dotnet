@@ -62,6 +62,7 @@ ENV PATH="/dotnet-tools:$PATH"
 
 RUN apt-get --yes install zip unzip curl
 RUN apt-get --yes install libgdiplus
+RUN apt-get --yes install ffmpeg
 
 WORKDIR /app
 ENV ASPNETCORE_URLS http://*:80
