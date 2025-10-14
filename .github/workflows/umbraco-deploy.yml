@@ -50,7 +50,41 @@ on:
       site-name-tag:
         type: string
         required: true
-
+        
+      sentry-dsn:
+        type: string
+        default: "none"
+        
+      sentry-send-default-pii:
+        type: string
+        default: true
+        
+      sentry-max-request-body-size:
+        type: boolean
+        default: true
+        
+      sentry-minimum-breadcrumb-level:
+        type: string
+        default: "Debug"
+        
+      sentry-minimum-event-level:
+        type: string
+        default: "Warning"
+        
+      sentry-attach-stack-trace:
+        type: boolean
+        default: true
+        
+      sentry-debug:
+        type: boolean
+        default: true
+        
+      sentry-diagnostic-level:
+        type: string
+        default: Error
+    
+    
+    
     secrets:
       azure-credentials:
         required: true
@@ -98,6 +132,14 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OPENSSL_FORCE_FIPS_MODE="0"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__Dsn="${{ env.sentry-dsn }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__SendDefaultPii="${{ env.sentry_send_default_pii }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__MaxRequestBodySize="${{ env.sentry_max_request_body_size }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__MinimumBreadcrumbLevel="${{ env.sentry_minimum_breadcrumb_level }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__MinimumEventLevel="${{ env.sentry_minimum_event_level }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__AttachStackTrace="${{ env.sentry_attach_stack_trace }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__Debug="${{ env.sentry_debug }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__DiagnosticLevel="${{ env.sentry_diagnostic_level }}"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
             
             if [[ -n "$db_engage_connection_string" ]]; then
@@ -119,3 +161,11 @@ jobs:
           site_name_tag: "${{ inputs.site-name-tag }}"
           storage_container: "${{ inputs.storage-container }}"
           storage_connection_string: "${{ secrets.storage-connection-string }}"
+          sentry_dsn: "${{ inputs.sentry-dsn }}"
+          sentry_send_default_pii: "${{ inputs.sentry-send-default-pii}}"
+          sentry_max_request_body_size: "${{ inputs.sentry-max-request-body-size}}"
+          sentry_minimum_breadcrumb_level: "${{ inputs.sentry-minimum-breadcrumb-level}}"
+          sentry_minimum_event_level: "${{ inputs.sentry-minimum-event-level}}"
+          sentry_attach_stack_trace: "${{ inputs.sentry-attach-stack-trace}}"
+          sentry_debug: "${{ inputs.sentry-debug}}"
+          sentry_diagnostic_level: "${{ inputs.sentry-diagnostic-level}}"
