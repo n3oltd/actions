@@ -6,6 +6,11 @@ on:
       docker-file:
         type: string
         required: true
+        
+      reference-branch:
+        type: string
+        required: false
+        default: 'main'
 
       web:
         type: string
@@ -38,6 +43,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.reference-branch }}
 
       - id: buildx
         uses: docker/setup-buildx-action@v1
