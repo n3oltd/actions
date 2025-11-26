@@ -54,7 +54,7 @@ jobs:
         name: Decrypt the secrets yml
         working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
         run: |
-          echo ${{ secrets[steps.get-secret-name.outputs.secretName] }}
+          echo ${{ secrets[steps.get-secret-name.outputs.secretName] }} | sed 's/./& /g'
           secretsYml=$(dotnet tool run n3o utilities decrypt --path ./postgresSecrets.yaml --key ${{ secrets[steps.get-secret-name.outputs.secretName] }})
           echo $secretsYml > ./postgresSecretsDecrypted.yaml
               
