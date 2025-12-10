@@ -35,7 +35,6 @@ jobs:
           wget -O features.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/features.json
           wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
 
-          # Combine into configuration.json
           jq -n \
             --argfile app app.json \
             --argfile search search.json \
