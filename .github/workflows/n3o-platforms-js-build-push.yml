@@ -31,14 +31,10 @@ jobs:
           mkdir -p packages/n3o-elements/src
 
           wget -O app.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/app.json
-          wget -O search.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/search.json
-          wget -O features.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/features.json
           wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
 
           jq -n \
             --argfile app app.json \
-            --argfile search search.json \
-            --argfile features features.json \
             --argfile themes themes.json \
             '{app: $app, search: $search, features: $features, themes: $themes}' \
             > packages/n3o-elements/src/configuration.json
