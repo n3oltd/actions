@@ -54,6 +54,10 @@ on:
       sentry-dsn:
         type: string
         default: "none"
+        
+      umbraco-licenses-umbraco-forms:
+        type: string
+        default: "none"
     
     secrets:
       azure-credentials:
@@ -103,6 +107,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OPENSSL_FORCE_FIPS_MODE="0"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__Dsn="${{ env.sentry-dsn }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Umbraco__Licenses__Umbraco_Forms="${{ env.umbraco-licenses-umbraco-forms }}"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
             
             if [[ -n "$db_engage_connection_string" ]]; then
@@ -125,3 +130,4 @@ jobs:
           storage_container: "${{ inputs.storage-container }}"
           storage_connection_string: "${{ secrets.storage-connection-string }}"
           sentry_dsn: "${{ inputs.sentry-dsn }}"
+          umbraco-licenses-umbraco-forms: "${{ inputs.umbraco-licenses-umbraco-forms }}"
