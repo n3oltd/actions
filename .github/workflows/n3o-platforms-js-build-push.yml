@@ -36,7 +36,7 @@ jobs:
           jq -n \
             --argfile app app.json \
             --argfile themes themes.json \
-            '{app: $app, search: $search, features: $features, themes: $themes}' \
+            '{app: $app, themes: $themes}' \
             > packages/n3o-elements/src/configuration.json
 
       - name: npm install and build
