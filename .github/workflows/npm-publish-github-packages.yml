@@ -31,14 +31,17 @@ jobs:
           npm run build
         working-directory: ${{ inputs.working-directory }}
 
+      - name: setup npmrc
+        run: |
+          npm config set registry https://npm.pkg.github.com
+          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
+          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          
       - name: npm publish
         run: |
           cp README.md dist/README.md
-          cp package.json dist/package.json
-          npm config set registry https://npm.pkg.github.com
-          version=$(date +"%Y.%m.%d")-${{ github.run_number }}
-          echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc
-          echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
+          cp package.json dist/package.json          
+          version=$(date +"%Y.%m.%d")-${{ github.run_number }}          
           npm version $version --git-tag-version=false
           npm publish --tag latest
         env:
