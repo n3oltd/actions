@@ -43,3 +43,4 @@ jobs:
           npm publish --tag latest
         env:
           NPM_CONFIG_LOGLEVEL: verbose
+        working-directory: ${{ inputs.working-directory }}
