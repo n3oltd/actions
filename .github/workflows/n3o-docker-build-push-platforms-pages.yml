@@ -1,4 +1,4 @@
-﻿name: 'docker-build-push-crowdfunding-pages'
+﻿name: 'docker-build-push-platforms-pages'
 
 on:
   workflow_call:

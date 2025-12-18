@@ -25,11 +25,19 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
           token: ${{ env.GH_PAT }}
+          
+      - name: Fetch config files
+        run: |
+          mkdir -p packages/n3o-elements/src
 
-      - name: Fetch configuration.json
-        uses: wei/wget@v1
-        with:
-          args: -O packages/n3o-elements/src/configuration.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json
+          wget -O app.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/app.json
+          wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
+
+          jq -n \
+            --argfile app app.json \
+            --argfile themes themes.json \
+            '{app: $app, themes: $themes}' \
+            > packages/n3o-elements/src/configuration.json
 
       - name: npm install and build
         run: |

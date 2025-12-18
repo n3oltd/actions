@@ -3,6 +3,10 @@ name: 'Deploy Platforms JS'
 on:
   workflow_call:
     inputs:
+      data-region:
+        type: string
+        required: true
+
       subscription-code:
         type: string
         required: true
@@ -24,11 +28,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            platforms-js/${{ inputs.environment-id }}
+            ${{ inputs.data-region }}/platforms-js/${{ inputs.environment-id }}
 
       - id: latest-json-metadata
         name: Read latest JSON metadata
-        working-directory: platforms-js/${{ inputs.environment-id }}/latest
+        working-directory: ${{ inputs.data-region }}/platforms-js/${{ inputs.environment-id }}/latest
         run: |
           packageVersion=$(jq -r '.packageVersion' metadata.json)
           echo "packageVersion=packageVersion" >> $GITHUB_OUTPUT

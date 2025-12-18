@@ -12,6 +12,6 @@ runs:
     - name: run
       shell: bash
       run: |
-        gh workflow run platforms-js-qa-deployment.yml --repo n3oltd/deployments
+        gh workflow run eu1-qa-platforms-js-deployment.yml --repo n3oltd/deployments
       env:
         GH_TOKEN: ${{ inputs.workflows-token }}
