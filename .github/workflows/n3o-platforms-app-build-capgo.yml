@@ -20,13 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: setup-node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-          registry-url: 'https://npm.pkg.github.com'
-          token: ${{ env.GH_PAT }}
-          
       - name: Fetch configuration files
         run: |
           BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
@@ -34,12 +27,12 @@ jobs:
           curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json"
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json"
 
-      - name: NPM install and build
+      - name: NPM Install and Build
         run: |
           npm install --legacy-peer-deps # TODO: see how to replace this with `clean-install`
           npm run build:platforms-app
        
-      - name: NPM 
+      - name: Use Capgo to upload bundle
         uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
         with:
           bundle-name: cloud.n3o.platforms${{ inputs.subscription-code }}
