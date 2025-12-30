@@ -30,6 +30,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
+
+      - name: Debug jq
+        run: |
+          which jq
+          jq --version
+          jq --help | head -20
           
       - name: Fetch config files
         run: |
