@@ -25,4 +25,7 @@ runs:
       shell: bash
       run: |
         version="$(date +'%Y.%-m.%-d')+${{ github.run_number }}"
-        npx @capgo/cli@latest bundle upload ${{ inputs.bundle-name }} -b $version --apikey=${{ inputs.capgo-upload-api-key }} --path ${{ inputs.upload-files-path }} --package-json=${{ inputs.package-json-path }}
+        npx @capgo/cli@latest bundle upload ${{ inputs.bundle-name }} \
+        -b $version --apikey=${{ inputs.capgo-upload-api-key }} \
+        --path ${{ inputs.upload-files-path }} \
+        --package-json=${{ inputs.package-json-path }}
