@@ -25,17 +25,6 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
           token: ${{ env.GH_PAT }}
-
-      - name: Install jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-
-      - name: Debug jq
-        run: |
-          which jq
-          jq --version
-          jq --help | head -20
           
       - name: Fetch config files
         run: |
@@ -45,9 +34,9 @@ jobs:
           wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
 
           jq -n \
-            --argfile app app.json \
-            --argfile themes themes.json \
-            '{app: $app, themes: $themes}' \
+            --arg app "$(cat app.json)" \
+            --arg themes "$(cat themes.json)" \
+            '{app: ($app | fromjson), themes: ($themes | fromjson)}' \
             > packages/n3o-elements/src/configuration.json
 
       - name: npm install and build
