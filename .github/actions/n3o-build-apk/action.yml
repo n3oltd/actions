@@ -14,7 +14,7 @@ inputs:
     description: "The json key for Google Play in base64"
     required: true
 
-  package-name:
+  app-identifier:
     description: "package-name"
     required: false 
 
@@ -55,6 +55,6 @@ runs:
         KEYSTORE_PASSWORD: ${{ inputs.android-keystore-password }}
         KEY_ALIAS: ${{ inputs.android-key-alias }}
         KEY_PASSWORD: ${{ inputs.android-keystore-password }}
-        PACKAGE_NAME: ${{ inputs.package-name }} 
+        APP_IDENTIFIER: ${{ inputs.app-identifier }} 
       working-directory: ${{ inputs.working-directory }}
 

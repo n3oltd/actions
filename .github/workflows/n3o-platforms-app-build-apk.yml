@@ -20,61 +20,60 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch configuration.json
-        run: |
-          wget -O configuration.json "https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json"
 
-      - name: Download assets
+      - name: Fetch and Configure
         run: |
-          CONFIG_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/configuration.json"
-          CONFIG_FILE="configuration.json"
-          wget -O $CONFIG_FILE $CONFIG_URL
+          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
           
-          urls=$(jq -r '.theme.mobileApp | to_entries[] | "\(.value.url) \(.value.filename)"' $CONFIG_FILE)
+          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
+          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
+          wait
+          
+          APP_NAME=$(jq -r '.appName' apps/platforms-app/build/app.json)
+          APP_IDENTIFIER=$(jq -r '.packageName' apps/platforms-app/build/app.json)
+          # ASSOCIATED_DOMAIN
+          
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "APP_IDENTIFIER=$APP_IDENTIFIER" >> $GITHUB_ENV
+          echo "VERSION_NAME=$(date +"%Y.%m.%d")-${{ github.run_number }}" >> $GITHUB_ENV
+          echo "CI_BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
-          for entry in $urls; do
-            url=$(echo $entry | awk '{print $1}')
-            fname=$(echo $entry | awk '{print $2}')
-            wget -O "apps/platforms-app/assets/$fname" "$url"
-          done
-
-          ICON_BG=$(jq -r '.theme.colors.iconBackgroundColor' $CONFIG_FILE)
-          ICON_BG_DARK=$(jq -r '.theme.colors.iconBackgroundColorDark' $CONFIG_FILE)
-          SPLASH_BG=$(jq -r '.theme.colors.splashBackgroundColor' $CONFIG_FILE)
-          SPLASH_BG_DARK=$(jq -r '.theme.colors.splashBackgroundColorDark' $CONFIG_FILE)
+          THEME_FILE="apps/platforms-app/build/themes.json"
+          
+          ICON_BG=$(jq -r '.default.parameters.colors.iconBackground' $THEME_FILE)
+          ICON_BG_DARK=$(jq -r '.default.parameters.colors.iconBackgroundDark' $THEME_FILE)
+          SPLASH_BG=$(jq -r '.default.parameters.colors.splashBackground' $THEME_FILE)
+          SPLASH_BG_DARK=$(jq -r '.default.parameters.colors.splashBackgroundDark' $THEME_FILE)
           
           echo "ICON_BG=$ICON_BG" >> $GITHUB_ENV
           echo "ICON_BG_DARK=$ICON_BG_DARK" >> $GITHUB_ENV
           echo "SPLASH_BG=$SPLASH_BG" >> $GITHUB_ENV
           echo "SPLASH_BG_DARK=$SPLASH_BG_DARK" >> $GITHUB_ENV
+
+          # WARNING: The 'mobileApp' list containing asset URLs is missing from the new themes.json.
+          # The code below is a placeholder for how you would structure it if the data existed.
           
-      - name: Set environment variables
-        id: setenv
+          # urls=$(jq -r '.default.mobileApp | to_entries[] | "\(.value.url) \(.value.filename)"' $THEME_FILE)
+          # if [ ! -z "$urls" ]; then
+          #   echo "$urls" | while read -r url fname; do
+          #     curl -fSsL -o "apps/platforms-app/assets/$fname" "$url"
+          #   done
+          # fi
+
+      - name: NPM Install and Build
         run: |
-          APP_NAME=$(jq -r '.app.appName' configuration.json)
-          PACKAGE_NAME=$(jq -r '.app.packageName' configuration.json)
-          VERSION_NAME=$(date +"%Y.%m.%d")-${{ github.run_number }}
-          CI_BUILD_NUMBER=${{ github.run_number }}
-          # APP_SCHEME
-          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
-          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
-          echo "CI_BUILD_NUMBER=$CI_BUILD_NUMBER" >> $GITHUB_ENV
-      
-      - name: npm install and build
-        run: |
-          npm clean-install
+          npm install --legacy-peer-deps # TODO: see how to replace this with `clean-install`
           npm run build:platforms-app
           
       - name: Sync capacitor plugins
         run: |
           npx trapeze run config.yml -y
-          npx cap sync
           npx @capacitor-assets generate \
             --iconBackgroundColor "${ICON_BG}" \
             --iconBackgroundColorDark "${ICON_BG_DARK}" \
             --splashBackgroundColor "${SPLASH_BG}" \
             --splashBackgroundColorDark "${SPLASH_BG_DARK}"
+          npx cap sync
         working-directory: apps/platforms-app
         
       - name: Build Android APK
@@ -85,5 +84,5 @@ jobs:
           android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           android-keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           google-play-key-base64: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
-          package-name: ${{ env.PACKAGE_NAME}}
+          app-identifier: ${{ env.APP_IDENTIFIER}}
 
