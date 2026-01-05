@@ -58,5 +58,5 @@ runs:
         KEY_ALIAS: ${{ inputs.android-key-alias }}
         KEY_PASSWORD: ${{ inputs.android-keystore-password }}
         APP_IDENTIFIER: ${{ inputs.app-identifier }} 
-      working-directory: ${{ inputs.working-directory }}
+      working-directory: ${{ inputs.working-directory }}/android
 
