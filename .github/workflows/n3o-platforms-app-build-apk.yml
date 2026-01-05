@@ -84,7 +84,7 @@ jobs:
         working-directory: apps/platforms-app
         
       - name: Build Android APK
-        uses: n3oltd/actions/.github/actions/n3o-build-apk@app
+        uses: n3oltd/actions/.github/actions/n3o-build-apk@main
         with:
           working-directory: apps/platforms-app
           android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
