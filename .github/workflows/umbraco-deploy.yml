@@ -58,6 +58,10 @@ on:
       umbraco-forms-license:
         type: string
         default: "none"
+
+      umbraco-engage-license:
+        type: string
+        default: "none"
     
     secrets:
       azure-credentials:
@@ -108,6 +112,7 @@ jobs:
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OPENSSL_FORCE_FIPS_MODE="0"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Sentry__Dsn="${{ env.sentry-dsn }}"
             az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Umbraco__Licenses__Umbraco_Forms="${{ env.umbraco-forms-license }}"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings Umbraco__Licenses__Umbraco_Engage="${{ env.umbraco-engage-license }}"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
             
             if [[ -n "$db_engage_connection_string" ]]; then
