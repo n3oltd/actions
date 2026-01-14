@@ -18,12 +18,16 @@ inputs:
     description: "package-name"
     required: false
 
+  android-keystore-password:
+    description: "The android keystore password"
+    required: true
+
   android-key-alias:
     description: "The android key alias"
     required: true
 
-  android-keystore-password:
-    description: "The android keystore password"
+  android-key-password:
+    description: "The android key password"
     required: true
 
 runs:
@@ -56,7 +60,7 @@ runs:
       env:
         KEYSTORE_PASSWORD: ${{ inputs.android-keystore-password }}
         KEY_ALIAS: ${{ inputs.android-key-alias }}
-        KEY_PASSWORD: ${{ inputs.android-keystore-password }}
+        KEY_PASSWORD: ${{ inputs.android-key-password }}
         APP_IDENTIFIER: ${{ inputs.app-identifier }}
         GRADLE_OPTS: "-Dorg.gradle.daemon=false"
       working-directory: ${{ inputs.working-directory }}/android

@@ -6,15 +6,15 @@ on:
       subscription-code:
         type: string
         required: true
-        
+
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
-  
+
 jobs:
   build-apk:
     name: Build APK
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,27 +24,27 @@ jobs:
       - name: Fetch and Configure
         run: |
           BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
-          
+
           curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
           wait
-          
+
           APP_NAME=$(jq -r '.appName' apps/platforms-app/build/app.json)
           APP_IDENTIFIER=$(jq -r '.packageName' apps/platforms-app/build/app.json)
           # ASSOCIATED_DOMAIN
-          
+
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
           echo "APP_IDENTIFIER=$APP_IDENTIFIER" >> $GITHUB_ENV
           echo "VERSION_NAME=$(date +"%Y.%m.%d")-${{ github.run_number }}" >> $GITHUB_ENV
           echo "CI_BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
           THEME_FILE="apps/platforms-app/build/themes.json"
-          
+
           ICON_BG=$(jq -r '.default.parameters.colors.iconBackground' $THEME_FILE)
           ICON_BG_DARK=$(jq -r '.default.parameters.colors.iconBackgroundDark' $THEME_FILE)
           SPLASH_BG=$(jq -r '.default.parameters.colors.splashBackground' $THEME_FILE)
           SPLASH_BG_DARK=$(jq -r '.default.parameters.colors.splashBackgroundDark' $THEME_FILE)
-          
+
           echo "ICON_BG=$ICON_BG" >> $GITHUB_ENV
           echo "ICON_BG_DARK=$ICON_BG_DARK" >> $GITHUB_ENV
           echo "SPLASH_BG=$SPLASH_BG" >> $GITHUB_ENV
@@ -52,7 +52,7 @@ jobs:
 
           # WARNING: The 'mobileApp' list containing asset URLs is missing from the new themes.json.
           # The code below is a placeholder for how you would structure it if the data existed.
-          
+
           # urls=$(jq -r '.default.mobileApp | to_entries[] | "\(.value.url) \(.value.filename)"' $THEME_FILE)
           # if [ ! -z "$urls" ]; then
           #   echo "$urls" | while read -r url fname; do
@@ -71,7 +71,7 @@ jobs:
         run: |
           npm install --legacy-peer-deps # TODO: see how to replace this with `clean-install`
           npm run build:platforms-app
-          
+
       - name: Sync capacitor plugins
         run: |
           npx trapeze run config.yml -y
@@ -82,14 +82,14 @@ jobs:
             --splashBackgroundColorDark "${SPLASH_BG_DARK}"
           npx cap sync
         working-directory: apps/platforms-app
-        
+
       - name: Build Android APK
         uses: n3oltd/actions/.github/actions/n3o-build-apk@main
         with:
           working-directory: apps/platforms-app
           android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           android-keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          android-key-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           google-play-key-base64: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
           app-identifier: ${{ env.APP_IDENTIFIER}}
-
