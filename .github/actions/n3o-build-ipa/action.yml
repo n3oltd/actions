@@ -2,6 +2,14 @@ name: n3o-build-ipa
 description: Builds the ipa for distribution
 
 inputs:
+  working-directory:
+    description: "The working directory"
+    default: src
+
+  app-identifier:
+    description: "package-name"
+    required: false
+
   asc-key-id:
     description: App store connect key ID
     required: true

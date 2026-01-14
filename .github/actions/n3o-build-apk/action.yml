@@ -6,17 +6,13 @@ inputs:
     description: "The working directory"
     default: src
 
-  android-keystore-base64:
-    description: "The keystore in base64"
-    required: true
-
-  google-play-key-base64:
-    description: "The json key for Google Play in base64"
-    required: true
-
   app-identifier:
     description: "package-name"
     required: false
+
+  android-keystore-base64:
+    description: "The keystore in base64"
+    required: true
 
   android-keystore-password:
     description: "The android keystore password"
@@ -28,6 +24,10 @@ inputs:
 
   android-key-password:
     description: "The android key password"
+    required: true
+
+  google-play-key-base64:
+    description: "The json key for Google Play in base64"
     required: true
 
 runs:

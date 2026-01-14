@@ -82,7 +82,7 @@ jobs:
             --iconBackgroundColorDark "${ICON_BG_DARK}" \
             --splashBackgroundColor "${SPLASH_BG}" \
             --splashBackgroundColorDark "${SPLASH_BG_DARK}"
-          npx cap sync
+          npx cap sync ${{ inputs.platform }}
         working-directory: apps/platforms-app
 
       - name: Build and Publish for Android
