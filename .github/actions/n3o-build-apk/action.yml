@@ -5,7 +5,7 @@ inputs:
   working-directory:
     description: "The working directory"
     default: src
-    
+
   android-keystore-base64:
     description: "The keystore in base64"
     required: true
@@ -16,16 +16,16 @@ inputs:
 
   app-identifier:
     description: "package-name"
-    required: false 
+    required: false
 
   android-key-alias:
     description: "The android key alias"
     required: true
-    
+
   android-keystore-password:
     description: "The android keystore password"
     required: true
-    
+
 runs:
   using: "composite"
   steps:
@@ -48,7 +48,7 @@ runs:
         echo '${{ inputs.google-play-key-base64 }}' | base64 -d > android/fastlane/service-account.json
       working-directory: ${{ inputs.working-directory }}
 
-    - name: Build & upload APK to internal track
+    - name: Build & upload the APK to internal track
       shell: bash
       run: |
         bundle install
@@ -57,7 +57,6 @@ runs:
         KEYSTORE_PASSWORD: ${{ inputs.android-keystore-password }}
         KEY_ALIAS: ${{ inputs.android-key-alias }}
         KEY_PASSWORD: ${{ inputs.android-keystore-password }}
-        APP_IDENTIFIER: ${{ inputs.app-identifier }} 
+        APP_IDENTIFIER: ${{ inputs.app-identifier }}
         GRADLE_OPTS: "-Dorg.gradle.daemon=false"
       working-directory: ${{ inputs.working-directory }}/android
-
