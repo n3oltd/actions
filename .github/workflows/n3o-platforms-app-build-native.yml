@@ -85,7 +85,7 @@ jobs:
           npx cap sync
         working-directory: apps/platforms-app
 
-      - name: Build and Publish for Android # TODO: run this on ubuntu?
+      - name: Build and Publish for Android
         if: ${{ inputs.platform == 'android' }}
         uses: n3oltd/actions/.github/actions/n3o-build-apk@main
         with:
@@ -98,7 +98,7 @@ jobs:
 
       - name: Build and Publish for iOS
         if: ${{ inputs.platform == 'ios' }}
-        uses: n3oltd/actions/.github/actions/n3o-build-ipa@main
+        uses: n3oltd/actions/.github/actions/n3o-build-ipa@ios
         with:
           working-directory: apps/platforms-app
           ios-certificate-base64: ${{ secrets.IOS_P12_BASE64 }}
