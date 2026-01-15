@@ -4,7 +4,7 @@ description: Builds the ipa for distribution
 inputs:
   working-directory:
     description: "The working directory"
-    default: src
+    default: ios/App
 
   app-identifier:
     description: "package-name"
@@ -33,15 +33,10 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup ruby and fastlane
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: "3.2"
-
     - name: Decode Certificate
       shell: bash
       run: |
-        echo "${{ inputs.ios-certificate-base64 }}" | base64 -d > ios/App/fastlane/signing-cert.p12
+        echo "${{ inputs.ios-certificate-base64 }}" | base64 -d > fastlane/signing-cert.p12
       working-directory: ${{ inputs.working-directory }}
 
     - name: Build & upload the app to testflight
@@ -53,4 +48,4 @@ runs:
         ASC_KEY_ID: ${{ inputs.asc-key-id }}
         ASC_ISSUER_ID: ${{ inputs.asc-issuer-id }}
         ASC_KEY: ${{ inputs.asc-key-content }}
-      working-directory: ${{ inputs.working-directory }}/ios/App
+      working-directory: ${{ inputs.working-directory }}

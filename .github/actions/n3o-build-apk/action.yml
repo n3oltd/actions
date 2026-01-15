@@ -4,7 +4,7 @@ description: Builds the apk of the app
 inputs:
   working-directory:
     description: "The working directory"
-    default: src
+    default: android
 
   app-identifier:
     description: "package-name"
@@ -40,27 +40,20 @@ runs:
         java-version: "21"
         cache: "gradle"
 
-    - name: Setup ruby and fastlane
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: "3.2"
-
     - name: Decode key files
       shell: bash
       run: |
-        echo "${{ inputs.android-keystore-base64 }}" | base64 -d > android/fastlane/release-key.keystore
-        echo '${{ inputs.google-play-key-base64 }}' | base64 -d > android/fastlane/service-account.json
+        echo "${{ inputs.android-keystore-base64 }}" | base64 -d > fastlane/release-key.keystore
+        echo '${{ inputs.google-play-key-base64 }}' | base64 -d > fastlane/service-account.json
       working-directory: ${{ inputs.working-directory }}
 
     - name: Build & upload the APK to internal track
       shell: bash
-      run: |
-        bundle install
-        bundle exec fastlane internal
+      run: bundle exec fastlane internal
       env:
         KEYSTORE_PASSWORD: ${{ inputs.android-keystore-password }}
         KEY_ALIAS: ${{ inputs.android-key-alias }}
         KEY_PASSWORD: ${{ inputs.android-key-password }}
         APP_IDENTIFIER: ${{ inputs.app-identifier }}
         GRADLE_OPTS: "-Dorg.gradle.daemon=false"
-      working-directory: ${{ inputs.working-directory }}/android
+      working-directory: ${{ inputs.working-directory }}

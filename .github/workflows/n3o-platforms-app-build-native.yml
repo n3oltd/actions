@@ -22,13 +22,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-
       - name: Fetch Configuration
         run: |
           BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
@@ -36,6 +29,13 @@ jobs:
           curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
           wait
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
@@ -86,6 +86,12 @@ jobs:
           echo "SPLASH_BG=$(jq -r '.default.parameters.colors.splashBackground' $THEMES_JSON)" >> $GITHUB_ENV
           echo "SPLASH_BG_DARK=$(jq -r '.default.parameters.colors.splashBackgroundDark' $THEMES_JSON)" >> $GITHUB_ENV
 
+          echo "APP_DIR=apps/platforms-app" >> $GITHUB_ENV
+          if [ "${{ inputs.platform }}" == "ios" ]; then
+            echo "NATIVE_APP_DIR=apps/platforms-app/ios/App" >> $GITHUB_ENV
+          else
+            echo "NATIVE_APP_DIR=apps/platforms-app/android" >> $GITHUB_ENV
+          fi
           echo "VERSION_NAME=$(date +"%Y.%m.%d")-${{ github.run_number }}" >> $GITHUB_ENV
           echo "CI_BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
@@ -109,6 +115,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ${{ env.NATIVE_APP_DIR }}
+
       - name: Sync capacitor plugins
         run: |
           npx trapeze run config.yml -y
@@ -118,13 +131,13 @@ jobs:
             --splashBackgroundColor "${SPLASH_BG}" \
             --splashBackgroundColorDark "${SPLASH_BG_DARK}"
           npx cap sync ${{ inputs.platform }}
-        working-directory: apps/platforms-app
+        working-directory: ${{ env.NATIVE_APP_DIR }}
 
       - name: Build and Publish for Android
         if: ${{ inputs.platform == 'android' }}
         uses: n3oltd/actions/.github/actions/n3o-build-apk@main
         with:
-          working-directory: apps/platforms-app
+          working-directory: ${{ env.NATIVE_APP_DIR }}
           android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           android-keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -136,7 +149,7 @@ jobs:
         if: ${{ inputs.platform == 'ios' }}
         uses: n3oltd/actions/.github/actions/n3o-build-ipa@ios
         with:
-          working-directory: apps/platforms-app
+          working-directory: ${{ env.NATIVE_APP_DIR }}
           ios-certificate-base64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
           ios-certificate-password: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           asc-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
