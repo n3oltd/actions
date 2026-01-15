@@ -6,26 +6,19 @@ on:
       subscription-code:
         type: string
         required: true
-        
+
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
-  build-bundle:
-    name: Build Bundle
+  build-web:
+    name: Build JS Bundle
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Fetch configuration files
-        run: |
-          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
-          
-          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json"
-          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -34,11 +27,23 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: NPM Install and Build
+      - name: Fetch Configuration
         run: |
-          npm install --legacy-peer-deps # TODO: see how to replace this with `clean-install`
-          npm run build:platforms-app
-       
+          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
+
+          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
+          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
+          wait
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Web App
+        run: npm run build:platforms-app
+        env:
+          VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
+          VITE_ENVIRONMENT: development
+
       - name: Use Capgo to upload bundle
         uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
         with:
