@@ -135,7 +135,7 @@ jobs:
 
       - name: Build and Publish for Android
         if: ${{ inputs.platform == 'android' }}
-        uses: n3oltd/actions/.github/actions/n3o-build-apk@main
+        uses: n3oltd/actions/.github/actions/n3o-build-apk@ios
         with:
           working-directory: ${{ env.NATIVE_APP_DIR }}
           android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
