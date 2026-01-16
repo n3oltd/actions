@@ -5,17 +5,17 @@ inputs:
   bundle-name:
     description: the name of the bundle
     required: true
-    
+
   capgo-upload-api-key:
     description: the capgo api key to upload
     required: true
-    
+
   upload-files-path:
     description: the path of the files to upload
     required: true
-    
+
   package-json-path:
-    decription: the location of the package json
+    description: the location of the package json
     required: true
 
 runs:

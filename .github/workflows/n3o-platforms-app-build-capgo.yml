@@ -1,4 +1,4 @@
-name: 'Build & Push Platforms App'
+name: "Build & Push Platforms App"
 
 on:
   workflow_call:
@@ -13,19 +13,13 @@ env:
 jobs:
   build-web:
     name: Build JS Bundle
+    timeout-minutes: 10
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
 
       - name: Fetch Configuration
         run: |
@@ -34,6 +28,13 @@ jobs:
           curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
           wait
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
@@ -44,10 +45,11 @@ jobs:
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
           VITE_ENVIRONMENT: development
 
+      # note: upto this point, its similar to the build-web job from *build-native.yml
       - name: Use Capgo to upload bundle
         uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
         with:
           bundle-name: cloud.n3o.platforms${{ inputs.subscription-code }}
           capgo-upload-api-key: ${{ secrets.CAPGO_API_KEY_UPLOAD }}
-          upload-files-path: './apps/platforms-app/dist'
-          package-json-path: './apps/platforms-app/package.json'
+          upload-files-path: "./apps/platforms-app/dist"
+          package-json-path: "./apps/platforms-app/package.json"
