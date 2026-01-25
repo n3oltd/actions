@@ -135,4 +135,5 @@ jobs:
           storage_container: "${{ inputs.storage-container }}"
           storage_connection_string: "${{ secrets.storage-connection-string }}"
           sentry_dsn: "${{ inputs.sentry-dsn }}"
-          umbraco-forms-license: "${{ inputs.umbraco-forms-license }}"
+          umbraco_forms_license: "${{ inputs.umbraco-forms-license }}"
+          umbraco_engage_license: "${{ inputs.umbraco-engage-license }}"
