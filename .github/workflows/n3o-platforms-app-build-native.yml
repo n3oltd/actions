@@ -28,7 +28,14 @@ jobs:
 
           curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
+          curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
           wait
+
+          jq -n \
+            --argjson app "$(cat apps/platforms-app/build/app.json)" \
+            --argjson themes "$(cat apps/platforms-app/build/themes.json)" \
+            '{app: $app, themes: $themes}' \
+            > packages/n3o-elements/src/configuration.json
 
       - name: Setup Node
         uses: actions/setup-node@v4
