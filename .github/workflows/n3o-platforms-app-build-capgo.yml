@@ -1,4 +1,4 @@
-name: 'Build & Push Platforms App'
+name: "Build & Push Platforms App"
 
 on:
   workflow_call:
@@ -6,13 +6,14 @@ on:
       subscription-code:
         type: string
         required: true
-        
+
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
-  build-bundle:
-    name: Build Bundle
+  build-web:
+    name: Build JS Bundle
+    timeout-minutes: 10
     runs-on: ubuntu-latest
 
     steps:
@@ -20,29 +21,44 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch configuration files
+      - name: Fetch Configuration # todo: move to generic build setup step
         run: |
-          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
-          
-          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json"
-          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json"
+          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}"
+
+          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/build/app.json" &
+          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/build/themes.json" &
+          curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
+          wait
+
+          jq -n \
+            --argjson app "$(cat apps/platforms-app/build/app.json)" \
+            --argjson themes "$(cat apps/platforms-app/build/themes.json)" \
+            '{app: $app, themes: $themes}' \
+            > packages/n3o-elements/src/configuration.json
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: package-lock.json
 
-      - name: NPM Install and Build
-        run: |
-          npm install --legacy-peer-deps # TODO: see how to replace this with `clean-install`
-          npm run build:platforms-app
-       
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Web App
+        run: npm run build:platforms-app
+        env:
+          VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
+          VITE_ENVIRONMENT: development
+
+      # note: upto this point, its similar to the build-web job from *build-native.yml
       - name: Use Capgo to upload bundle
-        uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
+        uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@ios
         with:
           bundle-name: cloud.n3o.platforms${{ inputs.subscription-code }}
           capgo-upload-api-key: ${{ secrets.CAPGO_API_KEY_UPLOAD }}
-          upload-files-path: './apps/platforms-app/dist'
-          package-json-path: './apps/platforms-app/package.json'
+          upload-files-path: "./apps/platforms-app/dist"
+          # todo: sort this out in the current monorepo
+          package-json-path: "./apps/platforms-app/package.json"
+          node-modules-path: "./node_modules,./apps/platforms-app/node_modules"

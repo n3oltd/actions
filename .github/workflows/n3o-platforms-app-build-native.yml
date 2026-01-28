@@ -1,0 +1,165 @@
+name: Build Platforms App Native
+
+on:
+  workflow_call:
+    inputs:
+      subscription-code:
+        type: string
+        required: true
+      platform:
+        type: string
+        required: true
+
+env:
+  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+jobs:
+  build-web:
+    name: Build JS Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch Configuration
+        run: |
+          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}"
+
+          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/build/app.json" &
+          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/build/themes.json" &
+          curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
+          wait
+
+          jq -n \
+            --argjson app "$(cat apps/platforms-app/build/app.json)" \
+            --argjson themes "$(cat apps/platforms-app/build/themes.json)" \
+            '{app: $app, themes: $themes}' \
+            > packages/n3o-elements/src/configuration.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Web App
+        run: npm run build:platforms-app
+        env:
+          VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
+          VITE_ENVIRONMENT: development
+
+      - name: Upload Web Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: |
+            apps/platforms-app/dist
+            apps/platforms-app/build
+
+  build-native:
+    name: Build Native App Package
+    needs: build-web
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Web Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: apps/platforms-app
+
+      - name: Load Environment Variables
+        run: |
+          APP_JSON="apps/platforms-app/build/app.json"
+          THEMES_JSON="apps/platforms-app/build/themes.json"
+
+          APP_NAME=$(jq -r '.appName' $APP_JSON)
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          APP_IDENTIFIER=$(jq -r '.packageName' $APP_JSON)
+          echo "APP_IDENTIFIER=$APP_IDENTIFIER" >> $GITHUB_ENV
+          # ASSOCIATED_DOMAIN
+
+          echo "ICON_BG=$(jq -r '.default.parameters.colors.iconBackground' $THEMES_JSON)" >> $GITHUB_ENV
+          echo "ICON_BG_DARK=$(jq -r '.default.parameters.colors.iconBackgroundDark' $THEMES_JSON)" >> $GITHUB_ENV
+          echo "SPLASH_BG=$(jq -r '.default.parameters.colors.splashBackground' $THEMES_JSON)" >> $GITHUB_ENV
+          echo "SPLASH_BG_DARK=$(jq -r '.default.parameters.colors.splashBackgroundDark' $THEMES_JSON)" >> $GITHUB_ENV
+
+          echo "APP_DIR=apps/platforms-app" >> $GITHUB_ENV
+          if [ "${{ inputs.platform }}" == "ios" ]; then
+            echo "NATIVE_APP_DIR=apps/platforms-app/ios/App" >> $GITHUB_ENV
+          else
+            echo "NATIVE_APP_DIR=apps/platforms-app/android" >> $GITHUB_ENV
+          fi
+          echo "VERSION_NAME=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+          echo "CI_BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+
+          # WARNING: The 'mobileApp' list containing asset URLs is missing from the new themes.json.
+          # The code below is a placeholder for how you would structure it if the data existed.
+          #
+          # urls=$(jq -r '.default.mobileApp | to_entries[] | "\(.value.url) \(.value.filename)"' $THEME_FILE)
+          # if [ ! -z "$urls" ]; then
+          #   echo "$urls" | while read -r url fname; do
+          #     curl -fSsL -o "apps/platforms-app/assets/$fname" "$url"
+          #   done
+          # fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ${{ env.NATIVE_APP_DIR }}
+
+      - name: Sync capacitor plugins
+        run: |
+          npx trapeze run config.yml -y
+          npx @capacitor/assets generate \
+            --iconBackgroundColor "${ICON_BG}" \
+            --iconBackgroundColorDark "${ICON_BG_DARK}" \
+            --splashBackgroundColor "${SPLASH_BG}" \
+            --splashBackgroundColorDark "${SPLASH_BG_DARK}"
+          npx cap sync ${{ inputs.platform }}
+        working-directory: ${{ env.NATIVE_APP_DIR }}
+
+      - name: Build and Publish for Android
+        if: ${{ inputs.platform == 'android' }}
+        uses: n3oltd/actions/.github/actions/n3o-build-apk@ios
+        with:
+          working-directory: ${{ env.NATIVE_APP_DIR }}
+          android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          android-keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          android-key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          android-key-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          google-play-key-base64: ${{ secrets.GOOGLE_PLAY_KEY_BASE64 }}
+          app-identifier: ${{ env.APP_IDENTIFIER}}
+
+      - name: Build and Publish for iOS
+        if: ${{ inputs.platform == 'ios' }}
+        uses: n3oltd/actions/.github/actions/n3o-build-ipa@ios
+        with:
+          working-directory: ${{ env.NATIVE_APP_DIR }}
+          ios-certificate-base64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          ios-certificate-password: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          asc-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          asc-issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          asc-key-content: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          app-identifier: ${{ env.APP_IDENTIFIER }}
