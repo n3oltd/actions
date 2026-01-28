@@ -24,10 +24,10 @@ jobs:
 
       - name: Fetch Configuration
         run: |
-          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build"
+          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}"
 
-          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/app.json" &
-          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/themes.json" &
+          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/build/app.json" &
+          curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/build/themes.json" &
           curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
           wait
 
