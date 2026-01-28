@@ -1,4 +1,4 @@
-name: 'Build & Push Platforms JS'
+name: "Build & Push Platforms JS"
 
 on:
   workflow_call:
@@ -22,28 +22,17 @@ jobs:
       - name: setup-node
         uses: actions/setup-node@v2
         with:
-          node-version: '20.x'
-          registry-url: 'https://npm.pkg.github.com'
+          node-version: "20.x"
+          registry-url: "https://npm.pkg.github.com"
           token: ${{ env.GH_PAT }}
-          
+
       - name: Fetch config files
         run: |
-          mkdir -p packages/n3o-elements/src
+          BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}"
 
-          wget -O app.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/app.json
-          wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
-          wget -O localization.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/subscription/localization.json
-
-          jq -n \
-            --arg app "$(cat app.json)" \
-            --arg themes "$(cat themes.json)" \
-            '{app: ($app | fromjson), themes: ($themes | fromjson)}' \
-            > packages/n3o-elements/src/configuration.json
-
-          jq -n \
-            --arg localization "$(cat localization.json)" \
-            '{localization: ($localization | fromjson)}' \
-            > packages/formatter/src/configuration.json
+          curl -fSsL -o packages/n3o-elements/src/themes.json "$BASE_URL/build/themes.json" &
+          curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
+          wait
 
       - name: npm install and build
         run: |
