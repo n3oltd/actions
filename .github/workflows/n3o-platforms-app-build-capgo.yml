@@ -54,7 +54,7 @@ jobs:
 
       # note: upto this point, its similar to the build-web job from *build-native.yml
       - name: Use Capgo to upload bundle
-        uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@main
+        uses: n3oltd/actions/.github/actions/n3o-push-js-bundle-capgo@ios
         with:
           bundle-name: cloud.n3o.platforms${{ inputs.subscription-code }}
           capgo-upload-api-key: ${{ secrets.CAPGO_API_KEY_UPLOAD }}
