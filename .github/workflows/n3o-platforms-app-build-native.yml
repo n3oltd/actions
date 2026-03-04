@@ -142,7 +142,7 @@ jobs:
 
       - name: Build and Publish for Android
         if: ${{ inputs.platform == 'android' }}
-        uses: n3oltd/actions/.github/actions/n3o-build-apk@ios
+        uses: n3oltd/actions/.github/actions/n3o-build-apk@main
         with:
           working-directory: ${{ env.NATIVE_APP_DIR }}
           android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -154,7 +154,7 @@ jobs:
 
       - name: Build and Publish for iOS
         if: ${{ inputs.platform == 'ios' }}
-        uses: n3oltd/actions/.github/actions/n3o-build-ipa@ios
+        uses: n3oltd/actions/.github/actions/n3o-build-ipa@main
         with:
           working-directory: ${{ env.NATIVE_APP_DIR }}
           ios-certificate-base64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
