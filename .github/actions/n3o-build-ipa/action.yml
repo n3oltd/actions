@@ -1,0 +1,51 @@
+name: n3o-build-ipa
+description: Builds the ipa for distribution
+
+inputs:
+  working-directory:
+    description: "The working directory"
+    default: ios/App
+
+  app-identifier:
+    description: "package-name"
+    required: false
+
+  asc-key-id:
+    description: App store connect key ID
+    required: true
+
+  asc-issuer-id:
+    description: App store connect issuer ID
+    required: true
+
+  asc-key-content:
+    description: App store connect key content
+    required: true
+
+  ios-certificate-base64:
+    description: apple distribution certificate (in p12 format)
+    required: true
+
+  ios-certificate-password:
+    description: apple distribution certificate password
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Decode Certificate
+      shell: bash
+      run: |
+        echo "${{ inputs.ios-certificate-base64 }}" | base64 -d > fastlane/signing-cert.p12
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Build & upload the app to testflight
+      shell: bash
+      run: bundle exec fastlane beta
+      env:
+        APP_IDENTIFIER: ${{ inputs.app-identifier }}
+        SIGNING_KEY_PASSWORD: ${{ inputs.ios-certificate-password }}
+        ASC_KEY_ID: ${{ inputs.asc-key-id }}
+        ASC_ISSUER_ID: ${{ inputs.asc-issuer-id }}
+        ASC_KEY: ${{ inputs.asc-key-content }}
+      working-directory: ${{ inputs.working-directory }}
