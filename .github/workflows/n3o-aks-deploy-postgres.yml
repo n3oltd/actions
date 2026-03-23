@@ -22,7 +22,7 @@ jobs:
       - name: setup-dotnet
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '9.x'
+          dotnet-version: '10.x'
 
       - id: get-deployment-version
         name: Get Deployment Version
