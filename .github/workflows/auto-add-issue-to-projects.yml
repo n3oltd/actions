@@ -44,22 +44,13 @@ jobs:
           project-url: 'https://github.com/orgs/n3oltd/projects/48'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
-      - name: aroojarshad12
+      - name: haseeb5i
         uses: actions/add-to-project@v1.0.1
         if: |
           github.event.action == 'assigned' &&
-          contains(github.event.issue.assignees.*.login, 'aroojarshad12')
+          contains(github.event.issue.assignees.*.login, 'haseeb5i')
         with:
-          project-url: 'https://github.com/orgs/n3oltd/projects/35'
-          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
-
-      - name: Maria-Ahmed-n3o
-        uses: actions/add-to-project@v1.0.1
-        if: |
-          github.event.action == 'assigned' &&
-          contains(github.event.issue.assignees.*.login, 'Maria-Ahmed-n3o')
-        with:
-          project-url: 'https://github.com/orgs/n3oltd/projects/58'
+          project-url: 'https://github.com/orgs/n3oltd/projects/79'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: Rahimullah-Shaheen
@@ -78,15 +69,6 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'RehanSalim-N3O')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/23'
-          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
-
-      - name: rn3o
-        uses: actions/add-to-project@v1.0.1
-        if: |
-          github.event.action == 'assigned' &&
-          contains(github.event.issue.assignees.*.login, 'rn3o')
-        with:
-          project-url: 'https://github.com/orgs/n3oltd/projects/24'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: ShaguftaN3O
@@ -134,15 +116,6 @@ jobs:
           project-url: 'https://github.com/orgs/n3oltd/projects/36'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
-      - name: Wahidhere
-        uses: actions/add-to-project@v1.0.1
-        if: |
-          github.event.action == 'assigned' &&
-          contains(github.event.issue.assignees.*.login, 'Wahidhere')
-        with:
-          project-url: 'https://github.com/orgs/n3oltd/projects/39'
-          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
-
       - name: zeeshanshaheenn3o
         uses: actions/add-to-project@v1.0.1
         if: |
@@ -150,4 +123,13 @@ jobs:
           contains(github.event.issue.assignees.*.login, 'zeeshanshaheenn3o')
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/29'
+          github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
+
+      - name: zuhaib1996
+        uses: actions/add-to-project@v1.0.1
+        if: |
+          github.event.action == 'assigned' &&
+          contains(github.event.issue.assignees.*.login, 'zuhaib1996')
+        with:
+          project-url: 'https://github.com/orgs/n3oltd/projects/80'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
