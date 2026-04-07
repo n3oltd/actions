@@ -55,10 +55,11 @@ jobs:
         run: |
           DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.docker-image }}
           NOW=$(date +'%Y-%m-%d')
-          SHA=$(git rev-parse --short HEAD)
-          VERSION="$NOW-$SHA"
-          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          VERSION="$NOW.${{ github.run_number }}"
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          TAGS="${VERSIONTAG},${LATESTTAG}"
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT          
 
       - name: Build and push
         uses: docker/build-push-action@v2
