@@ -8,6 +8,10 @@ FROM node:14.17.6-buster-slim AS base
 ########################
 FROM base AS builder
 
+# Install git (needed for git rev-parse during build)
+RUN apt-get update && apt-get install -y \
+    git \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -18,17 +22,21 @@ ENV CI=true \
     REACT_APP_LOG_TO_SENTRY=${REACT_APP_LOG_TO_SENTRY} \
     REACT_APP_REGION_PREFIX=${REACT_APP_REGION_PREFIX}
 
+# Install dependencies
 COPY package.json package-lock.json .npmrc ./
 
 RUN --mount=type=secret,id=github_token,required=true \
     sh -lc 'export GITHUB_TOKEN="$(cat /run/secrets/github_token)" && npm ci'
 
+# Copy source
 COPY . .
 
-
+# Build app (needs both secrets)
 RUN --mount=type=secret,id=github_token \
     --mount=type=secret,id=sentry_release \
-    sh -lc 'export GITHUB_TOKEN="$(cat /run/secrets/github_token)" && export REACT_APP_SENTRY_RELEASE="$(cat /run/secrets/sentry_release)" && npm run build'
+    sh -lc 'export GITHUB_TOKEN="$(cat /run/secrets/github_token)" && \
+            export REACT_APP_SENTRY_RELEASE="$(cat /run/secrets/sentry_release)" && \
+            npm run build'
 
 
 ########################
