@@ -25,8 +25,10 @@ RUN --mount=type=secret,id=github_token,required=true \
 
 COPY . .
 
-RUN --mount=type=secret,id=sentry_release,required=true \
-    sh -lc 'export REACT_APP_SENTRY_RELEASE="$(cat /run/secrets/sentry_release)" && npm run build'
+
+RUN --mount=type=secret,id=github_token \
+    --mount=type=secret,id=sentry_release \
+    sh -lc 'export GITHUB_TOKEN="$(cat /run/secrets/github_token)" && export REACT_APP_SENTRY_RELEASE="$(cat /run/secrets/sentry_release)" && npm run build'
 
 
 ########################
