@@ -31,7 +31,6 @@ RUN --mount=type=secret,id=github_token,required=true \
 # Copy source
 COPY . .
 
-RUN free -h
 
 # Build app (needs both secrets)
 RUN --mount=type=secret,id=github_token \
