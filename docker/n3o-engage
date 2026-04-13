@@ -21,7 +21,7 @@ ARG REACT_APP_LOG_TO_SENTRY=false
 ENV CI=true \
     REACT_APP_LOG_TO_SENTRY=${REACT_APP_LOG_TO_SENTRY} \
     REACT_APP_REGION_PREFIX=${REACT_APP_REGION_PREFIX} \
-    NODE_OPTIONS=--max-old-space-size=16384
+    NODE_OPTIONS=--max-old-space-size=4096
 
 # Install dependencies
 COPY package.json package-lock.json .npmrc ./
