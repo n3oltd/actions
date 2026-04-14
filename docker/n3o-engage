@@ -36,9 +36,10 @@ COPY . .
 
 # Build app (needs both secrets)
 RUN --mount=type=secret,id=github_token \
-    --mount=type=secret,id=sentry_release \
+    --mount=type=secret,id=sentry_auth_token \
     sh -lc 'export GITHUB_TOKEN="$(cat /run/secrets/github_token)" && \
-            export REACT_APP_SENTRY_RELEASE="$(cat /run/secrets/sentry_release)" && \
+            export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" && \
+            export REACT_APP_SENTRY_RELEASE=$(git rev-parse --short HEAD) && \
             npm run build'
 
 
