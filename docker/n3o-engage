@@ -7,7 +7,9 @@ FROM node:14-bullseye-slim AS base
 ### build
 ########################
 FROM base AS builder
-
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ARG REACT_APP_REGION_PREFIX=eu1
 ARG REACT_APP_SENTRY_RELEASE
