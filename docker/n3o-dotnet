@@ -1,4 +1,4 @@
-﻿########################
+########################
 ### base
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
@@ -17,27 +17,19 @@ ARG CONFIGURATION
 
 WORKDIR /src
 
-ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED true
-ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"n3oltd\", \"password\":\"${PAT}\"}]}
+ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED=true
+ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS="{\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"n3oltd\", \"password\":\"${PAT}\"}]}"
 ENV PROJECT=${PROJECT}
 ENV DLL=.dll
+
+RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
 
 COPY . .
 WORKDIR "/src/${PROJECT}"
 
-RUN apt-get update
-RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
-RUN dotnet build -c "${CONFIGURATION}" -o /app
-RUN rm -f /app/appsettings.json
-
-########################
-### publish
-########################
-FROM build AS publish
-
-ARG PROJECT
-
-RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app && \
+    rm -f /app/appsettings.json
 
 ########################
 ### final
@@ -46,38 +38,36 @@ FROM base AS final
 
 ARG PROJECT
 
-RUN apt-get update
-RUN apt-get install --assume-yes curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    zip \
+    unzip \
+    libgdiplus \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /dotnet-tools
-
-RUN curl -Lo /dotnet-tools/dotnet-trace https://aka.ms/dotnet-trace/linux-x64 && \
+RUN mkdir -p /dotnet-tools && \
+    curl -Lo /dotnet-tools/dotnet-trace https://aka.ms/dotnet-trace/linux-x64 && \
     curl -Lo /dotnet-tools/dotnet-dump https://aka.ms/dotnet-dump/linux-x64 && \
     curl -Lo /dotnet-tools/dotnet-gcdump https://aka.ms/dotnet-gcdump/linux-x64 && \
-    curl -Lo /dotnet-tools/dotnet-counters https://aka.ms/dotnet-counters/linux-x64
-
-RUN chmod +x /dotnet-tools/dotnet-*
+    curl -Lo /dotnet-tools/dotnet-counters https://aka.ms/dotnet-counters/linux-x64 && \
+    chmod +x /dotnet-tools/dotnet-*
 
 ENV PATH="/dotnet-tools:$PATH"
 
-RUN apt-get --yes install zip unzip curl
-RUN apt-get --yes install libgdiplus
-RUN apt-get --yes install ffmpeg
-
 WORKDIR /app
-ENV ASPNETCORE_URLS http://*:80
-COPY --from=publish /app .
+ENV ASPNETCORE_URLS=http://*:80
+COPY --from=build /app .
+
 ENV DLL="${PROJECT}.dll"
-RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
+RUN printf '#!/bin/sh\ndotnet %s\n' "${PROJECT}.dll" > ./entrypoint.sh && \
+    chmod +x ./entrypoint.sh
 
 # Below currently needed by TextMarketer API
-RUN sed -i '/\[openssl_init\]/a ssl_conf = ssl_sect' /etc/ssl/openssl.cnf
-RUN printf "\n[ssl_sect]\nsystem_default = system_default_sect\n" >> /etc/ssl/openssl.cnf
-RUN printf "\n[system_default_sect]\nMinProtocol = TLSv1.2\nCipherString = DEFAULT@SECLEVEL=0" >> /etc/ssl/openssl.cnf
-RUN printf "\nOptions = UnsafeLegacyRenegotiation" >> /etc/ssl/openssl.cnf
-
-RUN hash -r
+RUN sed -i '/\[openssl_init\]/a ssl_conf = ssl_sect' /etc/ssl/openssl.cnf && \
+    printf "\n[ssl_sect]\nsystem_default = system_default_sect\n" >> /etc/ssl/openssl.cnf && \
+    printf "\n[system_default_sect]\nMinProtocol = TLSv1.2\nCipherString = DEFAULT@SECLEVEL=0" >> /etc/ssl/openssl.cnf && \
+    printf "\nOptions = UnsafeLegacyRenegotiation" >> /etc/ssl/openssl.cnf
 
 ENTRYPOINT ["./entrypoint.sh"]
 
