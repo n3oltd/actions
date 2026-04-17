@@ -79,6 +79,7 @@ jobs:
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
           APP_IDENTIFIER=$(jq -r '.packageName' $APP_JSON)
           echo "APP_IDENTIFIER=$APP_IDENTIFIER" >> $GITHUB_ENV
+          # For now we only support a single associated domain
           ASSOCIATED_DOMAIN=$(jq -r '.linkedDomains[0]' $APP_JSON)
           echo "ASSOCIATED_DOMAIN=$ASSOCIATED_DOMAIN" >> $GITHUB_ENV
 
