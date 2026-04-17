@@ -38,7 +38,8 @@ FROM base AS final
 
 ARG PROJECT
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources && \
+    apt-get update && apt-get install -y --no-install-recommends \
     curl \
     zip \
     unzip \
