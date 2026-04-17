@@ -26,7 +26,6 @@ jobs:
         run: |
           BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}"
 
-          curl -fSsL -o apps/platforms-app/build/app.json "$BASE_URL/build/app.json" &
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/build/themes.json" &
           curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
           wait
@@ -73,14 +72,15 @@ jobs:
 
       - name: Load Environment Variables
         run: |
-          APP_JSON="apps/platforms-app/build/app.json"
+          APP_JSON="subscriptions/${{ inputs.subscription-code }}/build/app.json"
           THEMES_JSON="apps/platforms-app/build/themes.json"
 
           APP_NAME=$(jq -r '.appName' $APP_JSON)
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
           APP_IDENTIFIER=$(jq -r '.packageName' $APP_JSON)
           echo "APP_IDENTIFIER=$APP_IDENTIFIER" >> $GITHUB_ENV
-          # ASSOCIATED_DOMAIN
+          ASSOCIATED_DOMAIN=$(jq -r '.linkedDomains[0]' $APP_JSON)
+          echo "ASSOCIATED_DOMAIN=$ASSOCIATED_DOMAIN" >> $GITHUB_ENV
 
           echo "ICON_BG=$(jq -r '.default.parameters.colors.iconBackground' $THEMES_JSON)" >> $GITHUB_ENV
           echo "ICON_BG_DARK=$(jq -r '.default.parameters.colors.iconBackgroundDark' $THEMES_JSON)" >> $GITHUB_ENV
@@ -115,6 +115,8 @@ jobs:
 
       - name: Sync capacitor plugins
         run: |
+          cp -r "subscriptions/${{ inputs.subscription-code }}/" apps/platforms-app
+
           npx trapeze run config.yml -y
           npx @capacitor/assets generate \
             --iconBackgroundColor "${ICON_BG}" \
