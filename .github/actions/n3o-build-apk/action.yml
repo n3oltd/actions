@@ -1,5 +1,5 @@
 name: n3o-build-apk
-description: Builds the apk of the app
+description: Builds the APK of the app
 
 inputs:
   working-directory:
@@ -11,23 +11,23 @@ inputs:
     required: false
 
   android-keystore-base64:
-    description: "The keystore in base64"
+    description: "The keystore in Base64"
     required: true
 
   android-keystore-password:
-    description: "The android keystore password"
+    description: "The Android keystore password"
     required: true
 
   android-key-alias:
-    description: "The android key alias"
+    description: "The Android key alias"
     required: true
 
   android-key-password:
-    description: "The android key password"
+    description: "The Android key password"
     required: true
 
   google-play-key-base64:
-    description: "The json key for Google Play in base64"
+    description: "The JSON key for Google Play in Base64"
     required: true
 
 runs:

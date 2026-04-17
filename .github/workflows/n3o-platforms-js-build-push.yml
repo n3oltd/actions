@@ -17,13 +17,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: setup-node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
+          cache: 'npm'
           token: ${{ env.GH_PAT }}
           
       - name: Fetch config files
@@ -32,6 +33,7 @@ jobs:
 
           wget -O app.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/app.json
           wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
+          wget -O localization.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/subscription/localization.json
 
           jq -n \
             --arg app "$(cat app.json)" \
@@ -39,13 +41,20 @@ jobs:
             '{app: ($app | fromjson), themes: ($themes | fromjson)}' \
             > packages/n3o-elements/src/configuration.json
 
+          jq -n \
+            --arg localization "$(cat localization.json)" \
+            '{localization: ($localization | fromjson)}' \
+            > packages/formatter/src/configuration.json
+
       - name: npm install and build
         run: |
-          npm install --legacy-peer-deps
+          npm ci --legacy-peer-deps
           npx turbo build:lib --filter=@n3oltd/n3o-elements
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
+          npm_config_fetch_retry_mintimeout: 30000
+          npm_config_fetch_retries: 5
 
       - name: npm publish
         working-directory: packages/n3o-elements
