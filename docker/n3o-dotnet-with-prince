@@ -74,8 +74,9 @@ RUN sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/
     gdebi \
     fontconfig \
     ttf-mscorefonts-installer \
-    && rm -rf /var/lib/apt/lists/* \
-    && wget https://www.princexml.com/download/$PRINCE_DEB \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://www.princexml.com/download/$PRINCE_DEB \
     && gdebi -n $PRINCE_DEB && rm -r $PRINCE_DEB \
     && mkdir -p /usr/local/lib/prince/license \
     && echo "<license id=\"${PRINCE_LICENSE_ID}\">" >> /usr/local/lib/prince/license/license.dat \
