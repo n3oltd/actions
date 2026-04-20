@@ -20,7 +20,7 @@ jobs:
             ${{ inputs.data-region }}/postgres
       
       - name: setup-dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
 

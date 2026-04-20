@@ -19,10 +19,14 @@ runs:
         version: 'latest'
       id: install
 
-    - name: set kubectl context
-      uses: azure/aks-set-context@v1
+    - name: azure login
+      uses: azure/login@v2
       with:
         creds: '${{ inputs.azure-credentials }}'
+
+    - name: set kubectl context
+      uses: azure/aks-set-context@v3
+      with:
         resource-group: '${{ inputs.resource-group }}'
         cluster-name: '${{ inputs.resource-group }}-kubernetes'
       id: login
