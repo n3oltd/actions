@@ -17,8 +17,8 @@ ARG REACT_APP_LOG_TO_SENTRY
 
 ENV REACT_APP_LOG_TO_SENTRY=${REACT_APP_LOG_TO_SENTRY} \
     REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
-    NODE_OPTIONS=--max-old-space-size=4096 \
-    PUBLIC_URL=/
+    NODE_OPTIONS=--max-old-space-size=4096 
+    
 # Install dependencies
 COPY package.json package-lock.json .npmrc ./
 RUN --mount=type=secret,id=github_token,required=true \
