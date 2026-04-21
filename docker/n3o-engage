@@ -38,8 +38,9 @@ RUN --mount=type=secret,id=github_token,required=true \
 ### runtime
 ########################
 FROM node:14-bullseye-slim AS runtime
-RUN npm install -g serve@14
 WORKDIR /app
+RUN npm install express@4.21.2
+COPY server.js ./
 COPY --from=builder /app/build ./build
 EXPOSE 3000
-CMD ["serve", "--single", "--listen", "tcp:3000", "build"]
+CMD ["node", "server.js"]
