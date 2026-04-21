@@ -2,6 +2,10 @@ name: kubectl-setup
 description: Install and configure kubectl for AKS
 
 inputs:
+  access-token: 
+    description: A valid PAT with suitable permissions
+    required: true
+
   azure-credentials:
     description: Azure Credentials
     required: true
@@ -26,7 +30,7 @@ runs:
     - name: install kubelogin
       uses: azure/use-kubelogin@v1
       env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        GITHUB_TOKEN: '${{ inputs.access-token }}'
       with:
         kubelogin-version: 'latest'
 
