@@ -34,12 +34,12 @@ runs:
       with:
         kubelogin-version: 'latest'
 
-    - name: convert kubeconfig for kubelogin
-      shell: bash
-      run: kubelogin convert-kubeconfig -l azurecli
-
     - name: set kubectl context
       uses: azure/aks-set-context@v3
       with:
         resource-group: '${{ inputs.resource-group }}'
         cluster-name: '${{ inputs.resource-group }}-kubernetes'
+
+    - name: convert kubeconfig for kubelogin
+      shell: bash
+      run: kubelogin convert-kubeconfig -l azurecli
