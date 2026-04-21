@@ -17,19 +17,11 @@ runs:
       uses:  azure/setup-kubectl@v4
       with:
         version: 'latest'
-      id: install
 
     - name: azure login
       uses: azure/login@v2
       with:
         creds: '${{ inputs.azure-credentials }}'
-
-    - name: set kubectl context
-      uses: azure/aks-set-context@v3
-      with:
-        resource-group: '${{ inputs.resource-group }}'
-        cluster-name: '${{ inputs.resource-group }}-kubernetes'
-      id: login
 
     - name: install kubelogin
       uses: azure/use-kubelogin@v1
@@ -39,3 +31,9 @@ runs:
     - name: convert kubeconfig for kubelogin
       shell: bash
       run: kubelogin convert-kubeconfig -l azurecli
+
+    - name: set kubectl context
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: '${{ inputs.resource-group }}'
+        cluster-name: '${{ inputs.resource-group }}-kubernetes'
