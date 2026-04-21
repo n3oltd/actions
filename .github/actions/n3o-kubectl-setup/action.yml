@@ -30,3 +30,12 @@ runs:
         resource-group: '${{ inputs.resource-group }}'
         cluster-name: '${{ inputs.resource-group }}-kubernetes'
       id: login
+
+    - name: install kubelogin
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: 'latest'
+
+    - name: convert kubeconfig for kubelogin
+      shell: bash
+      run: kubelogin convert-kubeconfig -l azurecli
