@@ -7,7 +7,7 @@ on:
         type: string
         required: false
     
-      repository-name:
+      container-repository:
         type: string
         required: true
 
@@ -53,11 +53,11 @@ jobs:
       - id: meta
         name: Set tags
         run: |
-          REPOSITORY_NAME=n3oltd.azurecr.io/${{ inputs.repository-name }}
+          ACR_REPOSITORY=n3oltd.azurecr.io/${{ inputs.container-repository }}
           NOW=$(date +'%Y-%m-%d')
           VERSION="$NOW.${{ github.run_number }}"
-          VERSIONTAG="${REPOSITORY_NAME}:${VERSION}"
-          LATESTTAG="${REPOSITORY_NAME}:latest"
+          VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
+          LATESTTAG="${ACR_REPOSITORY}:latest"
           TAGS="${VERSIONTAG},${LATESTTAG}"
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
