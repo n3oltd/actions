@@ -25,6 +25,11 @@ on:
         type: string
         required: true
 
+      use-prince:
+        type: boolean
+        required: false
+        default: false
+
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
@@ -65,6 +70,30 @@ jobs:
           echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
           echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
 
+      - id: build-args
+        name: prepare build args
+        run: |
+          {
+            echo "args<<EOF"
+            echo "PROJECT=${{ inputs.project-to-build }}"
+            echo "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
+            echo "PAT=${{ env.GH_PAT }}"
+            echo "CONFIGURATION=${{ inputs.build-configuration }}"
+            if [[ "${{ inputs.use-prince }}" == "true" ]]; then
+              echo "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
+              echo "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
+              echo "PRINCE_LICENSE_VENDOR=${{ secrets.PRINCE_LICENSE_VENDOR }}"
+              echo "PRINCE_PRODUCT=${{ secrets.PRINCE_PRODUCT }}"
+              echo "PRINCE_VERSION=${{ secrets.PRINCE_VERSION }}"
+              echo "PRINCE_END_USER=${{ secrets.PRINCE_END_USER }}"
+              echo "PRINCE_DATE=${{ secrets.PRINCE_DATE }}"
+              echo "PRINCE_SIGNATURE=${{ secrets.PRINCE_SIGNATURE }}"
+              echo "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
+              echo "CHPASSWORD=${{ secrets.CHPASSWORD }}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: build and push
         uses: docker/build-push-action@v6
         with:
@@ -72,10 +101,6 @@ jobs:
           context: ./src
           target: final
           file: ${{ inputs.dockerfile }}
-          build-args: |
-            "PROJECT=${{inputs.project-to-build}}"
-            "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
-            "PAT=${{ env.GH_PAT }}"
-            "CONFIGURATION=${{ inputs.build-configuration }}"
+          build-args: ${{ steps.build-args.outputs.args }}
           push: true
           tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}
