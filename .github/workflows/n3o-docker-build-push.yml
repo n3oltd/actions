@@ -3,26 +3,27 @@
 on:
   workflow_call:
     inputs:
-      docker-file:
-        type: string
-        required: true
-        
-      reference-branch:
+      branch:
         type: string
         required: false
         default: 'main'
 
-      web:
+      build-configuration:
+        type: string
+        required: false
+        default: Release
+
+      container-image-name:
         type: string
         required: true
-        
-      web-image-name:
+    
+      dockerfile:
         type: string
-        default: ''
-      
-      configuration:
+        required: true
+
+      project-to-build:
         type: string
-        default: Release
+        required: true
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -36,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.reference-branch }}
+          ref: ${{ inputs.branch }}
 
       - id: buildx
         uses: docker/setup-buildx-action@v3
@@ -51,43 +52,30 @@ jobs:
       - name: fetch dockerfile
         uses: wei/wget@v1
         with:
-          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
-          
-      - name: Set default values for web image name
-        id: set-defaults
-        run: |
-          # Set web-image-name to `web` input if not provided
-          if [[ -z "${{ inputs.web-image-name }}" ]]; then
-            echo "web-image-name=${{ inputs.web }}" >> $GITHUB_ENV
-          else
-            echo "web-image-name=${{ inputs.web-image-name }}" >> $GITHUB_ENV
-          fi
+          args: -O ${{ inputs.dockerfile }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}
 
-      - id: meta-webapi
-        name: prepare web
-        if: inputs.web != ''
+      - id: metadata
+        name: metadata
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ env.web-image-name }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
-          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
+          DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.container-image-name }}
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
           VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
           LATESTTAG="${DOCKER_IMAGE}:latest"
-          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
-          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
+          echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
 
       - name: build and push web
         uses: docker/build-push-action@v6
-        if: inputs.web != ''
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
           target: final
-          file: ${{ inputs.docker-file }}
+          file: ${{ inputs.dockerfile }}
           build-args: |
-            "PROJECT=${{inputs.web}}"
+            "PROJECT=${{inputs.project-to-build}}"
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
-            "CONFIGURATION=${{ inputs.configuration }}"
+            "CONFIGURATION=${{ inputs.build-configuration }}"
           push: true
-          tags: ${{ steps.meta-webapi.outputs.versiontag }} , ${{ steps.meta-webapi.outputs.latesttag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
