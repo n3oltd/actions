@@ -78,4 +78,4 @@ jobs:
             "PAT=${{ env.GH_PAT }}"
             "CONFIGURATION=${{ inputs.build-configuration }}"
           push: true
-          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
+          tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}
