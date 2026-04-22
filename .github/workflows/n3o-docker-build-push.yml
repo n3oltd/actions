@@ -65,7 +65,7 @@ jobs:
           echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
           echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
 
-      - name: build and push web
+      - name: build and push
         uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
