@@ -1,13 +1,27 @@
-﻿name: 'docker-build-push-prince'
+name: 'docker-build-push-prince'
 
 on:
   workflow_call:
     inputs:
-      docker-file:
+      branch:
+        type: string
+        required: false
+        default: 'main'
+
+      build-configuration:
+        type: string
+        required: false
+        default: Release
+
+      container-repository:
         type: string
         required: true
 
-      web:
+      dockerfile:
+        type: string
+        required: true
+
+      project-to-build:
         type: string
         required: true
 
@@ -22,6 +36,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - id: buildx
         uses: docker/setup-buildx-action@v3
@@ -36,33 +52,31 @@ jobs:
       - name: fetch dockerfile
         uses: wei/wget@v1
         with:
-          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
+          args: -O ${{ inputs.dockerfile }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}
 
-      - id: meta-webapi
-        name: prepare web
-        if: inputs.web != ''
+      - id: metadata
+        name: metadata
         run: |
-          DOCKER_IMAGE_NAME=$(echo ${{ inputs.web }} | tr '[:upper:]' '[:lower:]' | tr "." "-" | sed 's/api$//')          
-          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
+          ACR_REPOSITORY=n3oltd.azurecr.io/${{ inputs.container-repository }}
           NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
-          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
-          LATESTTAG="${DOCKER_IMAGE}:latest"
-          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
-          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
+          VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
+          LATESTTAG="${ACR_REPOSITORY}:latest"
+          echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
+          echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
 
       - name: build and push web
         uses: docker/build-push-action@v6
-        if: inputs.web != ''
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
           target: final
-          file: ${{ inputs.docker-file }}
+          file: ${{ inputs.dockerfile }}
           build-args: |
-            "PROJECT=${{inputs.web}}"
+            "PROJECT=${{inputs.project-to-build}}"
             "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             "PAT=${{ env.GH_PAT }}"
+            "CONFIGURATION=${{ inputs.build-configuration }}"
             "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
             "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
             "PRINCE_LICENSE_VENDOR=${{ secrets.PRINCE_LICENSE_VENDOR }}"
@@ -74,4 +88,4 @@ jobs:
             "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
             "CHPASSWORD=${{ secrets.CHPASSWORD }}"
           push: true
-          tags: ${{ steps.meta-webapi.outputs.versiontag }} , ${{ steps.meta-webapi.outputs.latesttag }}
+          tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}
