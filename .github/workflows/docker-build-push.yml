@@ -3,17 +3,17 @@ name: 'docker-build-push'
 on:
   workflow_call:
     inputs:
-      docker-image:
-        type: string
-        required: true
-
-      docker-file:
-        type: string
-        required: true
-
       build-args:
         type: string
         required: false
+    
+      repository-name:
+        type: string
+        required: true
+
+      dockerfile:
+        type: string
+        required: true
 
       working-directory:
         type: string
@@ -48,18 +48,18 @@ jobs:
       - name: Fetch Dockerfile
         uses: wei/wget@v1
         with:
-          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.docker-file }}
+          args: -O ${{ inputs.dockerfile }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}
 
       - id: meta
         name: Set tags
         run: |
-          DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.docker-image }}
+          REPOSITORY_NAME=n3oltd.azurecr.io/${{ inputs.repository-name }}
           NOW=$(date +'%Y-%m-%d')
           VERSION="$NOW.${{ github.run_number }}"
-          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
-          LATESTTAG="${DOCKER_IMAGE}:latest"
+          VERSIONTAG="${REPOSITORY_NAME}:${VERSION}"
+          LATESTTAG="${REPOSITORY_NAME}:latest"
           TAGS="${VERSIONTAG},${LATESTTAG}"
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -67,7 +67,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./${{ inputs.working-directory }}
           target: final
-          file: ${{ inputs.docker-file }}
+          file: ${{ inputs.dockerfile }}
           build-args: ${{ inputs.build-args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
