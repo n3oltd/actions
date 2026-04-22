@@ -1,5 +1,5 @@
 name: kubectl-apply-yaml
-description: Applies the Kubectl Yaml
+description: Applies the Kubectl YAML
 
 inputs:
   namespace:
@@ -25,7 +25,6 @@ runs:
         YAML_CONTENTS: ${{ inputs.yaml }}      
       run: |        
         echo "$YAML_CONTENTS" > secrets.yml
-        cat secrets.yml
         
         if ${{ inputs.replace-yaml }}; then
           echo "Running kubectl replace..."
