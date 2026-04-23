@@ -21,8 +21,8 @@ ENV REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
 
 COPY package.json package-lock.json .npmrc ./
 
-RUN --mount=type=secret,id=github_token,required=false \
-    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null)" \
+RUN --mount=type=secret,id=github_token,required=true \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token)" \
     npm ci
 
 COPY . .
