@@ -15,8 +15,6 @@ on:
         type: string
         required: true
 
-env:
-  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
   build-push-docker-image-job:    
@@ -41,7 +39,7 @@ jobs:
           args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/zeeshanshaheenn3o-patch-1/docker/n3o-engage
           
       - id: meta-fe-engage
-        name: prepare fe engage
+        name: prepare fe-engage
         run: |
           DOCKER_IMAGE_NAME=$(echo ${{ inputs.project }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
