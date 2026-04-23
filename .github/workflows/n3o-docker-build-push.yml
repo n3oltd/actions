@@ -13,11 +13,6 @@ on:
         required: false
         default: ''
 
-      build-configuration:
-        type: string
-        required: false
-        default: Release
-
       container-repository:
         type: string
         required: true
@@ -26,20 +21,10 @@ on:
         type: string
         required: true
 
-      project-to-build:
-        type: string
-        required: false
-        default: ''
-
       secrets:
         type: string
         required: false
         default: ''
-
-      use-prince:
-        type: boolean
-        required: false
-        default: false
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -87,11 +72,9 @@ jobs:
         run: |
           {
             echo "args<<EOF"
-            echo "PROJECT=${{ inputs.project-to-build }}"
             echo "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             echo "PAT=${{ env.GH_PAT }}"
-            echo "CONFIGURATION=${{ inputs.build-configuration }}"
-            if [[ "${{ inputs.use-prince }}" == "true" ]]; then
+            if [[ -n "${{ secrets.PRINCE_LICENSE_ID }}" ]]; then
               echo "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
               echo "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
               echo "PRINCE_LICENSE_VENDOR=${{ secrets.PRINCE_LICENSE_VENDOR }}"
