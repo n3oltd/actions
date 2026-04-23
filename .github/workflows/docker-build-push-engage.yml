@@ -1,5 +1,5 @@
 name: 'docker-build-push-engage'
-
+# todo remove zeeshanshaheenn3o-patch-1 from branches and dockerfile url and replace with variables
 on:
   push:
     branches:
@@ -36,10 +36,10 @@ jobs:
       - name: fetch dockerfile
         uses: wei/wget@v1
         with:
-          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/zeeshanshaheenn3o-patch-1/docker/n3o-engage
+          args: -O ${{ inputs.docker-file }} https://raw.githubusercontent.com/n3oltd/actions/zeeshanshaheenn3o-patch-1/docker/${{ inputs.docker-file }}
           
-      - id: meta-fe-engage
-        name: prepare fe-engage
+      - id: meta-svc-fe-engage
+        name: prepare svc-fe-engage
         run: |
           DOCKER_IMAGE_NAME=$(echo ${{ inputs.project }} | tr '[:upper:]' '[:lower:]' | tr "." "-")
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
@@ -58,7 +58,7 @@ jobs:
           target: final
           file: ${{ inputs.docker-file }}
           push: true
-          tags: ${{ steps.meta-fe-engage.outputs.versiontag }} , ${{ steps.meta-fe-engage.outputs.latesttag }}
+          tags: ${{ steps.meta-svc-fe-engage.outputs.versiontag }} , ${{ steps.meta-svc-fe-engage.outputs.latesttag }}
           build-args: |
             REACT_APP_SENTRY_RELEASE=${{ github.sha }}
             REACT_APP_LOG_TO_SENTRY=true
