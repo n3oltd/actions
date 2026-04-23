@@ -1,5 +1,5 @@
 name: dotnet-push
-description: Push NuGet packages to a private feed
+description: Push NuGet packages to a NuGet feed
 
 inputs:
   access-token: 
