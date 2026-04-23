@@ -83,17 +83,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.azure-credentials }}
 
       - name: Azure CLI script
-        uses: azure/CLI@v1
+        uses: azure/CLI@v2
         with:
-          azcliversion: 2.30.0
+          azcliversion: 2.85.0
           inlineScript: |
             az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
             az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure

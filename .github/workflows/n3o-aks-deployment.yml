@@ -37,6 +37,7 @@ jobs:
       - name: Install and configure kubectl with AKS
         uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
         with:
+          access-token: ${{ secrets.GITHUB_TOKEN }}
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           resource-group: ${{ inputs.data-region }}
 
