@@ -24,6 +24,8 @@ jobs:
 
       - name: Fetch Configuration
         run: |
+          cp -r "subscriptions/${{ inputs.subscription-code }}/build" apps/platforms-app
+
           BASE_URL="https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}"
 
           curl -fSsL -o apps/platforms-app/build/themes.json "$BASE_URL/build/themes.json" &
@@ -44,7 +46,6 @@ jobs:
         run: npm run build:platforms-app
         env:
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
-          VITE_ENVIRONMENT: development
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -116,7 +117,7 @@ jobs:
 
       - name: Sync capacitor plugins
         run: |
-          cp -r "subscriptions/${{ inputs.subscription-code }}/" apps/platforms-app
+          cp -r "subscriptions/${{ inputs.subscription-code }}/assets" apps/platforms-app
 
           npx trapeze run config.yml -y
           npx @capacitor/assets generate \
