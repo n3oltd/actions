@@ -71,9 +71,11 @@ jobs:
           name: app-dist
           path: apps/platforms-app
 
-      - name: Load Environment Variables
+      - name: Load Environment Variables and Setup Assets
         run: |
-          APP_JSON="subscriptions/${{ inputs.subscription-code }}/build/app.json"
+          cp -r "subscriptions/${{ inputs.subscription-code }}/assets" apps/platforms-app
+
+          APP_JSON="apps/platforms-app/build/app.json"
           THEMES_JSON="apps/platforms-app/build/themes.json"
 
           APP_NAME=$(jq -r '.appName' $APP_JSON)
@@ -108,17 +110,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.4"
-          bundler-cache: true
-          working-directory: ${{ env.NATIVE_APP_DIR }}
-
       - name: Sync capacitor plugins
         run: |
-          cp -r "subscriptions/${{ inputs.subscription-code }}/assets" apps/platforms-app
-
           npx trapeze run config.yml -y
           npx @capacitor/assets generate \
             --iconBackgroundColor "${ICON_BG}" \
@@ -126,7 +119,14 @@ jobs:
             --splashBackgroundColor "${SPLASH_BG}" \
             --splashBackgroundColorDark "${SPLASH_BG_DARK}"
           npx cap sync ${{ inputs.platform }}
-        working-directory: ${{ env.NATIVE_APP_DIR }}
+        working-directory: apps/platforms-app
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: ${{ env.NATIVE_APP_DIR }}
 
       - name: Build and Publish for Android
         if: ${{ inputs.platform == 'android' }}
