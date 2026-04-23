@@ -1,5 +1,5 @@
-name: n3o install
-description: Installs the n3o dotnet tool
+name: n3o-cli install
+description: Installs the n3o-cli tool
 
 inputs:
   access-token:

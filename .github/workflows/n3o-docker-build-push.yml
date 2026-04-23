@@ -21,6 +21,11 @@ on:
         type: string
         required: true
 
+      context:
+        type: string
+        required: false
+        default: './src'
+
       secrets:
         type: string
         required: false
@@ -96,7 +101,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ./src
+          context: ${{ inputs.context }}
           target: final
           file: ${{ inputs.dockerfile }}
           build-args: ${{ steps.build-args.outputs.args }}
