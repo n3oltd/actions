@@ -27,6 +27,16 @@ on:
         type: boolean
         default: false
 
+      version-strategy:
+        type: string
+        default: tag
+        # 'tag': version from git tag (refs/tags/v*), fallback 1.0.0
+        # 'date': date-based version (YYYY.M.D.run_number)
+
+      nuget-source:
+        type: string
+        default: 'https://api.nuget.org/v3/index.json'
+
     secrets:
       nuget-api-key:
         required: false
@@ -51,9 +61,14 @@ jobs:
       - id: prepare
         name: Set version
         run: |
-          VERSION=1.0.0
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
+          if [ "${{ inputs.version-strategy }}" = "date" ]; then
+            NOW=$(date +'%Y.%-m.%-d')
+            VERSION="$NOW.${{ github.run_number }}"
+          else
+            VERSION=1.0.0
+            if [[ $GITHUB_REF == refs/tags/* ]]; then
+              VERSION=${GITHUB_REF#refs/tags/v}
+            fi
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
@@ -73,4 +88,4 @@ jobs:
 
       - name: dotnet nuget push
         if: ${{ inputs.run-pack }}
-        run: dotnet nuget push "**/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate
+        run: dotnet nuget push "**/*.nupkg" --source "${{ inputs.nuget-source }}" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate
