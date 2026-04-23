@@ -8,6 +8,11 @@ on:
         required: false
         default: 'main'
 
+      build-args:
+        type: string
+        required: false
+        default: ''
+
       build-configuration:
         type: string
         required: false
@@ -16,14 +21,20 @@ on:
       container-repository:
         type: string
         required: true
-    
+
       dockerfile:
         type: string
         required: true
 
       project-to-build:
         type: string
-        required: true
+        required: false
+        default: ''
+
+      secrets:
+        type: string
+        required: false
+        default: ''
 
       use-prince:
         type: boolean
@@ -32,6 +43,7 @@ on:
 
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
 jobs:
   job1:
@@ -91,6 +103,9 @@ jobs:
               echo "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
               echo "CHPASSWORD=${{ secrets.CHPASSWORD }}"
             fi
+            if [[ -n "${{ inputs.build-args }}" ]]; then
+              echo "${{ inputs.build-args }}"
+            fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -102,5 +117,9 @@ jobs:
           target: final
           file: ${{ inputs.dockerfile }}
           build-args: ${{ steps.build-args.outputs.args }}
+          secrets: |
+            id=github_token,env=GH_PAT
+            id=sentry_auth_token,env=SENTRY_AUTH_TOKEN
+            ${{ inputs.secrets }}
           push: true
           tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}

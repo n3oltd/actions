@@ -1,0 +1,52 @@
+########################
+### base
+########################
+FROM node:14-bullseye-slim AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM base AS builder
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG REACT_APP_SENTRY_RELEASE
+
+ENV REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
+    NODE_OPTIONS=--max-old-space-size=4096
+
+COPY package.json package-lock.json .npmrc ./
+
+RUN --mount=type=secret,id=github_token,required=false \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null)" \
+    npm ci
+
+COPY . .
+
+ENV NODE_ENV=production
+
+RUN --mount=type=secret,id=github_token,required=false \
+    --mount=type=secret,id=sentry_auth_token,required=false \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null)" \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null)" \
+    npm run build
+
+########################
+### final
+########################
+FROM node:latest AS final
+
+WORKDIR /app
+
+RUN npm install express@latest
+
+COPY --from=builder /app/build ./build
+COPY server.js ./
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
