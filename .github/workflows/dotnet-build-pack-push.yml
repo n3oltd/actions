@@ -37,6 +37,10 @@ on:
         type: string
         default: 'https://api.nuget.org/v3/index.json'
 
+      version-suffix:
+        type: string
+        default: ''
+
     secrets:
       nuget-api-key:
         required: false
@@ -69,6 +73,9 @@ jobs:
             if [[ $GITHUB_REF == refs/tags/* ]]; then
               VERSION=${GITHUB_REF#refs/tags/v}
             fi
+          fi
+          if [ -n "${{ inputs.version-suffix }}" ]; then
+            VERSION="$VERSION-${{ inputs.version-suffix }}"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
