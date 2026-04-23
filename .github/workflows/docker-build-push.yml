@@ -33,13 +33,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to ACR
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           registry: n3oltd.azurecr.io
           username: ${{ secrets.acr-username }}
@@ -55,13 +55,14 @@ jobs:
         run: |
           DOCKER_IMAGE=n3oltd.azurecr.io/${{ inputs.docker-image }}
           NOW=$(date +'%Y-%m-%d')
-          SHA=$(git rev-parse --short HEAD)
-          VERSION="$NOW-$SHA"
-          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:edge,${DOCKER_IMAGE}:latest"
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          VERSION="$NOW.${{ github.run_number }}"
+          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
+          LATESTTAG="${DOCKER_IMAGE}:latest"
+          TAGS="${VERSIONTAG},${LATESTTAG}"
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT          
 
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./${{ inputs.working-directory }}

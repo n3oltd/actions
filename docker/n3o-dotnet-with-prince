@@ -1,14 +1,14 @@
 ﻿########################
 ### base
 ########################
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
 
 WORKDIR /app
 
 ########################
 ### build
 ########################
-FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 
 ARG FEED_URL
 ARG PAT
@@ -90,7 +90,7 @@ RUN chmod +x /dotnet-tools/dotnet-*
 ENV PATH="/dotnet-tools:$PATH"
 
 RUN apt-get clean
-ENV PRINCE=prince_16-1_ubuntu24.04_amd64
+ENV PRINCE=prince_16.2-1_ubuntu24.04_amd64
 ENV PRINCE_DEB=$PRINCE.deb
 RUN wget https://www.princexml.com/download/$PRINCE_DEB && gdebi -n $PRINCE_DEB && rm -r $PRINCE_DEB
 RUN mkdir -p /usr/local/lib/prince/license

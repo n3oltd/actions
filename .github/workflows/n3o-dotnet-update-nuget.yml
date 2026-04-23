@@ -18,9 +18,9 @@ jobs:
     
     steps:
       - name: setup-dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: '10.x'
           
       - name: n3o-tool-install
         uses: n3oltd/actions/.github/actions/n3o-dotnet-tool-install@main

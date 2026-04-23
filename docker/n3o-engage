@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1.7
+########################
+### base
+########################
+FROM node:14-bullseye-slim AS base
+########################
+### build
+########################
+FROM base AS builder
+
+WORKDIR /app
+ARG REACT_APP_REGION_PREFIX=eu1
+ARG REACT_APP_SENTRY_RELEASE
+ARG REACT_APP_LOG_TO_SENTRY
+ENV CI=true \
+    REACT_APP_LOG_TO_SENTRY=${REACT_APP_LOG_TO_SENTRY} \
+    REACT_APP_REGION_PREFIX=${REACT_APP_REGION_PREFIX} \
+    REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
+    NODE_OPTIONS=--max-old-space-size=4096 \
+    PUBLIC_URL=/eu1
+# Install dependencies
+COPY package.json package-lock.json .npmrc ./
+RUN --mount=type=secret,id=github_token,required=true \
+    sh -lc 'export GITHUB_TOKEN="$(cat /run/secrets/github_token)" && npm ci'
+# Copy source
+COPY . .
+ENV NODE_ENV=production 
+# Build app (needs both secrets)
+RUN --mount=type=secret,id=github_token,required=true \
+    --mount=type=secret,id=sentry_auth_token,required=true \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token)" \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
+    npm run build
+
+########################
+### runtime
+########################
+FROM node:14-bullseye-slim AS runtime
+RUN npm install -g serve@14
+WORKDIR /app
+COPY --from=builder /app/build ./build
+EXPOSE 3000
+CMD ["serve", "--single", "--listen", "tcp:3000", "build"]

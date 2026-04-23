@@ -20,9 +20,9 @@ jobs:
             ${{ inputs.data-region }}/postgres
       
       - name: setup-dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: '10.x'
 
       - id: get-deployment-version
         name: Get Deployment Version
@@ -63,6 +63,7 @@ jobs:
         with:
           file-name: postgresSecretsDecrypted.yaml
           working-directory: ${{ inputs.data-region }}/postgres/${{ steps.get-deployment-version.outputs.deploymentVersion }}
+          replace-yaml: false
             
       - name: Apply YAML files to cluster
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-files@main
