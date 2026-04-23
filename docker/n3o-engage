@@ -35,9 +35,9 @@ RUN --mount=type=secret,id=github_token,required=true \
     npm run build
 
 ########################
-### runtime
+### final
 ########################
-FROM node:14-bullseye-slim AS runtime
+FROM node:14-bullseye-slim AS final
 WORKDIR /app
 RUN npm install express@4.22.1
 COPY --from=builder /app/build ./build
