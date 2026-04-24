@@ -1,4 +1,4 @@
-﻿name: dotnet build, pack and push
+77u/name: dotnet build, pack and push
 
 on:
   workflow_call:
@@ -50,6 +50,8 @@ jobs:
 
       - name: n3o cli install
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+        with:
+          access-token: ${{ env.GH_PAT }}
 
       - name: n3o cli prepack
         uses: n3oltd/actions/.github/actions/n3o-cli-prepack@main
