@@ -23,4 +23,4 @@ runs:
       shell: bash
       run: |
         dotnet new tool-manifest
-        dotnet tool install --no-cache n3o
+        dotnet tool install --no-cache n3o --configfile ${{ inputs.working-directory }}/NuGet.Config
