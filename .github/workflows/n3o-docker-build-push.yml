@@ -106,8 +106,8 @@ jobs:
           file: ${{ inputs.dockerfile }}
           build-args: ${{ steps.build-args.outputs.args }}
           secrets: |
-            id=github_token,env=GH_PAT
-            id=sentry_auth_token,env=SENTRY_AUTH_TOKEN
+            github_token=${{ env.GH_PAT }}
+            sentry_auth_token=${{ env.SENTRY_AUTH_TOKEN }}
             ${{ inputs.secrets }}
           push: true
           tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}
