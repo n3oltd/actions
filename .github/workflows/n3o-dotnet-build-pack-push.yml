@@ -52,6 +52,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
           access-token: ${{ env.GH_PAT }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: n3o cli prepack
         uses: n3oltd/actions/.github/actions/n3o-cli-prepack@main
