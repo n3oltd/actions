@@ -5,17 +5,23 @@ inputs:
   access-token:
     description: access token for the nuget source
     required: true
+  working-directory:
+    description: working directory containing the nuget.config
+    required: false
+    default: src
 
 runs:
   using: "composite"
   steps:
     - name: Add Github source credentials to nuget.config
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         dotnet nuget update source n3oltd -u n3oltd -p ${{inputs.access-token}} --store-password-in-clear-text
 
     - name: dotnet tool install n3o
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: |
         dotnet new tool-manifest
-        dotnet tool install --no-cache n3o 
+        dotnet tool install --no-cache n3o
