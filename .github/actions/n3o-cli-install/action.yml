@@ -21,7 +21,6 @@ runs:
 
     - name: dotnet tool install n3o
       shell: bash
-      working-directory: ${{ inputs.working-directory }}
       run: |
         dotnet new tool-manifest
         dotnet tool install --no-cache n3o
