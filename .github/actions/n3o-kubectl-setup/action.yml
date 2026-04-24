@@ -18,24 +18,24 @@ runs:
   using: "composite"
   steps:
     - name: install kubectl
-      uses:  azure/setup-kubectl@v4
+      uses:  azure/setup-kubectl@v5
       with:
         version: 'latest'
 
     - name: azure login
-      uses: azure/login@v2
+      uses: azure/login@v3
       with:
         creds: '${{ inputs.azure-credentials }}'
 
     - name: install kubelogin
-      uses: azure/use-kubelogin@v1
+      uses: azure/use-kubelogin@v1.3
       env:
         GITHUB_TOKEN: '${{ inputs.access-token }}'
       with:
         kubelogin-version: 'latest'
 
     - name: set kubectl context
-      uses: azure/aks-set-context@v3
+      uses: azure/aks-set-context@v5
       with:
         resource-group: '${{ inputs.resource-group }}'
         cluster-name: '${{ inputs.resource-group }}-kubernetes'
