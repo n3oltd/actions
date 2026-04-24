@@ -1,4 +1,4 @@
-77u/name: dotnet build, pack and push
+﻿name: dotnet build, pack and push
 
 on:
   workflow_call:
