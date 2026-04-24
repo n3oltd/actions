@@ -1,5 +1,5 @@
-name: n3o-dotnet-tool install
-description: Installs the n3o-cli tool
+name: n3o-tool install
+description: Installs the n3o tool
 
 inputs:
   gh-packages-token:
