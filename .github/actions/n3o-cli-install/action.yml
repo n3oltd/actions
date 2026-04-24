@@ -13,14 +13,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Add Github source credentials to nuget.config
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      run: |
-        dotnet nuget update source n3oltd -u n3oltd -p ${{inputs.access-token}} --store-password-in-clear-text
-
     - name: dotnet tool install n3o
       shell: bash
+      env:
+        GH_USERNAME: n3oltd
+        GH_PAT: ${{ inputs.access-token }}
       run: |
         dotnet new tool-manifest
         dotnet tool install --no-cache n3o --configfile ${{ inputs.working-directory }}/NuGet.Config

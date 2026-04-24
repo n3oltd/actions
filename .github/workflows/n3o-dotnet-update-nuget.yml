@@ -30,7 +30,9 @@ jobs:
       
       - name: update-nuget-packages
         env:
-          GH_TOKEN: ${{ secrets.GH_REPO_PACKAGES_TOKEN }} 
+          GH_TOKEN: ${{ secrets.GH_REPO_PACKAGES_TOKEN }}
+          GH_USERNAME: ${{ secrets.GH_PACKAGES_NUGET_USERNAME }}
+          GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
           git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
@@ -44,7 +46,6 @@ jobs:
 
             (
               cd "$service/src"
-              dotnet nuget update source n3oltd -u n3oltd -p ${{ secrets.GH_PACKAGES_TOKEN }} --store-password-in-clear-text --configfile ./NuGet.Config
               git config user.name "N3O Bot"
               git config user.email "no-reply@n3o.ltd"
               
