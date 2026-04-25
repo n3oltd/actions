@@ -57,18 +57,19 @@ jobs:
           azcliversion: 2.85.0
           inlineScript: |
             az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_CLIENT_ID="${{ env.client_id }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_CLIENT_SECRET="${{ env.client_secret }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_COOKIE_SECRET="${{ env.cookie_secret }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_FOOTER="Copyright © N3O Ltd"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO="https://n3oltd.blob.core.windows.net/public-assets/logos/logo.svg"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_EMAIL_DOMAINS="${{ env.email_domains }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_PROVIDER="azure"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_AZURE_TENANT_ID="${{ env.tenant_id }}"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_OIDC_ISSUER_URL="https://login.microsoftonline.com/${{ env.tenant_id }}/v2.0"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_REVERSE_PROXY="1"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings OAUTH2_PROXY_REAL_CLIENT_IP_HEADER="X-Forwarded-For"
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings WEBSITES_PORT="8080"
+            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings \
+              OAUTH2_PROXY_CLIENT_ID="${{ env.client_id }}" \
+              OAUTH2_PROXY_CLIENT_SECRET="${{ env.client_secret }}" \
+              OAUTH2_PROXY_COOKIE_SECRET="${{ env.cookie_secret }}" \
+              OAUTH2_PROXY_FOOTER="Copyright © N3O Ltd" \
+              OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO="https://n3oltd.blob.core.windows.net/public-assets/logos/logo.svg" \
+              OAUTH2_PROXY_EMAIL_DOMAINS="${{ env.email_domains }}" \
+              OAUTH2_PROXY_PROVIDER="azure" \
+              OAUTH2_PROXY_AZURE_TENANT_ID="${{ env.tenant_id }}" \
+              OAUTH2_PROXY_OIDC_ISSUER_URL="https://login.microsoftonline.com/${{ env.tenant_id }}/v2.0" \
+              OAUTH2_PROXY_REVERSE_PROXY="1" \
+              OAUTH2_PROXY_REAL_CLIENT_IP_HEADER="X-Forwarded-For" \
+              WEBSITES_PORT="8080"
             az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
         env:
           app_name: "${{ inputs.site-name }}"
