@@ -33,7 +33,7 @@ jobs:
       - name: kubectl Setup
         uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
         with:
-          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          access-token: ${{ secrets.GH_PAT }}
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           resource-group: ${{ inputs.data-region }}
           

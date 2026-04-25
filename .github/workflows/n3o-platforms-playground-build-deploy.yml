@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 env:
-  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+  GH_PAT: ${{ secrets.GH_PAT }}
 
 jobs:
   job1:

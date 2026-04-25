@@ -32,7 +32,7 @@ on:
         default: src
         
 env:
-  GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+  GH_PAT: ${{ secrets.GH_PAT }}
 
 jobs:
   build:
@@ -80,7 +80,7 @@ jobs:
       - name: dotnet push
         uses: n3oltd/actions/.github/actions/dotnet-push@main
         with:
-          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          access-token: ${{ secrets.GH_PAT }}
           projects: ${{ inputs.nuget-packages }}
           working-directory: ${{ inputs.working-directory }}
 
@@ -89,5 +89,5 @@ jobs:
         uses: n3oltd/actions/.github/actions/npm-publish@main
         with:
           package-directories: ${{ inputs.npm-packages }}
-          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          access-token: ${{ secrets.GH_PAT }}
           version-suffix: ${{ inputs.version-suffix }}

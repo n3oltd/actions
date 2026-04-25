@@ -25,13 +25,13 @@ jobs:
       - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          access-token: ${{ secrets.GH_PAT }}
       
       - name: update-nuget-packages
         env:
-          GH_TOKEN: ${{ secrets.GH_REPO_PACKAGES_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           GH_USERNAME: ${{ secrets.GH_PACKAGES_NUGET_USERNAME }}
-          GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
 
