@@ -35,7 +35,7 @@ jobs:
         working-directory: ${{ inputs.data-region }}/platforms-js/${{ inputs.environment-id }}/latest
         run: |
           packageVersion=$(jq -r '.packageVersion' metadata.json)
-          echo "packageVersion=packageVersion" >> $GITHUB_OUTPUT
+          echo "packageVersion=$packageVersion" >> $GITHUB_OUTPUT
     
       - name: install platforms package
         run: |
@@ -44,22 +44,11 @@ jobs:
           echo '{}' > package.json
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PACKAGES_TOKEN }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-          npm install "@n3oltd/platforms-js-${{ inputs.subscription-code }}@${{ steps.latest-json-metadata.outputs.deploymentVersion }}"
+          npm install "@n3oltd/platforms-js-${{ inputs.subscription-code }}@${{ steps.latest-json-metadata.outputs.packageVersion }}"
           
-      - name: Fetch config.json (Production)
-        if: ${{ inputs.environment-id == 'prod' }}
+      - name: Copy config.json
         run: |
-          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.prod.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
-          
-      - name: Copy config.json (QA)
-        if: ${{ inputs.environment-id == 'qa' }}
-        run: |
-          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.qa.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
-
-      - name: Copy config.json (Staging)
-        if: ${{ inputs.environment-id == 'staging' }}
-        run: |
-          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.staging.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
+          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.${{ inputs.environment-id }}.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
 
       - name: Azure Login
         uses: azure/login@v3
