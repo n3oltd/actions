@@ -71,4 +71,3 @@ jobs:
           build-args: ${{ inputs.build-args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
