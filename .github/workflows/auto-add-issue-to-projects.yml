@@ -12,7 +12,7 @@ jobs:
       - name: Add assignees to their projects
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.AUTOMATION_WORKFLOWS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           ASSIGNEES_JSON: ${{ toJson(github.event.issue.assignees) }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
         run: |

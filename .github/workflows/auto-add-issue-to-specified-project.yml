@@ -16,4 +16,4 @@ jobs:
         uses: actions/add-to-project@v1.0.2
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/${{ inputs.project-number }}'
-          github-token: ${{ secrets.AUTOMATION_WORKFLOWS_TOKEN }}
+          github-token: ${{ secrets.GH_PAT }}
