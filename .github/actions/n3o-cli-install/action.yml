@@ -13,4 +13,5 @@ runs:
       shell: bash
       run: |
         dotnet new tool-manifest
-        dotnet tool install --no-cache n3o --add-source https://nuget.pkg.github.com/n3oltd/index.json --username n3oltd --password ${{ inputs.access-token }}
+        dotnet nuget add source https://nuget.pkg.github.com/n3oltd/index.json --name n3oltd --username n3oltd --password ${{ inputs.access-token }} --store-password-in-clear-text
+        dotnet tool install --no-cache n3o
