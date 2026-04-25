@@ -48,7 +48,7 @@ jobs:
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-dist
           path: |
@@ -66,7 +66,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-dist
           path: apps/platforms-app
