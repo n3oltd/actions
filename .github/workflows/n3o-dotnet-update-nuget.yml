@@ -30,6 +30,9 @@ jobs:
       - name: update-nuget-packages
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
         run: |
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
 
