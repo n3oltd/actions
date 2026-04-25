@@ -6,13 +6,17 @@ inputs:
     description: The build configuration to run
     default: Release
 
+    projects:
+    description: The list of projects to pack as a JSON array
+    required: true
+
+  set-assembly-version:
+    description: Whether to set AssemblyVersion and FileVersion to match the package version
+    default: 'false'
+
   version-suffix:
     description: The Suffix to add to the package version
     default: ''
-  
-  projects:
-    description: The list of projects to pack as a JSON array
-    required: true
 
   working-directory:
     description: "The working directory"
@@ -33,5 +37,9 @@ runs:
         do
           echo "Packing: $project"
           csProj=$(find . -path \*$project/$project.csproj)
-          dotnet pack --configuration "${{inputs.build-configuration}}" "$csProj" /p:PackageVersion=$version 
+          assembly_version_args=""
+          if [ "${{ inputs.set-assembly-version }}" = "true" ]; then
+            assembly_version_args="/p:AssemblyVersion=$version /p:FileVersion=$version"
+          fi
+          dotnet pack --configuration "${{inputs.build-configuration}}" "$csProj" /p:PackageVersion=$version $assembly_version_args
         done

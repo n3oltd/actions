@@ -18,13 +18,18 @@ on:
         required: true
         type: string
 
-      working-directory:
-        type: string
-        default: src
-      
+      set-assembly-version:
+        description: Whether to set AssemblyVersion and FileVersion to match the package version
+        type: boolean
+        default: false
+
       version-suffix:
         type: string
         default: ''
+
+      working-directory:
+        type: string
+        default: src
         
 env:
   GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -66,10 +71,11 @@ jobs:
       - name: dotnet pack
         uses: n3oltd/actions/.github/actions/dotnet-pack@main
         with:
-          projects: ${{ inputs.nuget-packages }}
           build-configuration: ${{ inputs.build-configuration }}
-          working-directory: ${{ inputs.working-directory }}
+          projects: ${{ inputs.nuget-packages }}
+          set-assembly-version: ${{ inputs.set-assembly-version }}
           version-suffix: ${{ inputs.version-suffix }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: dotnet push
         uses: n3oltd/actions/.github/actions/dotnet-push@main
