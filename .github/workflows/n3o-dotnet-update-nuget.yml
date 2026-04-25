@@ -29,8 +29,6 @@ jobs:
       
       - name: update-nuget-packages
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          GH_USERNAME: ${{ secrets.GH_PACKAGES_NUGET_USERNAME }}
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
