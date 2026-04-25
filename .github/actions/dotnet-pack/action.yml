@@ -6,7 +6,7 @@ inputs:
     description: The build configuration to run
     default: Release
 
-    projects:
+  projects:
     description: The list of projects to pack as a JSON array
     required: true
 
