@@ -41,7 +41,7 @@ jobs:
           echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV          
 
       - name: Azure CLI script
-        uses: azure/CLI@v2
+        uses: azure/CLI@v3
         with:
           azcliversion: 2.85.0
           inlineScript: |

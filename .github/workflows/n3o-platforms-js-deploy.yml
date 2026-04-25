@@ -80,7 +80,7 @@ jobs:
           fi
 
       - name: Azure CLI script
-        uses: azure/CLI@v2
+        uses: azure/CLI@v3
         with:
           azcliversion: 2.85.0
           inlineScript: |
