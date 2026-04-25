@@ -33,7 +33,7 @@ jobs:
           GH_USERNAME: ${{ secrets.GH_PACKAGES_NUGET_USERNAME }}
           GH_PAT: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
 
           services=$(echo '${{ inputs.services-list }}' | jq -c -r '.[]')
 
