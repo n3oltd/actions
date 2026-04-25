@@ -53,7 +53,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: install-n3o-cli
+      - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
           access-token: ${{ env.GH_PAT }}

@@ -38,7 +38,7 @@ jobs:
           secretName=$(jq -r '.secretName' metadata.json)
           echo "secretName=$secretName" >> $GITHUB_OUTPUT 
           
-      - name: install-n3o-cli
+      - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
           access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
