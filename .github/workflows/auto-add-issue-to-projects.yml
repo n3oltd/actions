@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: nadrummond
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'nadrummond')
@@ -18,7 +18,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: aminjafer-n3o
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'aminjafer-n3o')
@@ -27,7 +27,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: ahmadn3o
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'ahmadn3o')
@@ -36,7 +36,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: AqsaDeen
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'AqsaDeen')
@@ -45,7 +45,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: haseeb5i
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'haseeb5i')
@@ -54,7 +54,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: Rahimullah-Shaheen
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'Rahimullah-Shaheen')
@@ -63,7 +63,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: RehanSalim-N3O
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'RehanSalim-N3O')
@@ -72,7 +72,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: ShaguftaN3O
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'ShaguftaN3O')
@@ -81,7 +81,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: shakeebqayum
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'shakeebqayum')
@@ -90,7 +90,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
           
       - name: sirajurrahmann
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'sirajurrahmann')
@@ -99,7 +99,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: talhamalik4025
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'talhamalik4025')
@@ -108,7 +108,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: waheed-n3o
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'waheed-n3o')
@@ -117,7 +117,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: zeeshanshaheenn3o
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'zeeshanshaheenn3o')
@@ -126,7 +126,7 @@ jobs:
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
 
       - name: zuhaib1996
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         if: |
           github.event.action == 'assigned' &&
           contains(github.event.issue.assignees.*.login, 'zuhaib1996')

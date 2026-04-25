@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign to Specified Project
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@v1.0.2
         with:
           project-url: 'https://github.com/orgs/n3oltd/projects/${{ inputs.project-number }}'
           github-token: ${{ secrets.AUTOMATION_WORFLOWS_TOKEN }}
