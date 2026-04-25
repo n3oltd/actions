@@ -38,11 +38,10 @@ jobs:
           secretName=$(jq -r '.secretName' metadata.json)
           echo "secretName=$secretName" >> $GITHUB_OUTPUT 
           
-      - name: n3o install
-        uses: n3oltd/actions/.github/actions/n3o-dotnet-tool-install@main
+      - name: install-n3o-cli
+        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          gh-packages-token: ${{ secrets.GH_PACKAGES_TOKEN }}
-          gh-packages-user: ${{ secrets.GH_PACKAGES_NUGET_USERNAME }}
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
           
       - name: Install and configure kubectl with AKS
         uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
