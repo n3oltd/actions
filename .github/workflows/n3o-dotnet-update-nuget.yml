@@ -25,8 +25,7 @@ jobs:
       - name: n3o-cli-install
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          gh-packages-token: ${{ secrets.GH_PACKAGES_TOKEN }}
-          gh-packages-user: ${{ secrets.GH_PACKAGES_NUGET_USERNAME }}
+          access-token: ${{ secrets.GH_PACKAGES_TOKEN }}
       
       - name: update-nuget-packages
         env:
@@ -60,4 +59,3 @@ jobs:
               fi
             )
           done
-      
