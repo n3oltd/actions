@@ -8,7 +8,7 @@ on:
         default: src
       
       repos:
-        description: List of services to process
+        description: List of repos to process
         required: true
         type: string
         
