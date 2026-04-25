@@ -33,19 +33,19 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
 
-          services=$(echo '${{ inputs.repos }}' | jq -c -r '.[]')
+          repos=$(echo '${{ inputs.repos }}' | jq -c -r '.[]')
 
-          for service in $services; do
-            echo "Processing $service..."
+          for repo in $repos; do
+            echo "Processing $repo..."
 
-            mkdir -p "$service"
-            git clone "https://github.com/n3oltd/$service.git" "$service"
+            mkdir -p "$repo"
+            git clone "https://github.com/n3oltd/$repo.git" "$repo"
 
             (
-              cd "$service/src"
+              cd "$repo/src"
               git config user.name "N3O Bot"
               git config user.email "no-reply@n3o.ltd"
-              
+
               dotnet tool run n3o nuget upgrade-our-packages
 
               if [ -n "$(git status --porcelain)" ]; then
@@ -53,7 +53,7 @@ jobs:
                 git commit -m "Upgraded NuGet packages"
                 git push origin main
               else
-                echo "No package updates found for $service"
+                echo "No package updates found for $repo"
               fi
             )
           done
