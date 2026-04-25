@@ -7,7 +7,7 @@ on:
         type: string
         default: src
       
-      services-list:
+      repos:
         description: List of services to process
         required: true
         type: string
@@ -35,7 +35,7 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
 
-          services=$(echo '${{ inputs.services-list }}' | jq -c -r '.[]')
+          services=$(echo '${{ inputs.repos }}' | jq -c -r '.[]')
 
           for service in $services; do
             echo "Processing $service..."
