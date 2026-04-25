@@ -62,7 +62,7 @@ jobs:
           cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.staging.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds:  ${{ secrets.AZURE_CREDENTIALS }}
 
