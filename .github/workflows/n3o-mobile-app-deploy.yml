@@ -31,9 +31,9 @@ jobs:
         working-directory:  mobile-apps/${{ inputs.app-id }}/${{ inputs.environment-id }}/latest
         run: |
           bundleName=$(jq -r '.bundleName' metadata.json)
-          echo "bundleName=bundleName" >> $GITHUB_OUTPUT
+          echo "bundleName=$bundleName" >> $GITHUB_OUTPUT
       
       - name: Set Capgo channel
         run:
-          npx @capgo/cli@latest channel set ${{ inputs.environment-id }} ${{ inputs.app-id }} --bundle ${{ steps.step_id.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
+          npx @capgo/cli@latest channel set ${{ inputs.environment-id }} ${{ inputs.app-id }} --bundle ${{ steps.latest-json-metadata.outputs.bundleName }} --apikey=${{ secrets.CAPGO_API_KEY_UPLOAD }}
           
