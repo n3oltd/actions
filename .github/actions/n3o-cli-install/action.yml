@@ -5,37 +5,12 @@ inputs:
   access-token:
     description: access token for the nuget source
     required: true
-  working-directory:
-    description: working directory containing the nuget.config
-    required: false
-    default: src
 
 runs:
   using: "composite"
   steps:
     - name: dotnet tool install n3o
       shell: bash
-      env:
-        GH_USERNAME: n3oltd
-        GH_PAT: ${{ inputs.access-token }}
       run: |
-        mkdir -p ${{ inputs.working-directory }}
-        if [ ! -f ${{ inputs.working-directory }}/NuGet.Config ]; then
-          cat > ${{ inputs.working-directory }}/NuGet.Config <<NUGET
-        <?xml version="1.0" encoding="utf-8"?>
-        <configuration>
-           <packageSources>
-              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
-              <add key="n3oltd" value="https://nuget.pkg.github.com/n3oltd/index.json" protocolVersion="3" />
-           </packageSources>
-           <packageSourceCredentials>
-              <n3oltd>
-                 <add key="Username" value="%GH_USERNAME%" />
-                 <add key="ClearTextPassword" value="%GH_PAT%" />
-              </n3oltd>
-           </packageSourceCredentials>
-        </configuration>
-        NUGET
-        fi
         dotnet new tool-manifest
-        dotnet tool install --no-cache n3o --configfile ${{ inputs.working-directory }}/NuGet.Config
+        dotnet tool install --no-cache n3o --add-source https://nuget.pkg.github.com/n3oltd/index.json --username n3oltd --password ${{ inputs.access-token }}
