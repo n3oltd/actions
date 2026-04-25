@@ -60,7 +60,7 @@ jobs:
           echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
 
       - name: build and push web server
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./src
