@@ -91,7 +91,10 @@ jobs:
 
       - name: dotnet pack
         if: ${{ inputs.run-pack }}
-        run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore --no-build /property:Version=${{ steps.prepare.outputs.VERSION }}
+        # --no-build must NOT be used here: dotnet pack must rebuild the DLL so that
+        # /property:Version is baked into the binary. Using --no-build only updates the
+        # .nuspec metadata and leaves the DLL at its default version (1.0.0.0)
+        run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }}
 
       - name: dotnet nuget push
         if: ${{ inputs.run-pack }}
