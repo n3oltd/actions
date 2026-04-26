@@ -37,7 +37,7 @@ runs:
             if [ "${{ inputs.version-suffix }}" != "" ];then
               npm publish --tag=${{ inputs.version-suffix }}  
             else
-              npm publish 
+              npm publish --tag=latest
             fi )
         done
       working-directory: ${{github.workspace}}
