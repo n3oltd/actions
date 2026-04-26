@@ -41,5 +41,5 @@ runs:
           if [ "${{ inputs.set-assembly-version }}" = "true" ]; then
             assembly_version_args="/p:AssemblyVersion=$version /p:FileVersion=$version"
           fi
-          dotnet pack --configuration "${{inputs.build-configuration}}" "$csProj" /p:PackageVersion=$version $assembly_version_args
+          dotnet pack --configuration "${{inputs.build-configuration}}" --no-restore --no-build "$csProj" /p:PackageVersion=$version $assembly_version_args
         done

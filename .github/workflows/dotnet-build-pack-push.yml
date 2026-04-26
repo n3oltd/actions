@@ -91,7 +91,7 @@ jobs:
 
       - name: dotnet pack
         if: ${{ inputs.run-pack }}
-        run: dotnet pack --configuration ${{ inputs.build-configuration }} /property:Version=${{ steps.prepare.outputs.VERSION }}
+        run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore --no-build /property:Version=${{ steps.prepare.outputs.VERSION }}
 
       - name: dotnet nuget push
         if: ${{ inputs.run-pack }}
