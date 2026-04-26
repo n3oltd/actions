@@ -41,5 +41,8 @@ runs:
           if [ "${{ inputs.set-assembly-version }}" = "true" ]; then
             assembly_version_args="/p:AssemblyVersion=$version /p:FileVersion=$version"
           fi
-          dotnet pack --configuration "${{inputs.build-configuration}}" --no-restore --no-build "$csProj" /p:PackageVersion=$version $assembly_version_args
+          # --no-build must NOT be used here: dotnet pack must rebuild the DLL so that
+          # /p:AssemblyVersion and /p:FileVersion are baked into the binary. Using --no-build
+          # only updates the .nuspec metadata and leaves the DLL at its default version (1.0.0.0)
+          dotnet pack --configuration "${{inputs.build-configuration}}" --no-restore "$csProj" /p:PackageVersion=$version $assembly_version_args
         done
