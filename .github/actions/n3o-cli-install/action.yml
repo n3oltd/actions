@@ -5,11 +5,24 @@ inputs:
   access-token:
     description: access token for the nuget source
     required: true
+  azure-client-id:
+    description: Azure client id for key vault access
+    required: true
+  azure-client-secret:
+    description: Azure client secret for key vault access
+    required: true
+  azure-tenant-id:
+    description: Azure tenant id for key vault access
+    required: true
 
 runs:
   using: "composite"
   steps:
     - name: dotnet tool install n3o
+      env:
+        AZURE_CLIENT_ID: ${{ inputs.azure-client-id }}
+        AZURE_CLIENT_SECRET: ${{ inputs.azure-client-secret }}
+        AZURE_TENANT_ID: ${{ inputs.azure-tenant-id }}
       shell: bash
       run: |
         dotnet new tool-manifest
