@@ -2,12 +2,6 @@
 
 on:
   workflow_call:
-    inputs:
-      region1:
-        description: First region
-        required: true
-        type: string
-        default: 'eu1'
 
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
@@ -26,10 +20,8 @@ jobs:
         with:
           node-version: '14.x'
 
-      - name: npm install and build for region 1
+      - name: npm install and build
         run: |
-          export REACT_APP_REGION_PREFIX=${{ inputs.region1 }}
-          export PUBLIC_URL=${{ inputs.region1 }}
           export GENERATE_SOURCEMAP=true
           export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           rm .npmrc          
