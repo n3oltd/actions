@@ -98,4 +98,4 @@ jobs:
 
       - name: dotnet nuget push
         if: ${{ inputs.run-pack }}
-        run: dotnet nuget push "**/*.nupkg" --source "${{ inputs.nuget-source }}" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate
+        run: dotnet nuget push "**/*.nupkg" --source "${{ inputs.nuget-source }}" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate --timeout 900
