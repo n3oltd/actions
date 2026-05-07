@@ -37,26 +37,54 @@ jobs:
           git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
 
           repos=$(echo '${{ inputs.repos }}' | jq -c -r '.[]')
+          failed_repos=()
 
-          for repo in $repos; do
-            echo "Processing $repo..."
+          process_repo() {
+            local repo="$1"
+            local max_attempts=3
+            local attempt
 
-            mkdir -p "$repo"
+            rm -rf "$repo"
             git clone "https://github.com/n3oltd/$repo.git" "$repo"
 
-            (
-              cd "$repo/src"
-              git config user.name "N3O Bot"
-              git config user.email "no-reply@n3o.ltd"
+            cd "$repo/src"
+            git config user.name "N3O Bot"
+            git config user.email "no-reply@n3o.ltd"
+
+            for attempt in $(seq 1 $max_attempts); do
+              if [ "$attempt" -gt 1 ]; then
+                echo "Retry $attempt/$max_attempts for $repo: refreshing from origin/main"
+                git fetch origin main
+                git reset --hard origin/main
+              fi
 
               dotnet tool run n3o nuget upgrade-our-packages
 
-              if [ -n "$(git status --porcelain)" ]; then
-                git add .
-                git commit -m "Upgraded NuGet packages"
-                git push origin main
-              else
-                echo "No package updates found for $repo"
+              if [ -z "$(git status --porcelain)" ]; then
+                echo "No package updates needed for $repo"
+                return 0
               fi
-            )
+
+              git add .
+              git commit -m "Upgraded NuGet packages"
+
+              if git push origin main; then
+                return 0
+              fi
+
+              echo "Push rejected for $repo on attempt $attempt (concurrent push detected)"
+            done
+
+            echo "::error::Failed to push $repo after $max_attempts attempts"
+            return 1
+          }
+
+          for repo in $repos; do
+            echo "Processing $repo..."
+            ( process_repo "$repo" ) || failed_repos+=("$repo")
           done
+
+          if [ ${#failed_repos[@]} -gt 0 ]; then
+            echo "::error::Failed repos after retries: ${failed_repos[*]}"
+            exit 1
+          fi
