@@ -1,90 +1,37 @@
-name: 'dotnet-upgrade-nuget-build-commit'
+name: 'dotnet-update-nuget'
 
 on:
   workflow_call:
     inputs:
-      working-directory:
+      repo:
+        description: Optional single repo name. If omitted, the whole org is processed.
+        required: false
         type: string
-        default: src
-      
-      repos:
-        description: List of repos to process
-        required: true
-        type: string
-        
+
 jobs:
-  build:
+  upgrade:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: setup-dotnet
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.x'
-          
+
       - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
           access-token: ${{ secrets.GH_PAT }}
-      
-      - name: update-nuget-packages
+
+      - name: upgrade
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
           AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
         run: |
-          git config --global url."https://x-access-token:${GH_PAT}@github.com/".insteadOf "https://github.com/"
-
-          repos=$(echo '${{ inputs.repos }}' | jq -c -r '.[]')
-          failed_repos=()
-
-          process_repo() {
-            local repo="$1"
-            local max_attempts=3
-            local attempt
-
-            rm -rf "$repo"
-            git clone "https://github.com/n3oltd/$repo.git" "$repo"
-
-            cd "$repo/src"
-            git config user.name "N3O Bot"
-            git config user.email "no-reply@n3o.ltd"
-
-            for attempt in $(seq 1 $max_attempts); do
-              if [ "$attempt" -gt 1 ]; then
-                echo "Retry $attempt/$max_attempts for $repo: refreshing from origin/main"
-                git fetch origin main
-                git reset --hard origin/main
-              fi
-
-              dotnet tool run n3o nuget upgrade-our-packages
-
-              if [ -z "$(git status --porcelain)" ]; then
-                echo "No package updates needed for $repo"
-                return 0
-              fi
-
-              git add .
-              git commit -m "Upgraded NuGet packages"
-
-              if git push origin main; then
-                return 0
-              fi
-
-              echo "Push rejected for $repo on attempt $attempt (concurrent push detected)"
-            done
-
-            echo "::error::Failed to push $repo after $max_attempts attempts"
-            return 1
-          }
-
-          for repo in $repos; do
-            echo "Processing $repo..."
-            ( process_repo "$repo" ) || failed_repos+=("$repo")
-          done
-
-          if [ ${#failed_repos[@]} -gt 0 ]; then
-            echo "::error::Failed repos after retries: ${failed_repos[*]}"
-            exit 1
+          if [ -n "${{ inputs.repo }}" ]; then
+            dotnet tool run n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --script
+          else
+            dotnet tool run n3o nuget upgrade --our-packages --target=remote --script
           fi
