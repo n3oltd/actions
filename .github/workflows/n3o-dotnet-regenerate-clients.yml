@@ -46,7 +46,7 @@ jobs:
 
       - name: regenerate clients
         working-directory: ${{ inputs.working-directory }}
-        run: dotnet tool run n3o rebuild clients
+        run: dotnet tool run n3o generate clients
 
       - name: commit if changed
         run: |
