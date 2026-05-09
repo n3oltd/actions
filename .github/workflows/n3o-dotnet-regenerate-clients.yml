@@ -21,13 +21,6 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - name: jitter start
-        if: github.event_name == 'schedule'
-        run: |
-          DELAY=$(( 0x$(printf '%s' "$GITHUB_REPOSITORY" | shasum -a 256 | cut -c1-4) % 300 ))
-          echo "Delaying ${DELAY}s to stagger across repos."
-          sleep $DELAY
-
       - name: checkout
         uses: actions/checkout@v6
         with:
