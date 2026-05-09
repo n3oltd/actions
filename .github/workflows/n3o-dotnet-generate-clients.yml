@@ -15,6 +15,7 @@ env:
 
 jobs:
   generate:
+    if: ${{ !contains(github.event.head_commit.message, '[no-generate-clients]') }}
     runs-on: ubuntu-latest
     concurrency:
       group: generate-clients-${{ github.ref }}
@@ -63,5 +64,5 @@ jobs:
           fi
 
           git add -A
-          git commit -m 'chore: generate clients [automated]'
+          git commit -m 'chore: generate clients [no-generate-clients]'
           git push
