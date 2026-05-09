@@ -1,0 +1,63 @@
+name: dotnet regenerate clients
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        default: src
+
+env:
+  GH_PAT: ${{ secrets.GH_PAT }}
+  AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+  AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+  AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: regenerate-clients-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ env.GH_PAT }}
+
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+
+      - name: setup-node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: install n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+        with:
+          access-token: ${{ env.GH_PAT }}
+          azure-client-id: ${{ env.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ env.AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ env.AZURE_TENANT_ID }}
+
+      - name: regenerate clients
+        working-directory: ${{ inputs.working-directory }}
+        run: dotnet tool run n3o rebuild clients
+
+      - name: commit if changed
+        run: |
+          git config user.name 'n3o-bot'
+          git config user.email 'bot@n3o.ltd'
+
+          if git diff --quiet; then
+            echo 'No client changes.'
+            exit 0
+          fi
+
+          git add -A
+          git commit -m 'chore: regenerate clients [automated]'
+          git push
