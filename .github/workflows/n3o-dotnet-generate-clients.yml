@@ -47,7 +47,7 @@ jobs:
 
       - name: generate clients
         working-directory: ${{ inputs.working-directory }}
-        run: dotnet tool run n3o generate clients
+        run: n3o generate clients
 
       - name: verify build
         working-directory: ${{ inputs.working-directory }}

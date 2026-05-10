@@ -31,7 +31,7 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
         run: |
           if [ -n "${{ inputs.repo }}" ]; then
-            dotnet tool run n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --script
+            n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --script
           else
-            dotnet tool run n3o nuget upgrade --our-packages --target=remote --script
+            n3o nuget upgrade --our-packages --target=remote --script
           fi
