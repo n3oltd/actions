@@ -69,8 +69,10 @@ jobs:
           VERSION="$NOW.${{ github.run_number }}"
           VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
           LATESTTAG="${ACR_REPOSITORY}:latest"
+          CREATED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
           echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
+          echo "created=$CREATED" >> $GITHUB_OUTPUT
 
       - id: build-args
         name: prepare build args
@@ -111,3 +113,7 @@ jobs:
             ${{ inputs.secrets }}
           push: true
           tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.metadata.outputs.created }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
