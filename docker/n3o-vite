@@ -1,0 +1,51 @@
+########################
+### base
+########################
+FROM node:24-alpine AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM base AS builder
+
+ARG SENTRY_RELEASE
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
+
+COPY package.json package-lock.json .npmrc ./
+
+RUN --mount=type=secret,id=github_token,required=true \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token)" \
+    npm ci
+
+COPY . .
+
+ENV NODE_ENV=production
+
+RUN --mount=type=secret,id=github_token,required=true \
+    --mount=type=secret,id=sentry_auth_token,required=true \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token)" \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
+    npm run build
+
+RUN npm prune --omit=dev
+
+########################
+### final
+########################
+FROM base AS final
+
+ENV NODE_ENV=production \
+    PORT=3000
+
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/dist-server ./dist-server
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+
+EXPOSE 3000
+
+USER node
+
+CMD ["node", "dist-server/index.js"]
