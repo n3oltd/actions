@@ -1,0 +1,35 @@
+name: 'vite ci'
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '24'
+
+env:
+  GH_PAT: ${{ secrets.GH_PAT }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm test --if-present
+
+      - run: npm run build
+        env:
+          NODE_ENV: production
