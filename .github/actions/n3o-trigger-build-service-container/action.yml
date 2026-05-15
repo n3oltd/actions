@@ -1,21 +1,39 @@
 name: Trigger Build Service Container
-description: Triggers the container build for the service
+description: Triggers the container build for the service, optionally skipping if unchanged
 
 inputs:
   repo-name:
-    description: the name of the repository 
+    description: the name of the repository
     required: true
-    
+
   workflows-token:
     description: GitHub token (required to run gh commands)
     required: true
+
+  skip-if-older-than-hours:
+    description: skip dispatch if last commit on main is older than this (in hours). 0 = always run.
+    required: false
+    default: '0'
 
 runs:
   using: "composite"
   steps:
     - name: run build-container workflow
       shell: bash
-      run: |
-        gh workflow run build-container.yml --repo n3oltd/${{ inputs.repo-name }}
       env:
         GH_TOKEN: ${{ inputs.workflows-token }}
+      run: |
+        REPO="n3oltd/${{ inputs.repo-name }}"
+        THRESHOLD="${{ inputs.skip-if-older-than-hours }}"
+
+        if [ "$THRESHOLD" != "0" ]; then
+          LAST_ISO=$(gh api "repos/${REPO}/commits/main" --jq '.commit.committer.date')
+          AGE_HOURS=$(( ( $(date +%s) - $(date -d "$LAST_ISO" +%s) ) / 3600 ))
+          if [ "$AGE_HOURS" -ge "$THRESHOLD" ]; then
+            echo "${REPO}: last commit ${AGE_HOURS}h ago (>= ${THRESHOLD}h) — skipping"
+            exit 0
+          fi
+          echo "${REPO}: last commit ${AGE_HOURS}h ago — building"
+        fi
+
+        gh workflow run build-container.yml --repo "$REPO"

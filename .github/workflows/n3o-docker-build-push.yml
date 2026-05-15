@@ -56,13 +56,27 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
+      - id: check-existing
+        name: check if image already exists for this commit
+        shell: bash
+        run: |
+          SHA_TAG="n3oltd.azurecr.io/${{ inputs.container-repository }}:sha-${GITHUB_SHA}"
+          if docker manifest inspect "$SHA_TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "$SHA_TAG already exists — skipping build"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: fetch dockerfile
+        if: steps.check-existing.outputs.exists != 'true'
         uses: wei/wget@v1
         with:
           args: -O ${{ inputs.dockerfile }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}
 
       - id: metadata
         name: metadata
+        if: steps.check-existing.outputs.exists != 'true'
         run: |
           ACR_REPOSITORY=n3oltd.azurecr.io/${{ inputs.container-repository }}
           NOW=$(date +'%Y.%-m.%-d')
@@ -76,6 +90,7 @@ jobs:
 
       - id: build-args
         name: prepare build args
+        if: steps.check-existing.outputs.exists != 'true'
         run: |
           {
             echo "args<<EOF"
@@ -100,6 +115,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: build and push
+        if: steps.check-existing.outputs.exists != 'true'
         uses: docker/build-push-action@v7
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -112,7 +128,10 @@ jobs:
             sentry_auth_token=${{ env.SENTRY_AUTH_TOKEN }}
             ${{ inputs.secrets }}
           push: true
-          tags: ${{ steps.metadata.outputs.version-tag }} , ${{ steps.metadata.outputs.latest-tag }}
+          tags: |
+            ${{ steps.metadata.outputs.version-tag }}
+            ${{ steps.metadata.outputs.latest-tag }}
+            n3oltd.azurecr.io/${{ inputs.container-repository }}:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.metadata.outputs.created }}
