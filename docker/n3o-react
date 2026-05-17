@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ARG REACT_APP_SENTRY_RELEASE
+ARG APP_VERSION
 
 ENV REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
     NODE_OPTIONS=--max-old-space-size=4096
@@ -26,6 +27,11 @@ RUN --mount=type=secret,id=github_token,required=true \
     npm ci
 
 COPY . .
+
+# Align package.json version with image tag so build logs / Sentry / runtime show the deployed version.
+RUN if [ -n "$APP_VERSION" ]; then \
+      npm version "$APP_VERSION" --no-git-tag-version --allow-same-version; \
+    fi
 
 ENV NODE_ENV=production
 

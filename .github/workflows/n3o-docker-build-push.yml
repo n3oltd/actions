@@ -84,6 +84,7 @@ jobs:
           VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
           LATESTTAG="${ACR_REPOSITORY}:latest"
           CREATED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
           echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
           echo "created=$CREATED" >> $GITHUB_OUTPUT
@@ -96,6 +97,7 @@ jobs:
             echo "args<<EOF"
             echo "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             echo "PAT=${{ env.GH_PAT }}"
+            echo "APP_VERSION=${{ steps.metadata.outputs.version }}"
             if [[ -n "${{ secrets.PRINCE_LICENSE_ID }}" ]]; then
               echo "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
               echo "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
