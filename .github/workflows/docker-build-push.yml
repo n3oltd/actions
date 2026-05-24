@@ -60,6 +60,7 @@ jobs:
           LATESTTAG="${ACR_REPOSITORY}:latest"
           TAGS="${VERSIONTAG},${LATESTTAG}"
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -68,6 +69,9 @@ jobs:
           context: ./${{ inputs.working-directory }}
           target: final
           file: ${{ inputs.dockerfile }}
-          build-args: ${{ inputs.build-args }}
+          build-args: |
+            ${{ inputs.build-args }}
+            VERSION=${{ steps.meta.outputs.version }}
+            SOURCE_REVISION_ID=${{ github.sha }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

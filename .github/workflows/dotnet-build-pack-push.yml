@@ -83,7 +83,7 @@ jobs:
         run: dotnet restore
 
       - name: dotnet build
-        run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }}
+        run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
 
       - name: dotnet test
         if: ${{ inputs.run-tests }}
@@ -93,8 +93,10 @@ jobs:
         if: ${{ inputs.run-pack }}
         # --no-build must NOT be used here: dotnet pack must rebuild the DLL so that
         # /property:Version is baked into the binary. Using --no-build only updates the
-        # .nuspec metadata and leaves the DLL at its default version (1.0.0.0)
-        run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }}
+        # .nuspec metadata and leaves the DLL at its default version (1.0.0.0).
+        # SourceRevisionId is what the .NET SDK appends to InformationalVersion as
+        # "+<sha>" — works regardless of whether SourceLink is explicitly referenced.
+        run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
 
       - name: dotnet nuget push
         if: ${{ inputs.run-pack }}
