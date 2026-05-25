@@ -54,7 +54,7 @@ jobs:
         name: Set tags
         run: |
           ACR_REPOSITORY=n3oltd.azurecr.io/${{ inputs.container-repository }}
-          NOW=$(date +'%Y-%m-%d')
+          NOW=$(date +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
           VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
           LATESTTAG="${ACR_REPOSITORY}:latest"
