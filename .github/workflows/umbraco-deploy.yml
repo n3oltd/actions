@@ -90,35 +90,32 @@ jobs:
         with:
           creds: ${{ secrets.azure-credentials }}
 
-      - name: Azure CLI script
-        uses: azure/CLI@v3
-        with:
-          azcliversion: 2.85.0
-          inlineScript: |
-            az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
-            az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
-            az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN_ProviderName="Microsoft.Data.SqlClient" --connection-string-type SQLAzure
-            az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings \
-              ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}" \
-              ASPNETCORE_FORWARDEDHEADERS_ENABLED="true" \
-              N3O_DateFormat="${{ env.date_format }}" \
-              N3O_Language="${{ env.language }}" \
-              N3O_NumberFormat="${{ env.number_format }}" \
-              N3O_TimeFormat="${{ env.time_format }}" \
-              N3O_Timezone="${{ env.timezone }}" \
-              N3O_SiteLanguage="${{ env.site_language_tag }}" \
-              N3O_SiteName="${{ env.site_name_tag }}" \
-              UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}" \
-              UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}" \
-              OPENSSL_FORCE_FIPS_MODE="0" \
-              Sentry__Dsn="${{ env.sentry_dsn }}" \
-              Umbraco__Licenses__Umbraco_Forms="${{ env.umbraco_forms_license }}" \
-              Umbraco__Licenses__Umbraco_Engage="${{ env.umbraco_engage_license }}"
-            az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
-            
-            if [[ -n "$db_engage_connection_string" ]]; then
-              az webapp config connection-string set --name "$app_name" --resource-group "$resource_group" --settings umbracoEngageDbDSN="$db_engage_connection_string" --connection-string-type SQLServer
-            fi
+      - name: Configure and restart umbraco webapp
+        run: |
+          az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
+          az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN="${{ env.db_connection_string }}" --connection-string-type SQLAzure
+          az webapp config connection-string set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings umbracoDbDSN_ProviderName="Microsoft.Data.SqlClient" --connection-string-type SQLAzure
+          az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings \
+            ASPNETCORE_ENVIRONMENT="${{ env.aspnetcore_environment }}" \
+            ASPNETCORE_FORWARDEDHEADERS_ENABLED="true" \
+            N3O_DateFormat="${{ env.date_format }}" \
+            N3O_Language="${{ env.language }}" \
+            N3O_NumberFormat="${{ env.number_format }}" \
+            N3O_TimeFormat="${{ env.time_format }}" \
+            N3O_Timezone="${{ env.timezone }}" \
+            N3O_SiteLanguage="${{ env.site_language_tag }}" \
+            N3O_SiteName="${{ env.site_name_tag }}" \
+            UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONTAINERNAME="${{ env.storage_container }}" \
+            UMBRACO__STORAGE__AZUREBLOB__MEDIA__CONNECTIONSTRING="${{ env.storage_connection_string }}" \
+            OPENSSL_FORCE_FIPS_MODE="0" \
+            Sentry__Dsn="${{ env.sentry_dsn }}" \
+            Umbraco__Licenses__Umbraco_Forms="${{ env.umbraco_forms_license }}" \
+            Umbraco__Licenses__Umbraco_Engage="${{ env.umbraco_engage_license }}"
+          az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
+
+          if [[ -n "$db_engage_connection_string" ]]; then
+            az webapp config connection-string set --name "$app_name" --resource-group "$resource_group" --settings umbracoEngageDbDSN="$db_engage_connection_string" --connection-string-type SQLServer
+          fi
         env:
           app_name: "${{ inputs.site-name }}"
           custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"

@@ -1,0 +1,70 @@
+name: Publish Karakoram Content
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build _publish/karakoram tree
+        run: |
+          yml_to_json() {
+            local src="$1" dest="$2"
+            mkdir -p "$dest"
+            for yml in "$src"/*.yml; do
+              name=$(basename "$yml" .yml)
+              yq -o=json '.' "$yml" > "$dest/${name}.json"
+            done
+          }
+
+          copy_dir() {
+            local src="$1" dest="$2"
+            if [ -d "$src" ]; then
+              mkdir -p "$dest"
+              cp "$src"/* "$dest"/
+            fi
+          }
+
+          mkdir -p _publish/karakoram/releaseNotes
+          latest=""
+          latest_date=""
+          for yml in karakoram/release-notes/*.yml; do
+            d=$(yq '.date' "$yml")
+            if [[ -z "$latest_date" || "$d" > "$latest_date" ]]; then
+              latest_date="$d"
+              latest="$yml"
+            fi
+          done
+          yq -o=json '.' "$latest" > _publish/karakoram/releaseNotes/latest.json
+
+          yml_to_json karakoram/welcome-info     _publish/karakoram/welcomeInfo
+          yml_to_json karakoram/featured-content _publish/karakoram/featuredContent
+          yml_to_json karakoram/getting-started  _publish/karakoram/gettingStarted
+          yml_to_json karakoram/image-assets     _publish/karakoram/imageAssets
+
+          copy_dir karakoram/getting-started/images _publish/karakoram/gettingStarted/images
+          copy_dir karakoram/image-assets/files     _publish/karakoram/imageAssets/files
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Replace karakoram/ in global container
+        run: |
+          az storage blob delete-batch \
+            --account-name n3oltd \
+            --auth-mode login \
+            --source global \
+            --pattern 'karakoram/*'
+
+          az storage blob upload-batch \
+            --account-name n3oltd \
+            --auth-mode login \
+            --destination global \
+            --destination-path karakoram \
+            --source _publish/karakoram \
+            --overwrite

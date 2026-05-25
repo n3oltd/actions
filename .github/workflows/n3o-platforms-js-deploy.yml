@@ -68,13 +68,10 @@ jobs:
             exit 1
           fi
 
-      - name: Azure CLI script
-        uses: azure/CLI@v3
-        with:
-          azcliversion: 2.85.0
-          inlineScript: |
-            az storage blob delete-batch --connection-string "${{ env.storage_connection_string }}" --source "connect-${{ env.subscription_code }}"  --pattern "platforms-js/*" 
-            az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms" --destination-path="platforms-js" --overwrite="true"
+      - name: Replace platforms-js/ in connect-{subscription} container
+        run: |
+          az storage blob delete-batch --connection-string "${{ env.storage_connection_string }}" --source "connect-${{ env.subscription_code }}" --pattern "platforms-js/*"
+          az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms" --destination-path="platforms-js" --overwrite="true"
         env:
           subscription_code: "${{ inputs.subscription-code }}"
           
