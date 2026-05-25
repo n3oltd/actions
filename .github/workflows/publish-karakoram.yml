@@ -1,0 +1,69 @@
+name: Publish Karakoram Content
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Build _publish/karakoram tree
+        run: |
+          mkdir -p _publish/karakoram
+
+          latest_release=$(yq eval '.date + "\t" + filename' karakoram/release-notes/*.yml | sort | tail -1 | cut -f2)
+          mkdir -p _publish/karakoram/releaseNotes
+          yq -o=json '.' "$latest_release" > _publish/karakoram/releaseNotes/latest.json
+
+          mkdir -p _publish/karakoram/welcomeInfo
+          yq -o=json '.' karakoram/welcome-info/latest.yml > _publish/karakoram/welcomeInfo/latest.json
+
+          mkdir -p _publish/karakoram/featuredContent
+          for yml in karakoram/featured-content/*.yml; do
+            name=$(basename "$yml" .yml)
+            yq -o=json '.' "$yml" > "_publish/karakoram/featuredContent/${name}.json"
+          done
+
+          mkdir -p _publish/karakoram/gettingStarted/images
+          for yml in karakoram/getting-started/*.yml; do
+            name=$(basename "$yml" .yml)
+            yq -o=json '.' "$yml" > "_publish/karakoram/gettingStarted/${name}.json"
+          done
+          if [ -d karakoram/getting-started/images ]; then
+            cp karakoram/getting-started/images/* _publish/karakoram/gettingStarted/images/
+          fi
+
+          mkdir -p _publish/karakoram/imageAssets/files
+          yq -o=json '.' karakoram/image-assets/index.yml > _publish/karakoram/imageAssets/index.json
+          cp karakoram/image-assets/files/* _publish/karakoram/imageAssets/files/
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Replace karakoram/ in global container
+        uses: azure/CLI@v3
+        with:
+          azcliversion: 2.85.0
+          inlineScript: |
+            az storage blob delete-batch \
+              --account-name n3oltd \
+              --auth-mode login \
+              --source global \
+              --pattern 'karakoram/*'
+
+            az storage blob upload-batch \
+              --account-name n3oltd \
+              --auth-mode login \
+              --destination global \
+              --destination-path karakoram \
+              --source _publish/karakoram \
+              --overwrite
