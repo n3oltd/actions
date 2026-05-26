@@ -67,18 +67,22 @@ jobs:
             --source _publish/karakoram \
             --overwrite
 
-      - name: Replace assets/ in karakoram container
+      - name: Replace assets/ in karakoram container (all envs)
         run: |
-          az storage blob delete-batch \
-            --account-name n3oltd \
-            --auth-mode login \
-            --source karakoram \
-            --pattern 'assets/*'
+          for account in eu1storageprod eu1storageqa eu1storagestaging; do
+            echo "::group::$account"
+            az storage blob delete-batch \
+              --account-name "$account" \
+              --auth-mode login \
+              --source karakoram \
+              --pattern 'assets/*'
 
-          az storage blob upload-batch \
-            --account-name n3oltd \
-            --auth-mode login \
-            --destination karakoram \
-            --destination-path assets \
-            --source karakoram/image-assets \
-            --overwrite
+            az storage blob upload-batch \
+              --account-name "$account" \
+              --auth-mode login \
+              --destination karakoram \
+              --destination-path assets \
+              --source karakoram/image-assets \
+              --overwrite
+            echo "::endgroup::"
+          done
