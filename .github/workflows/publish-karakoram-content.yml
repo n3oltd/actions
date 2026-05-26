@@ -69,7 +69,7 @@ jobs:
 
       - name: Replace assets/ in karakoram container (all envs)
         run: |
-          for account in eu1storageprod eu1storageqa eu1storagestaging; do
+          for account in eu1storageprod eu1storageqa; do
             echo "::group::$account"
             az storage blob delete-batch \
               --account-name "$account" \
