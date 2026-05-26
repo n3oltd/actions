@@ -43,10 +43,8 @@ jobs:
           yml_to_json karakoram/welcome-info     _publish/karakoram/welcomeInfo
           yml_to_json karakoram/featured-content _publish/karakoram/featuredContent
           yml_to_json karakoram/getting-started  _publish/karakoram/gettingStarted
-          yml_to_json karakoram/image-assets     _publish/karakoram/imageAssets
 
           copy_dir karakoram/getting-started/images _publish/karakoram/gettingStarted/images
-          copy_dir karakoram/image-assets/files     _publish/karakoram/imageAssets/files
 
       - name: Azure Login
         uses: azure/login@v3
@@ -67,4 +65,20 @@ jobs:
             --destination global \
             --destination-path karakoram \
             --source _publish/karakoram \
+            --overwrite
+
+      - name: Replace assets/ in karakoram container
+        run: |
+          az storage blob delete-batch \
+            --account-name n3oltd \
+            --auth-mode login \
+            --source karakoram \
+            --pattern 'assets/*'
+
+          az storage blob upload-batch \
+            --account-name n3oltd \
+            --auth-mode login \
+            --destination karakoram \
+            --destination-path assets \
+            --source karakoram/image-assets \
             --overwrite
