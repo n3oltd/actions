@@ -11,6 +11,16 @@ on:
         type: string
         required: true
 
+      sentry-project:
+        type: string
+        required: false
+        default: ''
+
+      sentry-environment:
+        type: string
+        required: false
+        default: ''
+
 jobs:
   deploy-to-aks:
     name: Deploy to AKS
@@ -42,3 +52,12 @@ jobs:
         with:
           working-directory: ${{ inputs.data-region }}/sites/${{ inputs.site-id }}/${{ steps.get-deployment-version.outputs.deploymentVersion }}
           replace-yaml: false
+
+      - name: sentry deploy
+        if: inputs.sentry-project != ''
+        uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
+        with:
+          project: ${{ inputs.sentry-project }}
+          release: ${{ steps.get-deployment-version.outputs.deploymentVersion }}
+          environment: ${{ inputs.sentry-environment }}
+          auth-token: ${{ secrets.SENTRY_AUTH_TOKEN }}

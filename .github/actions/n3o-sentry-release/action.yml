@@ -1,0 +1,41 @@
+name: 'N3O Sentry release'
+description: |-
+  Creates a Sentry release (and optional deploy event / source map upload) for
+  the calling workflow. Wraps getsentry/action-release with our org defaults
+  baked in so callers only pass what varies per project.
+
+inputs:
+  project:
+    required: true
+  release:
+    required: true
+  environment:
+    required: false
+    default: ''
+  sourcemaps:
+    required: false
+    default: ''
+  auth-token:
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Sentry release
+      uses: getsentry/action-release@v3
+      env:
+        SENTRY_ORG: n3oltd
+        SENTRY_PROJECT: ${{ inputs.project }}
+        SENTRY_AUTH_TOKEN: ${{ inputs.auth-token }}
+      with:
+        release: ${{ inputs.release }}
+        environment: ${{ inputs.environment }}
+        sourcemaps: ${{ inputs.sourcemaps }}
+        # At build time (no environment), the runner is in the source repo,
+        # so set_commits=auto walks its git log and registers the repo entry.
+        # At deploy time, the runner is in the deployments repo — auto would
+        # attribute the wrong commits, so skip.
+        set_commits: ${{ inputs.environment == '' && 'auto' || 'skip' }}
+        ignore_missing: true
+        ignore_empty: true
+        disable_telemetry: true
