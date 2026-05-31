@@ -23,6 +23,15 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 ########################
+### sourcemaps
+### exported via `--output type=local,dest=...` for upload by CI
+### (requires vite.config to set build.sourcemap: true)
+########################
+FROM scratch AS sourcemaps
+
+COPY --from=builder /app/dist/ /
+
+########################
 ### final
 ########################
 FROM base AS final
@@ -34,6 +43,8 @@ COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/dist-server ./dist-server
 COPY --from=builder --chown=node:node /app/package.json ./package.json
+
+RUN find ./dist -name '*.map' -delete 2>/dev/null || true
 
 EXPOSE 3000
 

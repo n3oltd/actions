@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
 ARG REACT_APP_SENTRY_RELEASE
 
 ENV REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
-    NODE_OPTIONS=--max-old-space-size=4096
+    NODE_OPTIONS=--max-old-space-size=4096 \
+    GENERATE_SOURCEMAP=true
 
 COPY package.json package-lock.json .npmrc ./
 
@@ -30,10 +31,16 @@ COPY . .
 ENV NODE_ENV=production
 
 RUN --mount=type=secret,id=github_token,required=true \
-    --mount=type=secret,id=sentry_auth_token,required=true \
     GITHUB_TOKEN="$(cat /run/secrets/github_token)" \
-    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
     npm run build
+
+########################
+### sourcemaps
+### exported via `--output type=local,dest=...` for upload by CI
+########################
+FROM scratch AS sourcemaps
+
+COPY --from=builder /app/build/static/js/ /
 
 ########################
 ### final
@@ -45,6 +52,8 @@ WORKDIR /app
 RUN npm install express@latest
 
 COPY --from=builder /app/build ./build
+RUN find ./build -name '*.map' -delete
+
 COPY server.js ./
 
 EXPOSE 3000
