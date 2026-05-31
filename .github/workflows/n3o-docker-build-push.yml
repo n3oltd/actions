@@ -31,6 +31,16 @@ on:
         required: false
         default: ''
 
+      sentry-project:
+        type: string
+        required: false
+        default: ''
+
+      sentry-sourcemaps:
+        type: string
+        required: false
+        default: ''
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -84,6 +94,7 @@ jobs:
           VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
           LATESTTAG="${ACR_REPOSITORY}:latest"
           CREATED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
           echo "latest-tag=$LATESTTAG" >> $GITHUB_OUTPUT
           echo "created=$CREATED" >> $GITHUB_OUTPUT
@@ -136,3 +147,12 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.metadata.outputs.created }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: sentry release
+        if: steps.check-existing.outputs.exists != 'true' && inputs.sentry-project != ''
+        uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
+        with:
+          project: ${{ inputs.sentry-project }}
+          release: ${{ steps.metadata.outputs.version }}
+          sourcemaps: ${{ inputs.sentry-sourcemaps }}
+          auth-token: ${{ env.SENTRY_AUTH_TOKEN }}

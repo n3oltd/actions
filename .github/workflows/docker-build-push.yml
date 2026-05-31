@@ -19,12 +19,25 @@ on:
         type: string
         default: src
 
+      sentry-project:
+        type: string
+        required: false
+        default: ''
+
+      sentry-sourcemaps:
+        type: string
+        required: false
+        default: ''
+
     secrets:
       acr-username:
         required: true
 
       acr-password:
         required: true
+
+      sentry-auth-token:
+        required: false
 
 jobs:
   job1:
@@ -75,3 +88,12 @@ jobs:
             SOURCE_REVISION_ID=${{ github.sha }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
+      - name: sentry release
+        if: inputs.sentry-project != ''
+        uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
+        with:
+          project: ${{ inputs.sentry-project }}
+          release: ${{ steps.meta.outputs.version }}
+          sourcemaps: ${{ inputs.sentry-sourcemaps }}
+          auth-token: ${{ secrets.sentry-auth-token }}
