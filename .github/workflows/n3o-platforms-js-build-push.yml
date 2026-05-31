@@ -7,8 +7,14 @@ on:
         type: string
         required: true
 
+      sentry-project:
+        type: string
+        required: false
+        default: ''
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
 jobs:
   build-push:
@@ -56,13 +62,27 @@ jobs:
           npm_config_fetch_retry_mintimeout: 30000
           npm_config_fetch_retries: 5
 
+      - id: version
+        name: compute version
+        run: |
+          version="$(date +"%Y.%m.%d")-${{ github.run_number }}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
       - name: npm publish
         working-directory: packages/n3o-elements
         run: |
-          version=$(date +"%Y.%m.%d")-${{ github.run_number }}
           name="@n3oltd/platforms-js-${{ inputs.subscription-code }}"
           jq "del(.devDependencies, .scripts, .dependencies) | .name = \"$name\"" package.json > tmp.json && mv tmp.json package.json
-          npm version $version;
+          npm version ${{ steps.version.outputs.version }};
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc;
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
           npm publish;
+
+      - name: sentry release
+        if: inputs.sentry-project != ''
+        uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
+        with:
+          project: ${{ inputs.sentry-project }}
+          release: platforms-js@${{ steps.version.outputs.version }}-${{ inputs.subscription-code }}
+          sourcemaps: packages/n3o-elements/dist
+          auth-token: ${{ env.SENTRY_AUTH_TOKEN }}

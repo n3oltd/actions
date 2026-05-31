@@ -36,10 +36,10 @@ on:
         required: false
         default: ''
 
-      sentry-sourcemaps:
-        type: string
+      sentry-extract-sourcemaps:
+        type: boolean
         required: false
-        default: ''
+        default: false
 
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
@@ -148,11 +148,26 @@ jobs:
             org.opencontainers.image.created=${{ steps.metadata.outputs.created }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
+      - name: extract sourcemaps
+        if: steps.check-existing.outputs.exists != 'true' && inputs.sentry-project != '' && inputs.sentry-extract-sourcemaps
+        uses: docker/build-push-action@v7
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          target: sourcemaps
+          outputs: type=local,dest=${{ runner.temp }}/sourcemaps
+          build-args: ${{ steps.build-args.outputs.args }}
+          secrets: |
+            github_token=${{ env.GH_PAT }}
+            sentry_auth_token=${{ env.SENTRY_AUTH_TOKEN }}
+            ${{ inputs.secrets }}
+
       - name: sentry release
         if: steps.check-existing.outputs.exists != 'true' && inputs.sentry-project != ''
         uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
         with:
           project: ${{ inputs.sentry-project }}
           release: ${{ steps.metadata.outputs.version }}
-          sourcemaps: ${{ inputs.sentry-sourcemaps }}
+          sourcemaps: ${{ inputs.sentry-extract-sourcemaps && format('{0}/sourcemaps', runner.temp) || '' }}
           auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
