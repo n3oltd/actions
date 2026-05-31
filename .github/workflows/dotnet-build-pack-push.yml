@@ -33,6 +33,13 @@ on:
         # 'tag': version from git tag (refs/tags/v*), fallback 1.0.0
         # 'date': date-based version (YYYY.M.D.run_number)
 
+      version:
+        type: string
+        default: ''
+        # If set, takes precedence over version-strategy. Use when the caller
+        # has already computed the version (e.g. scheduled releases triggered
+        # from a branch rather than a tag).
+
       nuget-source:
         type: string
         default: 'https://api.nuget.org/v3/index.json'
@@ -73,7 +80,9 @@ jobs:
       - id: prepare
         name: Set version
         run: |
-          if [ "${{ inputs.version-strategy }}" = "date" ]; then
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ inputs.version-strategy }}" = "date" ]; then
             NOW=$(date +'%Y.%-m.%-d')
             VERSION="$NOW.${{ github.run_number }}"
           else
