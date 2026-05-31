@@ -107,6 +107,13 @@ jobs:
             echo "args<<EOF"
             echo "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             echo "PAT=${{ env.GH_PAT }}"
+            if [[ -n "${{ inputs.sentry-project }}" ]]; then
+              # Bake the Sentry release id (date version-tag) into common
+              # frontend env-var names so the runtime SDK tags events with
+              # the same release id the composite creates.
+              echo "REACT_APP_SENTRY_RELEASE=${{ steps.metadata.outputs.version }}"
+              echo "VITE_SENTRY_RELEASE=${{ steps.metadata.outputs.version }}"
+            fi
             if [[ -n "${{ secrets.PRINCE_LICENSE_ID }}" ]]; then
               echo "PRINCE_LICENSE_ID=${{ secrets.PRINCE_LICENSE_ID }}"
               echo "PRINCE_LICENSE_NAME=${{ secrets.PRINCE_LICENSE_NAME }}"
