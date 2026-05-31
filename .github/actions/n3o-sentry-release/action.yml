@@ -1,8 +1,4 @@
 name: 'N3O Sentry release'
-description: |-
-  Creates a Sentry release (and optional deploy event / source map upload) for
-  the calling workflow. Wraps getsentry/action-release with our org defaults
-  baked in so callers only pass what varies per project.
 
 inputs:
   project:
