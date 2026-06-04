@@ -26,5 +26,5 @@ runs:
       shell: bash
       run: |
         dotnet nuget add source https://nuget.pkg.github.com/n3oltd/index.json --name n3oltd --username n3oltd --password ${{ inputs.access-token }} --store-password-in-clear-text
-        dotnet tool install --global --no-cache n3o
+        dotnet tool install --global --no-cache n3o --version 2026.6.4.619
         echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
