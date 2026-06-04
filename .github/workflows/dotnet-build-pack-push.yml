@@ -60,6 +60,9 @@ on:
       sentry-auth-token:
         required: false
 
+env:
+  NUGET_CERT_REVOCATION_MODE: offline
+
 jobs:
   job1:
     name: ${{ inputs.runs-on }}

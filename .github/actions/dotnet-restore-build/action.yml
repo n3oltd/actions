@@ -23,5 +23,6 @@ runs:
       env:
         GH_USERNAME: n3oltd
         GH_PAT: ${{ inputs.access-token }}
+        NUGET_CERT_REVOCATION_MODE: offline
       run: |
         dotnet build -c "${{inputs.build-configuration}}" 
