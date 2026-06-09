@@ -1,0 +1,81 @@
+name: 'n3o-work-dispatch'
+
+on:
+  workflow_call: {}
+
+jobs:
+  pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+
+      - name: install n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+
+      - name: dispatch PR references
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          flags=""
+          if [ "$PR_MERGED" = "true" ]; then flags="$flags --merged"; fi
+          if [ "$PR_DRAFT" = "true" ]; then flags="$flags --draft"; fi
+
+          n3o work pr-dispatch \
+            --pr-repo "$GITHUB_REPOSITORY" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --state "${{ github.event.pull_request.state }}" \
+            --base-ref "${{ github.event.pull_request.base.ref }}" \
+            --default-branch "${{ github.event.repository.default_branch }}" \
+            $flags
+
+  push:
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: setup-dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+
+      - name: install n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+
+      - name: dispatch commit references
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          COMMITS_JSON: ${{ toJSON(github.event.commits) }}
+        run: |
+          messages=$(echo "$COMMITS_JSON" | jq -r 'map(.message) | join("\n")')
+
+          n3o work commit-dispatch \
+            --repo "$GITHUB_REPOSITORY" \
+            --default-branch "${{ github.event.repository.default_branch }}" \
+            --messages "$messages"
