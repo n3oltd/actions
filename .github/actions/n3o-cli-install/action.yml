@@ -28,3 +28,8 @@ runs:
         dotnet nuget add source https://nuget.pkg.github.com/n3oltd/index.json --name n3oltd --username n3oltd --password ${{ inputs.access-token }} --store-password-in-clear-text
         dotnet tool install --global --no-cache n3o
         echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+        {
+          echo "AZURE_CLIENT_ID=${{ inputs.azure-client-id }}"
+          echo "AZURE_CLIENT_SECRET=${{ inputs.azure-client-secret }}"
+          echo "AZURE_TENANT_ID=${{ inputs.azure-tenant-id }}"
+        } >> "$GITHUB_ENV"
