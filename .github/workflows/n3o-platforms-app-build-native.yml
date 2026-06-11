@@ -58,7 +58,7 @@ jobs:
   build-native:
     name: Build Native App Package
     needs: build-app
-    runs-on: ${{ inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4
