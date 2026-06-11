@@ -13,6 +13,7 @@ FROM base AS builder
 COPY package.json package-lock.json .npmrc ./
 
 RUN --mount=type=secret,id=github_token,required=true \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token)" \
     GH_PAT="$(cat /run/secrets/github_token)" \
     npm ci
 
