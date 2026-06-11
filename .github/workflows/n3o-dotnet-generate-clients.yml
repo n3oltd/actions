@@ -8,7 +8,6 @@ on:
         default: src
 
 env:
-  GH_PAT: ${{ secrets.GH_PAT }}
   AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
   AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
   AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
@@ -22,10 +21,18 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      - name: app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.N3O_APP_ID }}
+          private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
+          owner: n3oltd
+
       - name: checkout
         uses: actions/checkout@v6
         with:
-          token: ${{ env.GH_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: setup-dotnet
         uses: actions/setup-dotnet@v5
@@ -40,7 +47,7 @@ jobs:
       - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          access-token: ${{ env.GH_PAT }}
+          access-token: ${{ steps.app-token.outputs.token }}
           azure-client-id: ${{ env.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ env.AZURE_CLIENT_SECRET }}
           azure-tenant-id: ${{ env.AZURE_TENANT_ID }}
@@ -55,8 +62,8 @@ jobs:
 
       - name: commit if changed
         run: |
-          git config user.name 'n3o-bot'
-          git config user.email 'bot@n3o.ltd'
+          git config user.name 'N3O Babar'
+          git config user.email '292859849+n3o-babar[bot]@users.noreply.github.com'
 
           if git diff --quiet; then
             echo 'No client changes.'
