@@ -40,15 +40,6 @@ jobs:
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Inject subscription stylesheets into index.html
-        shell: bash
-        run: |
-          STYLESHEETS_JSON="subscriptions/6e/stylesheets.json"
-          INDEX_HTML="apps/platforms-app/index.html"
-          LINK_TAGS=$(jq -r '.stylesheets[] | "<link rel=\"stylesheet\" href=\"\(.href)\">"' "$STYLESHEETS_JSON")
-          ESCAPED=$(echo "$LINK_TAGS" | sed 's/[&/\]/\\&/g' | awk '{printf "%s\\n", $0}')
-          sed -i "s|</head>|${ESCAPED}</head>|" "$INDEX_HTML"
-
       - name: Build Web App
         run: npm run build:platforms-app
         env:
