@@ -29,7 +29,7 @@ jobs:
       - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          access-token: ${{ steps.app-token.outputs.token }}
+          access-token: ${{ secrets.GH_PAT }}
 
       - name: upgrade
         env:
