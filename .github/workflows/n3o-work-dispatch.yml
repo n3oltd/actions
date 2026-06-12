@@ -28,7 +28,7 @@ jobs:
       - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          access-token: ${{ steps.app-token.outputs.token }}
+          access-token: ${{ secrets.GH_PAT }}
           azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
           azure-tenant-id: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
@@ -83,7 +83,7 @@ jobs:
       - name: install n3o cli
         uses: n3oltd/actions/.github/actions/n3o-cli-install@main
         with:
-          access-token: ${{ steps.app-token.outputs.token }}
+          access-token: ${{ secrets.GH_PAT }}
           azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
           azure-tenant-id: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
