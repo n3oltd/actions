@@ -1,0 +1,17 @@
+name: Dispatch PR status to n3oltd/work
+
+on:
+  pull_request:
+    types: [opened, closed, reopened, ready_for_review, converted_to_draft]
+  push:
+
+jobs:
+  dispatch:
+    # Local reference (not @main) so this repo always runs the reusable from the
+    # same ref — keeps it consistent on PRs/branches and avoids a chicken-and-egg
+    # with new reusable inputs. `internal` ship-on-merge repo: merge to main is
+    # the release (see n3oltd/work architecture.md §11).
+    uses: ./.github/workflows/n3o-work-dispatch.yml
+    with:
+      ship-on-merge: true
+    secrets: inherit

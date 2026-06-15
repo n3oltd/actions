@@ -1,7 +1,17 @@
 name: 'n3o-work-dispatch'
 
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      ship-on-merge:
+        description: >-
+          For `internal` ship-on-merge repos (no `n3o deploy` step — the n3o CLI,
+          shared actions, devops). When true, merging to the default branch
+          releases the referenced n3oltd/work issues straight to Released to Prod.
+          Leave false (default) for customer-facing repos that release via n3o deploy.
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   pr:
@@ -58,6 +68,36 @@ jobs:
             --default-branch "${{ github.event.repository.default_branch }}" \
             $flags
 
+      - name: release referenced issues (ship-on-merge)
+        if: inputs.ship-on-merge && github.event.pull_request.merged == true
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # `internal` (ship-on-merge) repos have no `n3o deploy` step: merging to
+          # the default branch IS the prod release. Move each n3oltd/work issue
+          # referenced by this merged PR straight to Released to Prod. Parses the
+          # same PR title/body that pr-dispatch used to reach Merged. See n3oltd/work
+          # architecture.md §11 (Ship-on-merge products). mark-released is idempotent.
+          issues=$(printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" \
+            | grep -oiE 'n3oltd/work#[0-9]+' \
+            | grep -oE '[0-9]+' \
+            | sort -un || true)
+
+          if [ -z "$issues" ]; then
+            echo "No n3oltd/work references in this PR; nothing to release."
+            exit 0
+          fi
+
+          for n in $issues; do
+            echo "ship-on-merge: releasing n3oltd/work#$n to prod"
+            n3o work mark-released --issue "$n" --env prod
+          done
+
   push:
     if: >-
       github.event_name == 'push' &&
@@ -102,3 +142,32 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --default-branch "${{ github.event.repository.default_branch }}" \
             --messages "$messages"
+
+      - name: release referenced issues (ship-on-merge)
+        if: inputs.ship-on-merge
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          COMMITS_JSON: ${{ toJSON(github.event.commits) }}
+        run: |
+          # Direct-push counterpart of the pr-job release step: release n3oltd/work
+          # issues referenced in the pushed commit messages (covers direct pushes to
+          # the default branch and squash-merges that carry the ref in the commit).
+          # mark-released is idempotent, so overlap with the pr-job step is harmless.
+          issues=$(echo "$COMMITS_JSON" \
+            | jq -r 'map(.message) | join("\n")' \
+            | grep -oiE 'n3oltd/work#[0-9]+' \
+            | grep -oE '[0-9]+' \
+            | sort -un || true)
+
+          if [ -z "$issues" ]; then
+            echo "No n3oltd/work references in this push; nothing to release."
+            exit 0
+          fi
+
+          for n in $issues; do
+            echo "ship-on-merge: releasing n3oltd/work#$n to prod"
+            n3o work mark-released --issue "$n" --env prod
+          done
