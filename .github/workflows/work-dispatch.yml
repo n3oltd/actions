@@ -7,9 +7,6 @@ on:
 
 jobs:
   dispatch:
-    # Local reference (not @main) so this repo always runs the reusable from the
-    # same ref — keeps it consistent on PRs/branches and avoids a chicken-and-egg
-    # with new reusable inputs. ship-on-merge: merge to main is the release.
     uses: ./.github/workflows/n3o-work-dispatch.yml
     with:
       ship-on-merge: true
