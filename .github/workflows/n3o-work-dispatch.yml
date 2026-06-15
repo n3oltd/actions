@@ -78,11 +78,10 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          # `internal` (ship-on-merge) repos have no `n3o deploy` step: merging to
-          # the default branch IS the prod release. Move each n3oltd/work issue
-          # referenced by this merged PR straight to Released to Prod. Parses the
-          # same PR title/body that pr-dispatch used to reach Merged. See n3oltd/work
-          # architecture.md §11 (Ship-on-merge products). mark-released is idempotent.
+          # ship-on-merge: merging to the default branch IS the prod release for
+          # these repos. Move each n3oltd/work issue referenced by this merged PR
+          # straight to Released to Prod, parsing the same PR title/body that
+          # pr-dispatch used to reach Merged. mark-released is idempotent.
           issues=$(printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" \
             | grep -oiE 'n3oltd/work#[0-9]+' \
             | grep -oE '[0-9]+' \
