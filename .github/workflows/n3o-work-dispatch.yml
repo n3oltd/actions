@@ -68,6 +68,19 @@ jobs:
             --default-branch "${{ github.event.repository.default_branch }}" \
             $flags
 
+      - name: dispatch rollout tracking
+        if: github.event.pull_request.merged == true
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_REPO: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Rollout detection needs the PR diff, so the work repo runs it via the n3o CLI;
+          # it no-ops if the PR introduced no datafix or migration.
+          jq -n --arg repo "$PR_REPO" --argjson num "$PR_NUMBER" \
+            '{event_type: "rollout-track", client_payload: {pr_repo: $repo, pr_number: $num}}' \
+            | gh api repos/n3oltd/work/dispatches -X POST --input -
+
       - name: release referenced issues (ship-on-merge)
         if: inputs.ship-on-merge && github.event.pull_request.merged == true
         env:
