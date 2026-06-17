@@ -42,7 +42,7 @@ jobs:
           git config --global user.email "292859849+n3o-babar[bot]@users.noreply.github.com"
 
           if [ -n "${{ inputs.repo }}" ]; then
-            n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --script
+            n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --no-input
           else
-            n3o nuget upgrade --our-packages --target=remote --script
+            n3o nuget upgrade --our-packages --target=remote --no-input
           fi
