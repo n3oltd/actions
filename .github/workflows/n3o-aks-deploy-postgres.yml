@@ -23,11 +23,6 @@ jobs:
           sparse-checkout: |
             ${{ inputs.data-region }}/postgres
       
-      - name: setup-dotnet
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.x'
-
       - id: get-deployment-version
         name: Get Deployment Version
         working-directory: ${{ inputs.data-region }}/postgres/latest
@@ -42,8 +37,8 @@ jobs:
           secretName=$(jq -r '.secretName' metadata.json)
           echo "secretName=$secretName" >> $GITHUB_OUTPUT 
           
-      - name: install n3o cli
-        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+      - name: setup dotnet + n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
           access-token: ${{ secrets.GH_PAT }}
           

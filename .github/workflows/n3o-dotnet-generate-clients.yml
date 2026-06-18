@@ -38,18 +38,13 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: setup-dotnet
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.x'
-
       - name: setup-node
         uses: actions/setup-node@v6
         with:
           node-version: '24'
 
-      - name: install n3o cli
-        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+      - name: setup dotnet + n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
           access-token: ${{ secrets.GH_PAT }}
           azure-client-id: ${{ env.AZURE_CLIENT_ID }}

@@ -34,13 +34,8 @@ jobs:
           private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
           owner: n3oltd
 
-      - name: setup-dotnet
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.x'
-
-      - name: install n3o cli
-        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+      - name: setup dotnet + n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
           access-token: ${{ secrets.GH_PAT }}
           azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
@@ -131,13 +126,8 @@ jobs:
           private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
           owner: n3oltd
 
-      - name: setup-dotnet
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.x'
-
-      - name: install n3o cli
-        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+      - name: setup dotnet + n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
           access-token: ${{ secrets.GH_PAT }}
           azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
