@@ -17,7 +17,12 @@ permissions:
 
 jobs:
   babar:
-    if: ${{ startsWith(github.event.comment.body, '/babar ') }}
+    # author_association gates the job before it starts, so an outsider commenting on a
+    # public repo can't even spin up the runner (the org-membership step below is the
+    # authoritative check). OWNER/MEMBER/COLLABORATOR covers org members and repo collaborators.
+    if: >-
+      ${{ startsWith(github.event.comment.body, '/babar ')
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
