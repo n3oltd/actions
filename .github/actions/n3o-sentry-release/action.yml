@@ -1,17 +1,23 @@
 name: 'N3O Sentry release'
+description: creates a Sentry release for the n3oltd org and optionally uploads sourcemaps
 
 inputs:
   project:
+    description: Sentry project slug
     required: true
   release:
+    description: release version/identifier to create
     required: true
   environment:
+    description: Sentry environment name to associate the release with
     required: false
     default: ''
   sourcemaps:
+    description: path to the sourcemaps to upload
     required: false
     default: ''
   auth-token:
+    description: Sentry auth token
     required: true
 
 runs:

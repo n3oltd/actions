@@ -1,29 +1,38 @@
+# Configures and restarts an Azure Web App running the OAuth2 Proxy in front of a static site.
+# Points the app at a Docker image and sets the OAuth2 Proxy app settings for Azure AD sign-in, then restarts the app.
+# Called to deploy or update an OAuth-protected static site on Azure.
 name: 'oauth-static-site-deploy'
 
 on:
   workflow_call:
     inputs:
       client-id:
+        description: OAuth client id
         type: string
         required: true
 
       docker-image:
+        description: docker image to deploy
         type: string
         required: true
 
       email-domains:
+        description: allowed email domains for OAuth access
         type: string
         required: true
 
       resource-group:
+        description: Azure resource group
         type: string
         required: true
 
       site-name:
+        description: site name
         type: string
         required: true
 
       tenant-id:
+        description: Azure tenant id
         type: string
         required: true
 

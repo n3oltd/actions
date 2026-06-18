@@ -1,26 +1,34 @@
+# Deploys an N3O service to an AKS cluster by applying the latest versioned manifests from a deployment folder.
+# Resolves the deployment version from metadata.json, applies the YAML to the target namespace, and optionally creates a Sentry release.
+# Called to roll out or update a backend service in a region.
 name: 'Deploy N3O services to AKS'
 
 on:
   workflow_call:
     inputs:
       data-region:
+        description: data residency region the deployment targets (e.g. eu1)
         type: string
         required: true
-        
+
       namespace:
+        description: Kubernetes namespace to deploy into
         type: string
         required: true
 
       deployment-folder:
+        description: path to the deployment folder to apply
         type: string
         required: true
 
       sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
         required: false
         default: ''
 
       sentry-environment:
+        description: Sentry environment name for the release (empty to skip)
         type: string
         required: false
         default: ''

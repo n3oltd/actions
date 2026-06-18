@@ -1,42 +1,53 @@
-﻿name: 'docker-build-push'
+﻿# Builds and pushes an N3O service Docker image to ACR with date/latest/sha
+# tags, skipping the build if an image for the commit already exists, and
+# optionally extracts sourcemaps and creates a Sentry release.
+name: 'docker-build-push'
 
 on:
   workflow_call:
     inputs:
       branch:
+        description: git branch to build from
         type: string
         required: false
         default: 'main'
 
       build-args:
+        description: docker build arguments
         type: string
         required: false
         default: ''
 
       container-repository:
+        description: container registry repository to push the image to
         type: string
         required: true
 
       dockerfile:
+        description: path to the Dockerfile
         type: string
         required: true
 
       context:
+        description: docker build context path
         type: string
         required: false
         default: './src'
 
       secrets:
+        description: docker build secrets passed to the build
         type: string
         required: false
         default: ''
 
       sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
         required: false
         default: ''
 
       sentry-extract-sourcemaps:
+        description: whether to extract and upload sourcemaps to Sentry
         type: boolean
         required: false
         default: false

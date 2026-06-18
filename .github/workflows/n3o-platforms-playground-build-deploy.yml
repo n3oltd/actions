@@ -1,3 +1,6 @@
+# Builds the platforms-playground app and deploys its JS output to the
+# platforms-playground Azure blob storage container. Call this to publish an
+# updated Playground build.
 name: 'Build & Deploy Platforms Playground'
 
 on:

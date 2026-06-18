@@ -1,3 +1,6 @@
+# Reusable workflow that converts Karakoram content YAML to JSON, then publishes it
+# and its image assets to the Azure blob storage containers (global and per-env).
+# Use it to deploy updated Karakoram welcome/featured/getting-started content.
 name: Publish Karakoram Content
 
 on:

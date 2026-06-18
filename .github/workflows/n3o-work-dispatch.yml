@@ -1,3 +1,7 @@
+# Reusable workflow that syncs PR and push activity to issues in the n3oltd/work repo.
+# Dispatches PR/commit references to the n3o CLI, tracks rollouts, and (for ship-on-merge
+# repos) releases referenced work issues to prod on merge or default-branch push.
+# Call it from a repo's PR/push workflow to keep work-tracking in sync with code changes.
 name: 'n3o-work-dispatch'
 
 on:

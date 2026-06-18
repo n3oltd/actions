@@ -1,4 +1,7 @@
-﻿name: 'docker-build-push-pgbouncer'
+﻿# Builds and pushes the N3O PgBouncer Docker image to ACR with date and
+# latest tags, fetching the Dockerfile from the actions repo. Takes no
+# inputs.
+name: 'docker-build-push-pgbouncer'
 
 on:
   workflow_call:

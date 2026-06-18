@@ -1,39 +1,49 @@
+# Builds, optionally tests and packs a .NET project, pushes any NuGet
+# packages to the configured feed, and optionally creates a Sentry release.
 name: 'dotnet-build-pack-push'
 
 on:
   workflow_call:
     inputs:
       runs-on:
+        description: runner label the job executes on
         type: string
         default: ubuntu-latest
 
       dotnet-version:
+        description: .NET SDK version to set up
         type: string
         default: 10.x
 
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
 
       build-configuration:
+        description: build configuration (e.g. Release)
         type: string
         default: Release
 
       run-tests:
+        description: whether to run tests
         type: boolean
         default: false
 
       run-pack:
+        description: whether to create NuGet packages
         type: boolean
         default: false
 
       version-strategy:
+        description: how the version is derived ('tag' from git tag, 'date' for date-based)
         type: string
         default: tag
         # 'tag': version from git tag (refs/tags/v*), fallback 1.0.0
         # 'date': date-based version (YYYY.M.D.run_number)
 
       version:
+        description: explicit version to use; overrides version-strategy when set
         type: string
         default: ''
         # If set, takes precedence over version-strategy. Use when the caller
@@ -41,14 +51,17 @@ on:
         # from a branch rather than a tag).
 
       nuget-source:
+        description: NuGet feed to push packages to
         type: string
         default: 'https://api.nuget.org/v3/index.json'
 
       version-suffix:
+        description: optional prerelease suffix appended to the version
         type: string
         default: ''
 
       sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
         required: false
         default: ''

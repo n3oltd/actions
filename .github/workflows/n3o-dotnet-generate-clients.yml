@@ -1,9 +1,13 @@
+# Reusable workflow that builds the solution, runs the n3o CLI to regenerate API
+# clients, and commits any changes back to the repo. Use it to keep generated
+# clients in sync on push (skipped when the commit message has [no-generate-clients]).
 name: dotnet generate clients
 
 on:
   workflow_call:
     inputs:
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
 

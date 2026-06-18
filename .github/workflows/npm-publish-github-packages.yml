@@ -1,9 +1,13 @@
-﻿name: Publish NPM package to GitHub Packages
+﻿# Reusable workflow that builds and publishes an npm package to GitHub Packages.
+# Installs deps, builds, stamps a date-based version, then runs npm publish against npm.pkg.github.com.
+# Call it from a release workflow when shipping a package to the org's GitHub Packages registry.
+name: Publish NPM package to GitHub Packages
 
 on:
   workflow_call:
     inputs:
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
 

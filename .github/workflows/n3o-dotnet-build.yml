@@ -1,4 +1,6 @@
-﻿name: 'dotnet build'
+﻿# Reusable workflow that checks out the repo and runs a .NET restore and build.
+# Use it for CI on repos that only need to verify the solution compiles.
+name: 'dotnet build'
 
 on:
   workflow_call:
@@ -9,6 +11,7 @@ on:
         default: Release
       
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
 

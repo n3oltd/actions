@@ -1,13 +1,18 @@
+# Deploys a mobile app over-the-air update by pointing a Capgo channel at the latest bundle.
+# Reads the bundle name from metadata and sets the environment's Capgo channel to it.
+# Use to promote a mobile-app bundle to a given environment.
 name: 'Deploy Mobile App'
 
 on:
   workflow_call:
     inputs:
       app-id:
+        description: mobile app identifier (under mobile-apps/)
         type: string
         required: true
-      
+
       environment-id:
+        description: target environment/slot identifier under the deployment path
         type: string
         required: true
 

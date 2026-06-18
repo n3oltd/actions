@@ -1,13 +1,18 @@
+# Deploys the platforms-pages release to AKS by applying its Kubernetes YAML manifests.
+# Reads the latest deployment version from metadata, sets up kubectl, then applies the
+# manifests for that version. Use to roll out platforms-pages to a cluster.
 name: Deploy Platforms Pages
 
 on:
   workflow_call:
     inputs:
       data-region:
+        description: data residency region the deployment targets (e.g. eu1)
         type: string
         required: true
 
       environment-id:
+        description: target environment/slot identifier under the deployment path
         type: string
         required: true
 
