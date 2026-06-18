@@ -31,6 +31,9 @@ jobs:
         with:
           access-token: ${{ secrets.GH_PAT }}
 
+      - name: configure git identity
+        uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+
       - name: upgrade
         env:
           GH_PAT: ${{ steps.app-token.outputs.token }}
@@ -38,9 +41,6 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
         run: |
-          git config --global user.name "N3O Babar"
-          git config --global user.email "292859849+n3o-babar[bot]@users.noreply.github.com"
-
           if [ -n "${{ inputs.repo }}" ]; then
             n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --no-input
           else
