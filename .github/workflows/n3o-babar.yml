@@ -1,0 +1,126 @@
+# Reusable workflow backing the /babar bot. A repo enables it with a thin caller on
+# issue_comment (see n3oltd/work/.github/workflows/babar.yml). This gates on org
+# membership and a per-user daily quota, resolves and renders the requested prompt
+# (`n3o babar prompt <command>`), runs it through Claude, and lets the prompt post its
+# own result back on the thread. The set of /babar commands is the set of agents
+# prompts that declare a `babar:` alias — adding a command is a prompt change, not a
+# workflow change.
+name: n3o babar
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  babar:
+    # author_association gates the job before it starts, so an outsider commenting on a
+    # public repo can't even spin up the runner (the org-membership step below is the
+    # authoritative check). OWNER/MEMBER/COLLABORATOR covers org members and repo collaborators.
+    if: >-
+      ${{ startsWith(github.event.comment.body, '/babar ')
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+      # Cloned service/library repos restore the private NuGet feed via %GH_USERNAME%/%GH_PAT%,
+      # so the agent can build-verify a fix. Distinct from the bot token used for gh/git.
+      GH_USERNAME: n3oltd
+      GH_PAT: ${{ secrets.GH_PAT }}
+      MCP_CONFIG: '{"mcpServers":{"n3o":{"type":"stdio","command":"n3o","args":["mcp"]}}}'
+      COMMENTER: ${{ github.event.comment.user.login }}
+      THREAD: ${{ github.event.issue.number }}
+      BODY: ${{ github.event.comment.body }}
+    steps:
+      - uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+
+      # Mints the n3o-babar App token and points git at it, so the agent can push
+      # branches and open PRs across repos. Also used for the gh comments below.
+      - name: configure git identity
+        id: identity
+        uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+        with:
+          app-id: ${{ secrets.N3O_APP_ID }}
+          private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
+
+      - name: Use the bot token for gh
+        env:
+          N3O_TOKEN: ${{ steps.identity.outputs.token }}
+        run: echo "GH_TOKEN=$N3O_TOKEN" >> "$GITHUB_ENV"
+
+      # Hard requirement: only members of the n3oltd organisation can drive the bot.
+      - name: Gate on org membership
+        run: |
+          if ! gh api "orgs/n3oltd/members/$COMMENTER" >/dev/null 2>&1; then
+            gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
+              --body "@$COMMENTER \`/babar\` is only available to members of the n3oltd organisation."
+            exit 1
+          fi
+
+      - name: Parse the command
+        id: parse
+        run: |
+          read -r _ command args <<< "$BODY"
+          echo "command=$command" >> "$GITHUB_OUTPUT"
+          {
+            echo "args<<__BABAR_EOF__"
+            printf '%s\n' "$args"
+            echo "__BABAR_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      # Per-user daily cap (default 20, resets 00:00 UTC). Claimed before any work so a
+      # rate-limited user cannot consume a Claude run. Writes to the babar-quota branch.
+      - name: Claim the daily quota
+        run: |
+          if ! n3o babar claim --user "$COMMENTER"; then
+            gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
+              --body "@$COMMENTER you have reached today's \`/babar\` limit. It resets at 00:00 UTC."
+            exit 1
+          fi
+
+      - name: Acknowledge
+        run: |
+          gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
+            --body "👀 On it — running \`/babar ${{ steps.parse.outputs.command }}\`."
+
+      # Resolve the command to its prompt (by babar alias) and render it with the thread
+      # context. Unknown command → the catalogue has no matching alias, so explain and stop.
+      - name: Render the prompt
+        env:
+          COMMAND: ${{ steps.parse.outputs.command }}
+          ARGS: ${{ steps.parse.outputs.args }}
+        run: |
+          # The thread number is passed under both `issue` and `pr`: issue_comment carries it
+          # as issue.number for issues and PRs alike, so issue-keyed prompts (diagnose,
+          # summarize) and pr-keyed prompts (review) both resolve. Unused keys are ignored.
+          if ! n3o babar prompt "$COMMAND" \
+                --set issue="$THREAD" \
+                --set pr="$THREAD" \
+                --set repo="${GITHUB_REPOSITORY#*/}" \
+                --set context="$ARGS" \
+                --set commenter="$COMMENTER" > "$RUNNER_TEMP/prompt.md"; then
+            gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
+              --body "@$COMMENTER I don't recognise \`/babar $COMMAND\`."
+            exit 1
+          fi
+
+      - name: Run Claude
+        uses: n3oltd/actions/.github/actions/n3o-claude-run@main
+        with:
+          prompt-file: ${{ runner.temp }}/prompt.md
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed-tools: Read Grep Glob Edit Write Bash mcp__n3o__*
+          mcp-config: ${{ env.MCP_CONFIG }}
+          max-turns: '120'
+          max-cost-usd: '5'
