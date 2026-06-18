@@ -131,6 +131,14 @@ runs:
           echo "__N3O_RESULT_EOF__"
         } >> "$GITHUB_OUTPUT"
 
+        echo "Claude run: subtype=${result_json:+$(printf '%s' "$result_json" | jq -r '.subtype // "?"')} turns=$num_turns cost=\$$cost_usd"
+        {
+          echo "### Claude run"
+          echo "| turns | cost (USD) | error |"
+          echo "| --- | --- | --- |"
+          echo "| $num_turns | \$$cost_usd | $is_error |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
         if [ "$rc" -ne 0 ] || [ "$is_error" = "true" ]; then
           echo "::error::Claude run failed (exit $rc, is_error=$is_error)"
           echo "----- stderr -----"; cat "$err"
