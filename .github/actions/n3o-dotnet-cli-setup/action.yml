@@ -1,0 +1,40 @@
+name: n3o dotnet + cli setup
+description: >
+  Sets up the .NET SDK and installs the n3o CLI in one step. Bundles actions/setup-dotnet
+  followed by n3o-cli-install (which the CLI's dotnet tool install requires). Azure inputs
+  are optional for callers that only need the nuget source token.
+
+inputs:
+  access-token:
+    description: Access token for the nuget source
+    required: true
+  azure-client-id:
+    description: Azure client id for key vault access
+    required: false
+    default: ''
+  azure-client-secret:
+    description: Azure client secret for key vault access
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure tenant id for key vault access
+    required: false
+    default: ''
+  dotnet-version:
+    description: .NET SDK version to install
+    required: false
+    default: '10.x'
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+      with:
+        access-token: ${{ inputs.access-token }}
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-client-secret: ${{ inputs.azure-client-secret }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}

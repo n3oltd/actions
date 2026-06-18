@@ -16,13 +16,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: setup-dotnet
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.x'
-
-      - name: install n3o cli
-        uses: n3oltd/actions/.github/actions/n3o-cli-install@main
+      - name: setup dotnet + n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
           access-token: ${{ secrets.GH_PAT }}
 
