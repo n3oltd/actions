@@ -1,3 +1,6 @@
+# Reusable workflow that auto-labels newly opened issues that have no labels,
+# applying a configurable triage label via a GitHub App token.
+# Call it from a repo's issue-opened workflow to flag untriaged issues.
 name: n3o auto-triage new issue
 
 on:

@@ -1,13 +1,18 @@
+# Builds the n3o-elements library for a subscription and publishes it as a
+# versioned npm package to GitHub Packages, optionally creating a Sentry release
+# with sourcemaps. Call this to publish the Platforms JS package for a tenant.
 name: 'Build & Push Platforms JS'
 
 on:
   workflow_call:
     inputs:
       subscription-code:
+        description: platforms subscription code identifying the charity/tenant
         type: string
         required: true
 
       sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
         required: false
         default: ''

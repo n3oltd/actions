@@ -1,9 +1,13 @@
+# Builds the Platforms app JS bundle for a subscription and uploads it to Capgo
+# for over-the-air live updates. Call this to ship a web/JS-only update without
+# rebuilding the native app.
 name: "Build & Push Platforms App"
 
 on:
   workflow_call:
     inputs:
       subscription-code:
+        description: platforms subscription code identifying the charity/tenant
         type: string
         required: true
 

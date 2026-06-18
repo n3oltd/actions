@@ -1,3 +1,5 @@
+# Installs dependencies and builds the platforms-pages app via Turbo. Call this
+# to produce a build of the Platforms marketing/content pages bundle.
 name: Build Platforms Pages
 
 on:

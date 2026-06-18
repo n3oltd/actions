@@ -1,22 +1,29 @@
+# Deploys a single N3O site to an AKS cluster by applying the latest versioned manifests for that site.
+# Resolves the deployment version from metadata.json under the region's sites/<site-id> folder and optionally creates a Sentry release.
+# Called to roll out or update an individual site in a region.
 name: Deploy N3O Site
 
 on:
   workflow_call:
     inputs:
       data-region:
+        description: data residency region the deployment targets (e.g. eu1)
         type: string
         required: true
-      
+
       site-id:
+        description: identifier of the site to deploy
         type: string
         required: true
 
       sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
         required: false
         default: ''
 
       sentry-environment:
+        description: Sentry environment name for the release (empty to skip)
         type: string
         required: false
         default: ''

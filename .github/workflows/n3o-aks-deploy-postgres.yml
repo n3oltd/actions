@@ -1,9 +1,13 @@
+# Deploys the Postgres stack to an AKS cluster for a given data region.
+# Decrypts the Postgres secrets and applies the versioned manifests from the region's postgres folder.
+# Called to provision or update the shared Postgres database in a region.
 name: Deploy Postgres to AKS
 
 on:
   workflow_call:
     inputs:
       data-region:
+        description: data residency region the deployment targets (e.g. eu1)
         type: string
         required: true
 

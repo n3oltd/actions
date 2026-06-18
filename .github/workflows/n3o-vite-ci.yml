@@ -1,9 +1,12 @@
+# Runs CI for a Vite project: typecheck, lint, optional tests, and a production build.
+# Sets up Node with npm caching and installs via npm ci. Called by Vite app repos on push/PR.
 name: 'vite ci'
 
 on:
   workflow_call:
     inputs:
       node-version:
+        description: Node.js version to set up
         type: string
         default: '24'
 

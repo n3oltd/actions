@@ -1,4 +1,7 @@
-﻿name: dotnet build, pack and push
+﻿# Reusable workflow that builds .NET projects, packs the listed NuGet packages and
+# pushes them to the feed, optionally publishing generated npm client packages too.
+# Use it as the main CI/CD pipeline for releasing a repo's NuGet (and npm) artifacts.
+name: dotnet build, pack and push
 
 on:
   workflow_call:
@@ -24,10 +27,12 @@ on:
         default: false
 
       version-suffix:
+        description: optional prerelease suffix appended to the version
         type: string
         default: ''
 
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
         

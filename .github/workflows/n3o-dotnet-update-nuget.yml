@@ -1,3 +1,6 @@
+# Reusable workflow that runs the n3o CLI to upgrade our own NuGet packages to their
+# latest versions across the org (or a single repo) and commits the changes upstream.
+# Use it to roll out internal package updates automatically.
 name: 'dotnet-update-nuget'
 
 on:

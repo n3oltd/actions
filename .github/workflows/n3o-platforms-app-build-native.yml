@@ -1,12 +1,17 @@
+# Builds and publishes the native Platforms app (iOS .ipa or Android .apk) for a
+# subscription, syncing Capacitor assets and signing/uploading to the store. Call
+# this to produce a full native app build for a given platform.
 name: Build Platforms App Native
 
 on:
   workflow_call:
     inputs:
       subscription-code:
+        description: platforms subscription code identifying the charity/tenant
         type: string
         required: true
       platform:
+        description: target build platform (ios or android)
         type: string
         required: true
 

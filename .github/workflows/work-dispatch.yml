@@ -1,3 +1,6 @@
+# Triggered workflow that runs on PR events and pushes in this repo, calling the
+# reusable n3o-work-dispatch workflow with ship-on-merge enabled to keep n3oltd/work
+# issues in sync and release them to prod on merge.
 name: Dispatch PR status to n3oltd/work
 
 on:

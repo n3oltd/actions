@@ -1,65 +1,83 @@
+# Configures and restarts an Azure Web App running an Umbraco CMS site.
+# Sets the Docker image, database connection strings, localization, storage, Sentry and Umbraco license app settings, then restarts the app.
+# Called to deploy or update an Umbraco site on Azure.
 name: 'umbraco-deploy'
 
 on:
   workflow_call:
     inputs:
       docker-image:
+        description: docker image to deploy
         type: string
         required: true
 
       resource-group:
+        description: Azure resource group
         type: string
         required: true
 
       environment-id:
+        description: target environment/slot identifier under the deployment path
         type: string
         required: true
 
       site-name:
+        description: site name
         type: string
         required: true
 
       storage-container:
+        description: Azure storage container name
         type: string
         default: 'umbraco'
 
       localization-date-format:
+        description: localized date format for the site
         type: string
         default: dmy_slashes
 
       localization-language:
+        description: localization language for the site
         type: string
         default: en
 
       localization-number-format:
+        description: localized number format for the site
         type: string
         default: international
 
       localization-time-format:
+        description: localized time format for the site
         type: string
         default: '24'
 
       localization-timezone:
+        description: timezone for the site
         type: string
         default: 'Etc/UTC'
 
       site-language-tag:
+        description: localization tag for the site language
         type: string
         required: true
 
       site-name-tag:
+        description: localization tag for the site name
         type: string
         required: true
-        
+
       sentry-dsn:
+        description: Sentry DSN for the deployed app
         type: string
         default: "none"
-        
+
       umbraco-forms-license:
+        description: Umbraco Forms license key
         type: string
         default: "none"
 
       umbraco-engage-license:
+        description: Umbraco Engage license key
         type: string
         default: "none"
     

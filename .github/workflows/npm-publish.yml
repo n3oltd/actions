@@ -1,17 +1,23 @@
+# Reusable workflow that publishes an npm package to the public npmjs.org registry.
+# Optionally builds (prepack) the package, sets the version, then runs npm publish.
+# Call it from a release workflow when shipping a public package to npm.
 name: 'npm-publish'
 
 on:
   workflow_call:
     inputs:
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         required: true
 
       version:
+        description: explicit version to use; overrides version-strategy when set
         type: string
         required: true
 
       prepack:
+        description: whether to run the prepack step before publishing
         type: boolean
         default: false
 

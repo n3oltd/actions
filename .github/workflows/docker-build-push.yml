@@ -1,30 +1,39 @@
+# Builds and pushes a date-versioned Docker image to N3O's ACR, fetching
+# the Dockerfile from the actions repo and optionally creating a Sentry
+# release with sourcemaps.
 name: 'docker-build-push'
 
 on:
   workflow_call:
     inputs:
       build-args:
+        description: docker build arguments
         type: string
         required: false
-    
+
       container-repository:
+        description: container registry repository to push the image to
         type: string
         required: true
 
       dockerfile:
+        description: path to the Dockerfile
         type: string
         required: true
 
       working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
 
       sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
         required: false
         default: ''
 
       sentry-sourcemaps:
+        description: whether to extract and upload sourcemaps to Sentry
         type: string
         required: false
         default: ''
