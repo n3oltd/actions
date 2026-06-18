@@ -5,6 +5,17 @@ name: 'Build & Deploy Platforms Playground'
 
 on:
   workflow_call:
+    inputs:
+      subscription-code:
+        description: platforms subscription code identifying the charity/tenant
+        type: string
+        required: false
+        default: ''
+      environment:
+        description: environment name passed to the playground build as VITE_ENVIRONMENT
+        type: string
+        required: false
+        default: ''
 
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
