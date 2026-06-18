@@ -1,0 +1,144 @@
+name: n3o Claude run
+description: >
+  Runs Claude Code headlessly with live, turn-by-turn streaming to the workflow log and
+  baked-in runaway safeguards: a --max-turns cap (stops the run mid-flight), an optional
+  max-cost-usd tripwire (fails the step post-run), and a surfaced cost-usd output; pair with
+  the caller's timeout-minutes for a wall-clock cap. Installs the CLI, invokes it over the
+  n3o MCP server, and exposes the final result, error state, turn count and cost as outputs.
+
+inputs:
+  prompt-file:
+    description: Path to the rendered prompt passed to claude -p
+    required: true
+  oauth-token:
+    description: Claude Code OAuth token (CLAUDE_CODE_OAUTH_TOKEN)
+    required: true
+  allowed-tools:
+    description: Space-separated list of allowed tools (e.g. "Read Edit Bash mcp__n3o__search_code")
+    required: false
+    default: ''
+  mcp-config:
+    description: Inline MCP server config JSON
+    required: false
+    default: ''
+  permission-mode:
+    description: Claude permission mode
+    required: false
+    default: acceptEdits
+  max-turns:
+    description: Maximum agent turns before the run is stopped (primary token-burn cap)
+    required: false
+    default: '50'
+  max-cost-usd:
+    description: Fail the step if the run's reported cost exceeds this (post-run tripwire); empty disables
+    required: false
+    default: ''
+  model:
+    description: Model to use; empty uses the CLI default
+    required: false
+    default: ''
+  working-directory:
+    description: Directory to run Claude in
+    required: false
+    default: '.'
+
+outputs:
+  result:
+    description: Final result text from Claude
+    value: ${{ steps.run.outputs.result }}
+  is-error:
+    description: Whether Claude reported an error result
+    value: ${{ steps.run.outputs.is-error }}
+  num-turns:
+    description: Number of agent turns the run took
+    value: ${{ steps.run.outputs.num-turns }}
+  cost-usd:
+    description: Total cost of the run in USD
+    value: ${{ steps.run.outputs.cost-usd }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Claude Code
+      shell: bash
+      run: npm install -g @anthropic-ai/claude-code
+
+    - name: Run Claude
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+        PROMPT_FILE: ${{ inputs.prompt-file }}
+        ALLOWED_TOOLS: ${{ inputs.allowed-tools }}
+        MCP_CONFIG: ${{ inputs.mcp-config }}
+        PERMISSION_MODE: ${{ inputs.permission-mode }}
+        MAX_TURNS: ${{ inputs.max-turns }}
+        MAX_COST_USD: ${{ inputs.max-cost-usd }}
+        MODEL: ${{ inputs.model }}
+      run: |
+        set -o pipefail
+
+        args=( -p "$(cat "$PROMPT_FILE")"
+          --permission-mode "$PERMISSION_MODE"
+          --max-turns "$MAX_TURNS"
+          --output-format stream-json
+          --verbose )
+        [ -n "$MCP_CONFIG" ] && args+=( --mcp-config "$MCP_CONFIG" )
+        [ -n "$MODEL" ] && args+=( --model "$MODEL" )
+        if [ -n "$ALLOWED_TOOLS" ]; then
+          set -f
+          args+=( --allowedTools $ALLOWED_TOOLS )
+          set +f
+        fi
+
+        raw="$RUNNER_TEMP/claude-stream.jsonl"
+        err="$RUNNER_TEMP/claude.err"
+
+        claude "${args[@]}" 2> "$err" | tee "$raw" | jq -rc --unbuffered '
+          if .type == "system" and .subtype == "init" then
+            "▸ session \(.session_id // "")"
+          elif .type == "assistant" then
+            (.message.content[]? |
+              if .type == "text" then (.text // "" | select(. != ""))
+              elif .type == "tool_use" then "→ \(.name) \((.input | tostring)[0:200])"
+              else empty end)
+          elif .type == "user" then
+            (.message.content[]? |
+              if .type == "tool_result" then
+                "← " + (if .is_error then "ERROR " else "result " end)
+                + ((.content | if type == "array" then (map(.text // "") | join(" "))
+                     elif type == "string" then . else tostring end)
+                   | gsub("\\s+"; " ") | .[0:200])
+              else empty end)
+          elif .type == "result" then
+            "■ \(.subtype) turns=\(.num_turns // 0) cost=$\(.total_cost_usd // 0)"
+          else empty end' || true
+        rc=${PIPESTATUS[0]}
+
+        result_json=$(jq -c 'select(.type == "result")' "$raw" 2>/dev/null | tail -1)
+        is_error=$(printf '%s' "$result_json" | jq -r '.is_error // false')
+        num_turns=$(printf '%s' "$result_json" | jq -r '.num_turns // 0')
+        cost_usd=$(printf '%s' "$result_json" | jq -r '.total_cost_usd // 0')
+        result_text=$(printf '%s' "$result_json" | jq -r '.result // ""')
+
+        {
+          echo "is-error=$is_error"
+          echo "num-turns=$num_turns"
+          echo "cost-usd=$cost_usd"
+          echo "result<<__N3O_RESULT_EOF__"
+          printf '%s\n' "$result_text"
+          echo "__N3O_RESULT_EOF__"
+        } >> "$GITHUB_OUTPUT"
+
+        if [ "$rc" -ne 0 ] || [ "$is_error" = "true" ]; then
+          echo "::error::Claude run failed (exit $rc, is_error=$is_error)"
+          echo "----- stderr -----"; cat "$err"
+          echo "----- result -----"; printf '%s\n' "$result_text"
+          exit 1
+        fi
+
+        if [ -n "$MAX_COST_USD" ] && awk "BEGIN{exit !($cost_usd > $MAX_COST_USD)}"; then
+          echo "::error::Claude run cost \$$cost_usd exceeded max-cost-usd \$$MAX_COST_USD"
+          exit 1
+        fi
