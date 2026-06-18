@@ -67,11 +67,11 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: dotnet build --nologo
 
+      - name: configure git identity
+        uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+
       - name: commit if changed
         run: |
-          git config user.name 'N3O Babar'
-          git config user.email '292859849+n3o-babar[bot]@users.noreply.github.com'
-
           if git diff --quiet; then
             echo 'No client changes.'
             exit 0

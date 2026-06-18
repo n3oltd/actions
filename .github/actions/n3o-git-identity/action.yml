@@ -1,0 +1,21 @@
+name: n3o-git-identity
+description: Configures the canonical N3O Babar git identity used by N3O automation commits.
+
+inputs:
+  name:
+    description: git user.name to set
+    required: false
+    default: "N3O Babar"
+  email:
+    description: git user.email to set
+    required: false
+    default: "292859849+n3o-babar[bot]@users.noreply.github.com"
+
+runs:
+  using: "composite"
+  steps:
+    - name: configure git identity
+      shell: bash
+      run: |
+        git config --global user.name "${{ inputs.name }}"
+        git config --global user.email "${{ inputs.email }}"
