@@ -1,21 +1,55 @@
 name: n3o-git-identity
-description: Configures the canonical N3O Babar git identity used by N3O automation commits.
+description: >-
+  Configures git for N3O automation commits: sets the canonical N3O Babar
+  identity and, when App credentials are supplied, mints an n3o-babar App token
+  and configures authenticated github.com pushes (so the commits are verified).
 
 inputs:
+  app-id:
+    description: n3o-babar GitHub App id. When set (with private-key), an App token is minted for verified, authenticated pushes.
+    required: false
+    default: ""
+  private-key:
+    description: n3o-babar GitHub App private key.
+    required: false
+    default: ""
+  owner:
+    description: Owner/org the minted token is scoped to.
+    required: false
+    default: n3oltd
   name:
-    description: git user.name to set
+    description: git user.name to set.
     required: false
     default: "N3O Babar"
   email:
-    description: git user.email to set
+    description: git user.email to set.
     required: false
     default: "292859849+n3o-babar[bot]@users.noreply.github.com"
+
+outputs:
+  token:
+    description: The minted App installation token (empty when no App credentials were supplied).
+    value: ${{ steps.app-token.outputs.token }}
 
 runs:
   using: "composite"
   steps:
-    - name: configure git identity
+    - name: mint app token
+      id: app-token
+      if: inputs.app-id != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ inputs.owner }}
+
+    - name: configure git
       shell: bash
+      env:
+        N3O_GIT_TOKEN: ${{ steps.app-token.outputs.token }}
       run: |
         git config --global user.name "${{ inputs.name }}"
         git config --global user.email "${{ inputs.email }}"
+        if [ -n "$N3O_GIT_TOKEN" ]; then
+          git config --global url."https://x-access-token:${N3O_GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
+        fi
