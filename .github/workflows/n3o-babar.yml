@@ -96,8 +96,12 @@ jobs:
           COMMAND: ${{ steps.parse.outputs.command }}
           ARGS: ${{ steps.parse.outputs.args }}
         run: |
+          # The thread number is passed under both `issue` and `pr`: issue_comment carries it
+          # as issue.number for issues and PRs alike, so issue-keyed prompts (diagnose,
+          # summarize) and pr-keyed prompts (review) both resolve. Unused keys are ignored.
           if ! n3o babar prompt "$COMMAND" \
                 --set issue="$THREAD" \
+                --set pr="$THREAD" \
                 --set repo="${GITHUB_REPOSITORY#*/}" \
                 --set context="$ARGS" \
                 --set commenter="$COMMENTER" > "$RUNNER_TEMP/prompt.md"; then
