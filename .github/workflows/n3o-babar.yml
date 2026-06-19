@@ -75,9 +75,8 @@ jobs:
         id: parse
         run: |
           # Body is "/babar <command> [free text]". The free text may span multiple lines
-          # (e.g. `/babar change` followed by a description of the edits to make), so take
-          # the first whitespace-delimited token after the marker as the command and treat
-          # everything after it — newlines included — as the context handed to the prompt.
+          # so take the first whitespace-delimited token after the marker as the command and
+          # treat everything after it — newlines included — as the context handed to the prompt.
           rest="${BODY#/babar }"
           command="${rest%%[[:space:]]*}"
           context="${rest#"$command"}"
