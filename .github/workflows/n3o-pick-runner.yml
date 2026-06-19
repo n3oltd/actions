@@ -1,0 +1,62 @@
+# Picks a job's runner: the self-hosted label when the fleet has idle capacity, otherwise a
+# GitHub-hosted fallback. A caller runs this as a `pick` job and feeds its `runs-on` output
+# to the real job's `runs-on`, so a workflow prefers the self-hosted fleet but never queues
+# behind a saturated one. Public repos always get the hosted fallback (the runner group is
+# private-repo only).
+name: n3o pick runner
+
+on:
+  workflow_call:
+    inputs:
+      self-hosted-label:
+        description: The self-hosted runner label to prefer.
+        type: string
+        required: false
+        default: github-runner
+      fallback:
+        description: The GitHub-hosted runner to fall back to when the fleet is saturated.
+        type: string
+        required: false
+        default: ubuntu-latest
+    outputs:
+      runs-on:
+        description: The chosen runs-on value (the self-hosted label or the fallback).
+        value: ${{ jobs.pick.outputs.runs-on }}
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      runs-on: ${{ steps.pick.outputs.runs-on }}
+    steps:
+      # An App token is needed to list org runners; the default GITHUB_TOKEN can't.
+      - id: identity
+        uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+        with:
+          app-id: ${{ secrets.N3O_APP_ID }}
+          private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
+
+      - id: pick
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.identity.outputs.token }}
+          SELF_HOSTED: ${{ inputs.self-hosted-label }}
+          FALLBACK: ${{ inputs.fallback }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          choose() { echo "runs-on=$1" >> "$GITHUB_OUTPUT"; echo "picked runner: $1"; }
+
+          # The self-hosted runner group is private-repo only, so public repos can't use it.
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "public repo -> hosted fallback"
+            choose "$FALLBACK"; exit 0
+          fi
+
+          # Count online + idle runners with the self-hosted label. On any API hiccup,
+          # default to 0 so we fall back to hosted rather than risk queueing.
+          idle=$(gh api "orgs/n3oltd/actions/runners" --paginate \
+            --jq "[.runners[] | select(.status==\"online\" and .busy==false)
+                   | select(any(.labels[]; .name==\"$SELF_HOSTED\"))] | length" 2>/dev/null || echo 0)
+          echo "idle $SELF_HOSTED runners: ${idle:-0}"
+
+          if [ "${idle:-0}" -ge 1 ]; then choose "$SELF_HOSTED"; else choose "$FALLBACK"; fi
