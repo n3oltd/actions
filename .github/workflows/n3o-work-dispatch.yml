@@ -109,6 +109,57 @@ jobs:
             n3o work mark-released --issue "$n" --env prod
           done
 
+  guard-linked:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: exemptions
+        id: gate
+        env:
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          ACTOR: ${{ github.actor }}
+          OPT_OUT: ${{ contains(github.event.pull_request.labels.*.name, 'no-work-issue') }}
+        run: |
+          skip=false
+          if [ "$PR_MERGED" = "true" ] || [ "$OPT_OUT" = "true" ]; then skip=true; fi
+          if [ "$ACTOR" = "dependabot[bot]" ] || [ "$ACTOR" = "n3o-babar[bot]" ]; then skip=true; fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+      - name: app token
+        if: steps.gate.outputs.skip != 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.N3O_APP_ID }}
+          private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
+          owner: n3oltd
+
+      - name: setup dotnet + n3o cli
+        if: steps.gate.outputs.skip != 'true'
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          azure-client-id: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+
+      - name: require a work-issue reference
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          n3o work guard-linked \
+            --pr-repo "$GITHUB_REPOSITORY" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY"
+
   push:
     if: >-
       github.event_name == 'push' &&
