@@ -43,10 +43,9 @@ jobs:
     outputs:
       runs-on: ${{ steps.pick.outputs.runs-on }}
     steps:
-      # Listing org runners needs an App token (the default GITHUB_TOKEN can't). Use the
-      # dedicated n3o-github-runners App so this stays off the n3o-babar App's rate limit.
-      # Only private repos query the fleet (public repos always fall back to hosted), so
-      # only they mint a token — which also keeps the secret private-repo scoped.
+      # Listing org runners needs an App token (the default GITHUB_TOKEN can't). Only
+      # private repos query the fleet — public repos always fall back to hosted — so only
+      # they mint a token, which keeps the App secret scoped to private repos.
       - id: identity
         if: ${{ github.event.repository.private }}
         uses: actions/create-github-app-token@v2
