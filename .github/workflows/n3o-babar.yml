@@ -37,6 +37,9 @@ jobs:
       COMMENTER: ${{ github.event.comment.user.login }}
       THREAD: ${{ github.event.issue.number }}
       BODY: ${{ github.event.comment.body }}
+      # GitHub logins exempt from the per-user daily cap. Their runs go against their own
+      # Claude token, so the limit doesn't apply — JSON array, matched against COMMENTER.
+      EXCLUDED_FROM_LIMITS: '["nadrummond"]'
     steps:
       - uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
@@ -89,8 +92,13 @@ jobs:
 
       # Per-user daily cap (default 20, resets 00:00 UTC). Claimed before any work so a
       # rate-limited user cannot consume a Claude run. Writes to the babar-quota branch.
+      # Logins in EXCLUDED_FROM_LIMITS are skipped entirely, so the cap never applies to them.
       - name: Claim the daily quota
         run: |
+          if jq -e --arg u "$COMMENTER" 'index($u) != null' <<< "$EXCLUDED_FROM_LIMITS" >/dev/null; then
+            echo "$COMMENTER is excluded from babar limits; skipping the daily quota."
+            exit 0
+          fi
           if ! n3o babar claim --user "$COMMENTER"; then
             gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
               --body "@$COMMENTER you have reached today's \`/babar\` limit. It resets at 00:00 UTC."
