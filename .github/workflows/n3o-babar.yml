@@ -37,6 +37,8 @@ jobs:
       COMMENTER: ${{ github.event.comment.user.login }}
       THREAD: ${{ github.event.issue.number }}
       BODY: ${{ github.event.comment.body }}
+      # GitHub logins exempt from the per-user daily cap. JSON array, matched against COMMENTER.
+      EXCLUDED_FROM_LIMITS: '["nadrummond"]'
     steps:
       - uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
         with:
@@ -71,35 +73,52 @@ jobs:
       - name: Parse the command
         id: parse
         run: |
-          read -r _ command args <<< "$BODY"
+          # Body is "/babar <command> [free text]". The free text may span multiple lines
+          # so take the first whitespace-delimited token after the marker as the command and
+          # treat everything after it — newlines included — as the context handed to the prompt.
+          rest="${BODY#/babar }"
+          command="${rest%%[[:space:]]*}"
+          context="${rest#"$command"}"
+          # Drop the single run of whitespace/newlines separating the command from its text.
+          context="${context#"${context%%[![:space:]]*}"}"
           echo "command=$command" >> "$GITHUB_OUTPUT"
           {
-            echo "args<<__BABAR_EOF__"
-            printf '%s\n' "$args"
+            echo "context<<__BABAR_EOF__"
+            printf '%s\n' "$context"
             echo "__BABAR_EOF__"
           } >> "$GITHUB_OUTPUT"
 
       # Per-user daily cap (default 20, resets 00:00 UTC). Claimed before any work so a
       # rate-limited user cannot consume a Claude run. Writes to the babar-quota branch.
+      # Logins in EXCLUDED_FROM_LIMITS are skipped entirely, so the cap never applies to them.
       - name: Claim the daily quota
         run: |
+          if jq -e --arg u "$COMMENTER" 'index($u) != null' <<< "$EXCLUDED_FROM_LIMITS" >/dev/null; then
+            echo "$COMMENTER is excluded from babar limits; skipping the daily quota."
+            exit 0
+          fi
           if ! n3o babar claim --user "$COMMENTER"; then
             gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
               --body "@$COMMENTER you have reached today's \`/babar\` limit. It resets at 00:00 UTC."
             exit 1
           fi
 
+      # Acknowledge with a 👀 reaction on the triggering comment rather than a reply, so
+      # the only comment babar adds to the thread is the prompt's single result comment.
       - name: Acknowledge
+        env:
+          COMMENT_ID: ${{ github.event.comment.id }}
         run: |
-          gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
-            --body "👀 On it — running \`/babar ${{ steps.parse.outputs.command }}\`."
+          gh api --method POST \
+            "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" \
+            -f content=eyes
 
       # Resolve the command to its prompt (by babar alias) and render it with the thread
       # context. Unknown command → the catalogue has no matching alias, so explain and stop.
       - name: Render the prompt
         env:
           COMMAND: ${{ steps.parse.outputs.command }}
-          ARGS: ${{ steps.parse.outputs.args }}
+          CONTEXT: ${{ steps.parse.outputs.context }}
         run: |
           # The thread number is passed under both `issue` and `pr`: issue_comment carries it
           # as issue.number for issues and PRs alike, so issue-keyed prompts (diagnose,
@@ -108,7 +127,7 @@ jobs:
                 --set issue="$THREAD" \
                 --set pr="$THREAD" \
                 --set repo="${GITHUB_REPOSITORY#*/}" \
-                --set context="$ARGS" \
+                --set context="$CONTEXT" \
                 --set commenter="$COMMENTER" > "$RUNNER_TEMP/prompt.md"; then
             gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
               --body "@$COMMENTER I don't recognise \`/babar $COMMAND\`."
