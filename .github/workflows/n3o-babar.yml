@@ -23,7 +23,10 @@ jobs:
     if: >-
       ${{ startsWith(github.event.comment.body, '/babar ')
           && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
-    runs-on: ubuntu-latest
+    # Private repos run on the self-hosted fleet (queue if busy — babar can wait, no paid
+    # minutes); public-repo callers fall back to hosted since the fleet's runner group is
+    # private-repo only.
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
     timeout-minutes: 45
     env:
       AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
