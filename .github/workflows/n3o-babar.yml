@@ -37,8 +37,7 @@ jobs:
       COMMENTER: ${{ github.event.comment.user.login }}
       THREAD: ${{ github.event.issue.number }}
       BODY: ${{ github.event.comment.body }}
-      # GitHub logins exempt from the per-user daily cap. Their runs go against their own
-      # Claude token, so the limit doesn't apply — JSON array, matched against COMMENTER.
+      # GitHub logins exempt from the per-user daily cap. JSON array, matched against COMMENTER.
       EXCLUDED_FROM_LIMITS: '["nadrummond"]'
     steps:
       - uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
