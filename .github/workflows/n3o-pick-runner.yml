@@ -1,10 +1,12 @@
-# Picks a job's runner: the self-hosted label when the fleet has idle capacity, otherwise a
-# GitHub-hosted fallback. A caller runs this as a `pick` job and feeds its `runs-on` output
-# to the real job's `runs-on`, so a workflow prefers the self-hosted fleet but never queues
-# behind a saturated one. If no self-hosted runner is free, it waits up to `wait-seconds`
-# for one to free up before falling back — so we don't pay for a hosted runner when a
-# self-hosted one is about to become available. Public repos always get the hosted fallback
-# (the runner group is private-repo only).
+# Picks a job's runner. A caller runs this as a `pick` job and feeds its `runs-on` output to
+# the real job's `runs-on`. Two modes:
+#   fast (default) — prefer the self-hosted fleet; if none is free, wait up to `wait-seconds`
+#                    for one, then fall back to a GitHub-hosted runner. For urgent jobs that
+#                    must not queue (e.g. main CI).
+#   wait           — self-hosted only; the job queues until a runner frees up, never falling
+#                    back to a (paid) hosted runner. For jobs where delay is fine.
+# Public repos always get the hosted fallback in both modes (the runner group is
+# private-repo only).
 name: n3o pick runner
 
 on:
@@ -21,10 +23,15 @@ on:
         required: false
         default: ubuntu-latest
       wait-seconds:
-        description: How long to wait for a free self-hosted runner before falling back.
+        description: (fast mode) How long to wait for a free self-hosted runner before falling back.
         type: number
         required: false
         default: 30
+      mode:
+        description: "fast (prefer self-hosted, fall back to hosted) or wait (self-hosted only, queue)."
+        type: string
+        required: false
+        default: fast
     outputs:
       runs-on:
         description: The chosen runs-on value (the self-hosted label or the fallback).
@@ -50,6 +57,7 @@ jobs:
           SELF_HOSTED: ${{ inputs.self-hosted-label }}
           FALLBACK: ${{ inputs.fallback }}
           WAIT_SECONDS: ${{ inputs.wait-seconds }}
+          MODE: ${{ inputs.mode }}
           IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           choose() { echo "runs-on=$1" >> "$GITHUB_OUTPUT"; echo "picked runner: $1"; }
@@ -58,6 +66,12 @@ jobs:
           if [ "$IS_PRIVATE" != "true" ]; then
             echo "public repo -> hosted fallback"
             choose "$FALLBACK"; exit 0
+          fi
+
+          # wait mode: self-hosted only — let GitHub queue the job until a runner frees up.
+          if [ "$MODE" = wait ]; then
+            echo "wait mode (private repo) -> self-hosted, queue if busy"
+            choose "$SELF_HOSTED"; exit 0
           fi
 
           # Number of online + idle runners carrying the self-hosted label. On any API
