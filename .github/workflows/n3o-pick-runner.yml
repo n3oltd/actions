@@ -1,8 +1,10 @@
 # Picks a job's runner: the self-hosted label when the fleet has idle capacity, otherwise a
 # GitHub-hosted fallback. A caller runs this as a `pick` job and feeds its `runs-on` output
 # to the real job's `runs-on`, so a workflow prefers the self-hosted fleet but never queues
-# behind a saturated one. Public repos always get the hosted fallback (the runner group is
-# private-repo only).
+# behind a saturated one. If no self-hosted runner is free, it waits up to `wait-seconds`
+# for one to free up before falling back — so we don't pay for a hosted runner when a
+# self-hosted one is about to become available. Public repos always get the hosted fallback
+# (the runner group is private-repo only).
 name: n3o pick runner
 
 on:
@@ -12,12 +14,17 @@ on:
         description: The self-hosted runner label to prefer.
         type: string
         required: false
-        default: github-runner
+        default: n3o-github-runner
       fallback:
         description: The GitHub-hosted runner to fall back to when the fleet is saturated.
         type: string
         required: false
         default: ubuntu-latest
+      wait-seconds:
+        description: How long to wait for a free self-hosted runner before falling back.
+        type: number
+        required: false
+        default: 30
     outputs:
       runs-on:
         description: The chosen runs-on value (the self-hosted label or the fallback).
@@ -42,6 +49,7 @@ jobs:
           GH_TOKEN: ${{ steps.identity.outputs.token }}
           SELF_HOSTED: ${{ inputs.self-hosted-label }}
           FALLBACK: ${{ inputs.fallback }}
+          WAIT_SECONDS: ${{ inputs.wait-seconds }}
           IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           choose() { echo "runs-on=$1" >> "$GITHUB_OUTPUT"; echo "picked runner: $1"; }
@@ -52,11 +60,24 @@ jobs:
             choose "$FALLBACK"; exit 0
           fi
 
-          # Count online + idle runners with the self-hosted label. On any API hiccup,
-          # default to 0 so we fall back to hosted rather than risk queueing.
-          idle=$(gh api "orgs/n3oltd/actions/runners" --paginate \
-            --jq "[.runners[] | select(.status==\"online\" and .busy==false)
-                   | select(any(.labels[]; .name==\"$SELF_HOSTED\"))] | length" 2>/dev/null || echo 0)
-          echo "idle $SELF_HOSTED runners: ${idle:-0}"
+          # Number of online + idle runners carrying the self-hosted label. On any API
+          # hiccup, treat as 0 so we lean towards falling back rather than risk queueing.
+          idle_count() {
+            gh api "orgs/n3oltd/actions/runners" --paginate \
+              --jq "[.runners[] | select(.status==\"online\" and .busy==false)
+                     | select(any(.labels[]; .name==\"$SELF_HOSTED\"))] | length" 2>/dev/null || echo 0
+          }
 
-          if [ "${idle:-0}" -ge 1 ]; then choose "$SELF_HOSTED"; else choose "$FALLBACK"; fi
+          # Prefer self-hosted; if none free, wait up to WAIT_SECONDS for one to free up
+          # before falling back to hosted (avoids paying for hosted on brief saturation).
+          deadline=$(( SECONDS + WAIT_SECONDS ))
+          while :; do
+            idle=$(idle_count)
+            echo "idle $SELF_HOSTED runners: ${idle:-0}"
+            if [ "${idle:-0}" -ge 1 ]; then choose "$SELF_HOSTED"; exit 0; fi
+            [ "$SECONDS" -ge "$deadline" ] && break
+            echo "no free $SELF_HOSTED runner; waiting up to ${WAIT_SECONDS}s…"
+            sleep 5
+          done
+          echo "no $SELF_HOSTED capacity after ${WAIT_SECONDS}s -> hosted fallback"
+          choose "$FALLBACK"
