@@ -58,9 +58,14 @@ env:
 
 jobs:
   job1:
-    name: ubuntu-latest
+    name: build-push
 
-    runs-on: ubuntu-latest
+    # Forced to the self-hosted fleet (no hosted fallback) so these container builds
+    # never burn paid GitHub minutes — they're dispatch-triggered (nightlies/deploys),
+    # not PR gates, so queueing when the fleet is busy is fine. `docker build`/buildx
+    # use the fleet's Docker-in-Docker sidecar via DOCKER_HOST. All caller repos are
+    # private, so the private runner group is reachable without a public-repo carve-out.
+    runs-on: n3o-github-runner
 
     steps:
       - uses: actions/checkout@v6
