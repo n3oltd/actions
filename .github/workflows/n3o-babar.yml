@@ -71,11 +71,19 @@ jobs:
       - name: Parse the command
         id: parse
         run: |
-          read -r _ command args <<< "$BODY"
+          # Body is "/babar <command> [free text]". The free text may span multiple lines
+          # (e.g. `/babar change` followed by a description of the edits to make), so take
+          # the first whitespace-delimited token after the marker as the command and treat
+          # everything after it — newlines included — as the context handed to the prompt.
+          rest="${BODY#/babar }"
+          command="${rest%%[[:space:]]*}"
+          context="${rest#"$command"}"
+          # Drop the single run of whitespace/newlines separating the command from its text.
+          context="${context#"${context%%[![:space:]]*}"}"
           echo "command=$command" >> "$GITHUB_OUTPUT"
           {
-            echo "args<<__BABAR_EOF__"
-            printf '%s\n' "$args"
+            echo "context<<__BABAR_EOF__"
+            printf '%s\n' "$context"
             echo "__BABAR_EOF__"
           } >> "$GITHUB_OUTPUT"
 
@@ -89,17 +97,22 @@ jobs:
             exit 1
           fi
 
+      # Acknowledge with a 👀 reaction on the triggering comment rather than a reply, so
+      # the only comment babar adds to the thread is the prompt's single result comment.
       - name: Acknowledge
+        env:
+          COMMENT_ID: ${{ github.event.comment.id }}
         run: |
-          gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
-            --body "👀 On it — running \`/babar ${{ steps.parse.outputs.command }}\`."
+          gh api --method POST \
+            "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" \
+            -f content=eyes
 
       # Resolve the command to its prompt (by babar alias) and render it with the thread
       # context. Unknown command → the catalogue has no matching alias, so explain and stop.
       - name: Render the prompt
         env:
           COMMAND: ${{ steps.parse.outputs.command }}
-          ARGS: ${{ steps.parse.outputs.args }}
+          CONTEXT: ${{ steps.parse.outputs.context }}
         run: |
           # The thread number is passed under both `issue` and `pr`: issue_comment carries it
           # as issue.number for issues and PRs alike, so issue-keyed prompts (diagnose,
@@ -108,7 +121,7 @@ jobs:
                 --set issue="$THREAD" \
                 --set pr="$THREAD" \
                 --set repo="${GITHUB_REPOSITORY#*/}" \
-                --set context="$ARGS" \
+                --set context="$CONTEXT" \
                 --set commenter="$COMMENTER" > "$RUNNER_TEMP/prompt.md"; then
             gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" \
               --body "@$COMMENTER I don't recognise \`/babar $COMMAND\`."
