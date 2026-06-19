@@ -50,9 +50,11 @@ on:
 
 jobs:
   job1:
-    name: ubuntu-latest
+    name: build-push
 
-    runs-on: ubuntu-latest
+    # Self-hosted only (no hosted fallback) so these builds don't consume paid GitHub
+    # minutes; queueing when the fleet is busy is acceptable.
+    runs-on: n3o-github-runner
 
     steps:
       - uses: actions/checkout@v6

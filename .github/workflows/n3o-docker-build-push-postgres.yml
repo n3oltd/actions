@@ -7,9 +7,11 @@ on:
   workflow_call:
 
 jobs:
-  build-push-docker-image-job:    
+  build-push-docker-image-job:
 
-    runs-on: ubuntu-latest
+    # Self-hosted only (no hosted fallback) so these builds don't consume paid GitHub
+    # minutes; queueing when the fleet is busy is acceptable.
+    runs-on: n3o-github-runner
 
     steps:
       - uses: actions/checkout@v6
