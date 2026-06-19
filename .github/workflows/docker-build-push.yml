@@ -50,9 +50,9 @@ on:
 
 jobs:
   job1:
-    name: ubuntu-latest
+    name: build-push
 
-    runs-on: ubuntu-latest
+    runs-on: n3o-github-runner
 
     steps:
       - uses: actions/checkout@v6
