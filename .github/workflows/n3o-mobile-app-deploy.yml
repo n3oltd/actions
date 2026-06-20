@@ -20,10 +20,15 @@ env:
   GH_PAT: ${{ secrets.GH_PAT }}
 
 jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    secrets: inherit
+
   deploy-platforms:
+    needs: pick
     name: Deploy Mobile App
-    
-    runs-on: ubuntu-latest
+
+    runs-on: ${{ needs.pick.outputs.runs-on }}
     
     steps:
       - uses: actions/checkout@v6

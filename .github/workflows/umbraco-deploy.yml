@@ -95,10 +95,15 @@ on:
         required: false
 
 jobs:
-  job1:
-    name: ubuntu-latest
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    secrets: inherit
 
-    runs-on: ubuntu-latest
+  job1:
+    needs: pick
+    name: deploy
+
+    runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v6
