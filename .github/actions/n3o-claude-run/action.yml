@@ -84,6 +84,7 @@ runs:
           --permission-mode "$PERMISSION_MODE"
           --max-turns "$MAX_TURNS"
           --output-format stream-json
+          --append-system-prompt "You are running autonomously in CI with no human available to answer questions. Never pause to ask the user — when a step would otherwise prompt a developer to choose (for example, which work issue to link a PR to), make a reasonable decision yourself and proceed."
           --verbose )
         [ -n "$MCP_CONFIG" ] && args+=( --mcp-config "$MCP_CONFIG" )
         [ -n "$MODEL" ] && args+=( --model "$MODEL" )
