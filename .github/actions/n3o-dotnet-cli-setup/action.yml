@@ -28,10 +28,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Detects the baked SDK and skips the download itself.
     - uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 
+    # Not baked; installed every run.
     - uses: n3oltd/actions/.github/actions/n3o-cli-install@main
       with:
         access-token: ${{ inputs.access-token }}

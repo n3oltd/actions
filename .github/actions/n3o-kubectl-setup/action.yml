@@ -17,7 +17,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Baked into the fleet image; install only where missing.
+    - name: check kubectl
+      id: kubectl
+      shell: bash
+      run: command -v kubectl >/dev/null 2>&1 && echo "present=true" >> "$GITHUB_OUTPUT" || echo "present=false" >> "$GITHUB_OUTPUT"
+
     - name: install kubectl
+      if: steps.kubectl.outputs.present != 'true'
       uses:  azure/setup-kubectl@v5
       with:
         version: 'latest'
@@ -27,6 +34,7 @@ runs:
       with:
         creds: '${{ inputs.azure-credentials }}'
 
+    # Not baked; installed every run.
     - name: install kubelogin
       uses: azure/use-kubelogin@v1.3
       env:
