@@ -17,6 +17,17 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Only on GitHub-hosted runners — the self-hosted fleet uses a persistent
+    # shared package cache instead of actions/cache's tarball transfer.
+    - name: cache nuget packages
+      if: runner.environment == 'github-hosted'
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/Directory.Packages.props', '**/Directory.Build.props') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
     - name: dotnet build
       shell: bash
       working-directory: ${{github.workspace}}/${{ inputs.working-directory }}
@@ -24,4 +35,4 @@ runs:
         GH_USERNAME: n3oltd
         GH_PAT: ${{ inputs.access-token }}
       run: |
-        dotnet build -c "${{inputs.build-configuration}}" 
+        dotnet build -c "${{inputs.build-configuration}}"
