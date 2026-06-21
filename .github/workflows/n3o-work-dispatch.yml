@@ -119,7 +119,9 @@ jobs:
         env:
           PR_MERGED: ${{ github.event.pull_request.merged }}
           ACTOR: ${{ github.actor }}
-          OPT_OUT: ${{ contains(github.event.pull_request.labels.*.name, 'no-work-issue') }}
+          # Escape hatch for a genuine untracked chore: a `no-work-issue` marker in the PR body
+          # (NOT a label — `no-work-issue` does not exist as a label in code repos).
+          OPT_OUT: ${{ contains(github.event.pull_request.body, 'no-work-issue') }}
         run: |
           skip=false
           if [ "$PR_MERGED" = "true" ] || [ "$OPT_OUT" = "true" ]; then skip=true; fi
