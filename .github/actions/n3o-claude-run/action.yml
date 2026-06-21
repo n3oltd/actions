@@ -41,6 +41,13 @@ inputs:
     description: Directory to run Claude in
     required: false
     default: '.'
+  github-token:
+    description: >
+      Token with read access to the private n3oltd/claude plugin marketplace (e.g. the org-wide
+      GH_PAT). When set, the run loads the n3o-conventions plugin so its PR hook (work-issue +
+      template) applies to any PR the agent opens. Empty skips it — the run proceeds unguarded.
+    required: false
+    default: ''
 
 outputs:
   result:
@@ -63,6 +70,21 @@ runs:
     - name: Install Claude Code
       shell: bash
       run: command -v claude >/dev/null 2>&1 || npm install -g @anthropic-ai/claude-code
+
+    # Best-effort: a transient or unreachable marketplace must not fail the run. The credential
+    # is env-scoped to these git calls so it doesn't repoint the job's git auth (agent pushes).
+    - name: Load n3o conventions
+      if: ${{ inputs.github-token != '' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        export GIT_CONFIG_COUNT=1
+        export GIT_CONFIG_KEY_0="url.https://x-access-token:${GH_TOKEN}@github.com/.insteadOf"
+        export GIT_CONFIG_VALUE_0="https://github.com/"
+        claude plugin marketplace add n3oltd/claude 2>/dev/null \
+          || claude plugin marketplace update n3o-tools 2>/dev/null || true
+        claude plugin install n3o-conventions@n3o-tools --scope user 2>/dev/null || true
 
     - name: Run Claude
       id: run

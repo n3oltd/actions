@@ -146,3 +146,4 @@ jobs:
           mcp-config: ${{ env.MCP_CONFIG }}
           max-turns: '120'
           max-cost-usd: '5'
+          github-token: ${{ secrets.GH_PAT }}
