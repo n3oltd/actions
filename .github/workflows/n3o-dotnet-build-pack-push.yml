@@ -41,9 +41,7 @@ on:
         type: string
         default: wait
 
-# Coalesce a repo's in-flight runs on the same ref so the NuGet-bump cascade (which can re-commit
-# the same repo several times in minutes) only builds the latest. Continuously-bumped feeds always
-# consume the newest version, so skipping superseded intermediates is safe.
+# Build only the latest commit per repo+ref; cancel superseded bump-cascade runs.
 concurrency:
   group: dotnet-build-pack-push-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: true
