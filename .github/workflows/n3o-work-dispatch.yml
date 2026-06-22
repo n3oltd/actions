@@ -6,14 +6,6 @@ name: 'n3o-work-dispatch'
 
 on:
   workflow_call:
-    inputs:
-      ship-on-merge:
-        description: >-
-          Deprecated and ignored — release is product-gated (issues whose Product
-          is internal) and runs on every merge. Pending removal.
-        type: boolean
-        required: false
-        default: false
 
 jobs:
   pr:
@@ -88,7 +80,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          # Merging IS the prod release for ship-on-merge repos. Advance each
+          # Merging IS the prod release for internal products. Advance each
           # n3oltd/work issue referenced by this merged PR to Released to Prod;
           # --internal-only gates on the issue's Product so only internal products
           # are released, others left for their deploy. mark-released is idempotent.
@@ -103,7 +95,7 @@ jobs:
           fi
 
           for n in $issues; do
-            echo "ship-on-merge: releasing n3oltd/work#$n to prod (if its Product is internal)"
+            echo "releasing n3oltd/work#$n to prod if its Product is internal"
             n3o work mark-released --issue "$n" --env prod --internal-only
           done
 
@@ -223,6 +215,6 @@ jobs:
           fi
 
           for n in $issues; do
-            echo "ship-on-merge: releasing n3oltd/work#$n to prod (if its Product is internal)"
+            echo "releasing n3oltd/work#$n to prod if its Product is internal"
             n3o work mark-released --issue "$n" --env prod --internal-only
           done
