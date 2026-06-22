@@ -15,6 +15,11 @@ inputs:
     required: false
     default: '0'
 
+  mode:
+    description: "runner selection mode passed to the build: wait (self-hosted only) or fast (fall back to hosted when the fleet is saturated)."
+    required: false
+    default: wait
+
 runs:
   using: "composite"
   steps:
@@ -36,4 +41,4 @@ runs:
           echo "${REPO}: last commit ${AGE_HOURS}h ago — building"
         fi
 
-        gh workflow run build-container.yml --repo "$REPO"
+        gh workflow run build-container.yml --repo "$REPO" -f mode="${{ inputs.mode }}"
