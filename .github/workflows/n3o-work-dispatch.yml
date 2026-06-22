@@ -90,10 +90,10 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          # ship-on-merge: merging to the default branch IS the prod release for
-          # these repos. Move each n3oltd/work issue referenced by this merged PR
-          # straight to Released to Prod, parsing the same PR title/body that
-          # pr-dispatch used to reach Merged. mark-released is idempotent.
+          # Merging IS the prod release for ship-on-merge repos. Advance each
+          # n3oltd/work issue referenced by this merged PR to Released to Prod;
+          # --internal-only gates on the issue's Product so only internal products
+          # are released, others left for their deploy. mark-released is idempotent.
           issues=$(printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" \
             | grep -oiE 'n3oltd/work#[0-9]+' \
             | grep -oE '[0-9]+' \
@@ -105,8 +105,8 @@ jobs:
           fi
 
           for n in $issues; do
-            echo "ship-on-merge: releasing n3oltd/work#$n to prod"
-            n3o work mark-released --issue "$n" --env prod
+            echo "ship-on-merge: releasing n3oltd/work#$n to prod (if its Product is internal)"
+            n3o work mark-released --issue "$n" --env prod --internal-only
           done
 
   guard-linked:
@@ -226,6 +226,6 @@ jobs:
           fi
 
           for n in $issues; do
-            echo "ship-on-merge: releasing n3oltd/work#$n to prod"
-            n3o work mark-released --issue "$n" --env prod
+            echo "ship-on-merge: releasing n3oltd/work#$n to prod (if its Product is internal)"
+            n3o work mark-released --issue "$n" --env prod --internal-only
           done
