@@ -1,6 +1,6 @@
 # Reusable workflow that syncs PR and push activity to issues in the n3oltd/work repo.
-# Dispatches PR/commit references to the n3o CLI, tracks rollouts, and (for ship-on-merge
-# repos) releases referenced work issues to prod on merge or default-branch push.
+# Dispatches PR/commit references to the n3o CLI, tracks rollouts, and on merge releases
+# each referenced work issue whose Product is internal (ship-on-merge products) to prod.
 # Call it from a repo's PR/push workflow to keep work-tracking in sync with code changes.
 name: 'n3o-work-dispatch'
 
@@ -9,10 +9,8 @@ on:
     inputs:
       ship-on-merge:
         description: >-
-          For `internal` ship-on-merge repos (no `n3o deploy` step — the n3o CLI,
-          shared actions, devops). When true, merging to the default branch
-          releases the referenced n3oltd/work issues straight to Released to Prod.
-          Leave false (default) for customer-facing repos that release via n3o deploy.
+          Deprecated and ignored — release is product-gated (issues whose Product
+          is internal) and runs on every merge. Pending removal.
         type: boolean
         required: false
         default: false
@@ -80,8 +78,8 @@ jobs:
             '{event_type: "rollout-track", client_payload: {pr_repo: $repo, pr_number: $num}}' \
             | gh api repos/n3oltd/work/dispatches -X POST --input -
 
-      - name: release referenced issues (ship-on-merge)
-        if: inputs.ship-on-merge && github.event.pull_request.merged == true
+      - name: release referenced internal issues
+        if: github.event.pull_request.merged == true
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
@@ -201,8 +199,7 @@ jobs:
             --default-branch "${{ github.event.repository.default_branch }}" \
             --messages "$messages"
 
-      - name: release referenced issues (ship-on-merge)
-        if: inputs.ship-on-merge
+      - name: release referenced internal issues
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
