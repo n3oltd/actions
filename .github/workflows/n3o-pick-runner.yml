@@ -8,11 +8,6 @@
 #                    queue. Billable, so it's an explicit opt-in for when a developer is blocked
 #                    and needs a build now (e.g. while the fleet is mid-burst).
 # Public repos always get the hosted runner (the self-hosted runner group is private-repo only).
-#
-# There is deliberately no "prefer self-hosted, fall back to hosted" middle ground. That relied
-# on a point-in-time count of idle runners, which is a race: a job could commit to the fleet on
-# a stale/transient idle reading and then starve, since GitHub can't reroute a queued job. wait
-# (honest queue) and fast (honest hosted) have no such race.
 name: n3o pick runner
 
 on:
