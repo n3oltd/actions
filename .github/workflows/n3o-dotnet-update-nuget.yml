@@ -10,6 +10,11 @@ on:
         description: Optional single repo name. If omitted, the whole org is processed.
         required: false
         type: string
+      fast:
+        description: Mark the upgrade commits [ci fast] so downstream builds run on hosted runners instead of queueing on the self-hosted fleet.
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   upgrade:
@@ -35,8 +40,10 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
         run: |
+          FAST=""
+          if [ "${{ inputs.fast }}" = "true" ]; then FAST="--fast"; fi
           if [ -n "${{ inputs.repo }}" ]; then
-            n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --no-input
+            n3o nuget upgrade --our-packages --target=remote --repo="${{ inputs.repo }}" --no-input $FAST
           else
-            n3o nuget upgrade --our-packages --target=remote --no-input
+            n3o nuget upgrade --our-packages --target=remote --no-input $FAST
           fi
