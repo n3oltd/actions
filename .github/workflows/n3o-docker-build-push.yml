@@ -52,17 +52,32 @@ on:
         required: false
         default: false
 
+      mode:
+        description: "runner selection mode: wait (self-hosted only, queue) or fast (prefer self-hosted, fall back to hosted after a short wait)"
+        type: string
+        required: false
+        default: wait
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
 jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode }}
+    secrets: inherit
+
   job1:
     name: build-push
+    needs: pick
 
-    # Self-hosted only (no hosted fallback) so these builds don't consume paid GitHub
-    # minutes; queueing when the fleet is busy is acceptable.
-    runs-on: n3o-github-runner
+    # Default mode (wait) keeps these builds self-hosted only so they don't consume paid GitHub
+    # minutes; queueing when the fleet is busy is acceptable. Callers that need an urgent build
+    # (e.g. a manual QA release) pass mode=fast to fall back to a hosted runner when the fleet is
+    # saturated. The pick job resolves the actual runner.
+    runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v6
