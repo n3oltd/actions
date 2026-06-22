@@ -41,6 +41,13 @@ on:
         type: string
         default: wait
 
+# Coalesce a repo's in-flight runs on the same ref so the NuGet-bump cascade (which can re-commit
+# the same repo several times in minutes) only builds the latest. Continuously-bumped feeds always
+# consume the newest version, so skipping superseded intermediates is safe.
+concurrency:
+  group: dotnet-build-pack-push-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
