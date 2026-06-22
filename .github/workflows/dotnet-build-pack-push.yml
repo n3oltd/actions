@@ -15,6 +15,14 @@ on:
         type: string
         default: 10.x
 
+      setup-node:
+        description: >-
+          whether to set up Node.js (and cache ~/.npm + .turbo) before the build.
+          Enable for repos whose MSBuild build runs npm/Turbo (e.g. backoffice
+          frontend plugins). The version is read from a .nvmrc at the repo root.
+        type: boolean
+        default: false
+
       working-directory:
         description: directory (relative to the repo root) to run the build/commands in
         type: string
@@ -89,6 +97,25 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
+
+      # Frontend plugins run npm ci + Turbo from MSBuild, so Node must be present
+      # before the build. setup-node's built-in cache handles ~/.npm (keyed on the
+      # lockfile); the version comes from the repo-root .nvmrc.
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.setup-node }}
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: cache turbo
+        if: ${{ inputs.setup-node && runner.environment == 'github-hosted' }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ inputs.working-directory }}/.turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
 
       - id: prepare
         name: Set version
