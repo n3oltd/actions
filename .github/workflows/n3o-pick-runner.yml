@@ -1,40 +1,41 @@
 # Picks a job's runner. A caller runs this as a `pick` job and feeds its `runs-on` output to
 # the real job's `runs-on`. Two modes:
-#   fast (default) — prefer the self-hosted fleet; if none is free, wait up to `wait-seconds`
-#                    for one, then fall back to a GitHub-hosted runner. For urgent jobs that
-#                    must not queue (e.g. main CI).
-#   wait           — self-hosted only; the job queues until a runner frees up, never falling
-#                    back to a (paid) hosted runner. For jobs where delay is fine.
-# Public repos always get the hosted fallback in both modes (the runner group is
-# private-repo only).
+#   wait (default) — self-hosted only. The job queues on the fleet until a runner frees up.
+#                    Free (no billable minutes) and never gets stuck — GitHub assigns it the
+#                    next idle runner. The right default for routine CI: PR-merge builds and
+#                    the automated NuGet-bump sweep both run here for free.
+#   fast           — GitHub-hosted. Bypasses the fleet entirely for an immediate start with no
+#                    queue. Billable, so it's an explicit opt-in for when a developer is blocked
+#                    and needs a build now (e.g. while the fleet is mid-burst).
+# Public repos always get the hosted runner (the self-hosted runner group is private-repo only).
+#
+# There is deliberately no "prefer self-hosted, fall back to hosted" middle ground. That relied
+# on a point-in-time count of idle runners, which is a race: a job could commit to the fleet on
+# a stale/transient idle reading and then starve, since GitHub can't reroute a queued job. wait
+# (honest queue) and fast (honest hosted) have no such race.
 name: n3o pick runner
 
 on:
   workflow_call:
     inputs:
       self-hosted-label:
-        description: The self-hosted runner label to prefer.
+        description: The self-hosted runner label used in wait mode.
         type: string
         required: false
         default: n3o-github-runner
       fallback:
-        description: The GitHub-hosted runner to fall back to when the fleet is saturated.
+        description: The GitHub-hosted runner used in fast mode (and for public repos).
         type: string
         required: false
         default: ubuntu-latest
-      wait-seconds:
-        description: (fast mode) How long to wait for a free self-hosted runner before falling back.
-        type: number
-        required: false
-        default: 30
       mode:
-        description: "fast (prefer self-hosted, fall back to hosted) or wait (self-hosted only, queue)."
+        description: "wait (self-hosted, free, queues until a runner frees) or fast (GitHub-hosted, immediate, billable)."
         type: string
         required: false
-        default: fast
+        default: wait
     outputs:
       runs-on:
-        description: The chosen runs-on value (the self-hosted label or the fallback).
+        description: The chosen runs-on value (the self-hosted label or the hosted fallback).
         value: ${{ jobs.pick.outputs.runs-on }}
 
 jobs:
@@ -43,59 +44,28 @@ jobs:
     outputs:
       runs-on: ${{ steps.pick.outputs.runs-on }}
     steps:
-      # Listing org runners needs an App token (the default GITHUB_TOKEN can't). Only
-      # private repos query the fleet — public repos always fall back to hosted — so only
-      # they mint a token, which keeps the App secret scoped to private repos.
-      - id: identity
-        if: ${{ github.event.repository.private }}
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.N3O_GITHUB_RUNNERS_APP_ID }}
-          private-key: ${{ secrets.N3O_GITHUB_RUNNERS_APP_PRIVATE_KEY }}
-          owner: n3oltd
-
       - id: pick
         shell: bash
         env:
-          GH_TOKEN: ${{ steps.identity.outputs.token }}
           SELF_HOSTED: ${{ inputs.self-hosted-label }}
           FALLBACK: ${{ inputs.fallback }}
-          WAIT_SECONDS: ${{ inputs.wait-seconds }}
           MODE: ${{ inputs.mode }}
           IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           choose() { echo "runs-on=$1" >> "$GITHUB_OUTPUT"; echo "picked runner: $1"; }
 
-          # The self-hosted runner group is private-repo only, so public repos can't use it.
+          # The self-hosted runner group is private-repo only, so public repos always go hosted.
           if [ "$IS_PRIVATE" != "true" ]; then
-            echo "public repo -> hosted fallback"
+            echo "public repo -> hosted"
             choose "$FALLBACK"; exit 0
           fi
 
-          # wait mode: self-hosted only — let GitHub queue the job until a runner frees up.
-          if [ "$MODE" = wait ]; then
-            echo "wait mode (private repo) -> self-hosted, queue if busy"
-            choose "$SELF_HOSTED"; exit 0
+          # fast: skip the fleet for an immediate, never-queued start (billable).
+          if [ "$MODE" = fast ]; then
+            echo "fast mode -> hosted (immediate, never queues)"
+            choose "$FALLBACK"; exit 0
           fi
 
-          # Number of online + idle runners carrying the self-hosted label. On any API
-          # hiccup, treat as 0 so we lean towards falling back rather than risk queueing.
-          idle_count() {
-            gh api "orgs/n3oltd/actions/runners" --paginate \
-              --jq "[.runners[] | select(.status==\"online\" and .busy==false)
-                     | select(any(.labels[]; .name==\"$SELF_HOSTED\"))] | length" 2>/dev/null || echo 0
-          }
-
-          # Prefer self-hosted; if none free, wait up to WAIT_SECONDS for one to free up
-          # before falling back to hosted (avoids paying for hosted on brief saturation).
-          deadline=$(( SECONDS + WAIT_SECONDS ))
-          while :; do
-            idle=$(idle_count)
-            echo "idle $SELF_HOSTED runners: ${idle:-0}"
-            if [ "${idle:-0}" -ge 1 ]; then choose "$SELF_HOSTED"; exit 0; fi
-            [ "$SECONDS" -ge "$deadline" ] && break
-            echo "no free $SELF_HOSTED runner; waiting up to ${WAIT_SECONDS}s…"
-            sleep 5
-          done
-          echo "no $SELF_HOSTED capacity after ${WAIT_SECONDS}s -> hosted fallback"
-          choose "$FALLBACK"
+          # wait (default): queue on the fleet — free, and assigned the next idle runner.
+          echo "wait mode -> self-hosted (free; queues until a runner frees)"
+          choose "$SELF_HOSTED"
