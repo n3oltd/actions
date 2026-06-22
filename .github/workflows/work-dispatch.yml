@@ -1,16 +1,15 @@
-# Triggered workflow that runs on PR events and pushes in this repo, calling the
-# reusable n3o-work-dispatch workflow with ship-on-merge enabled to keep n3oltd/work
-# issues in sync and release them to prod on merge.
+# Triggered workflow that runs on PR events and main pushes in this repo, calling
+# the reusable n3o-work-dispatch workflow to keep n3oltd/work issues in sync.
 name: Dispatch PR status to n3oltd/work
 
 on:
   pull_request:
-    types: [opened, closed, reopened, ready_for_review, converted_to_draft]
+    types: [opened, edited, synchronize, closed, reopened, ready_for_review, converted_to_draft]
   push:
+    branches:
+      - main
 
 jobs:
   dispatch:
     uses: ./.github/workflows/n3o-work-dispatch.yml
-    with:
-      ship-on-merge: true
     secrets: inherit
