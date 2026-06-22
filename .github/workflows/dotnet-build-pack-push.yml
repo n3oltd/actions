@@ -98,9 +98,6 @@ jobs:
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
 
-      # Frontend plugins run npm ci + Turbo from MSBuild, so Node must be present
-      # before the build. setup-node's built-in cache handles ~/.npm (keyed on the
-      # lockfile); the version comes from the repo-root .nvmrc.
       - uses: actions/setup-node@v4
         if: ${{ inputs.setup-node }}
         with:
