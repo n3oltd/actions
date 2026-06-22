@@ -35,7 +35,12 @@ on:
         description: directory (relative to the repo root) to run the build/commands in
         type: string
         default: src
-        
+
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable). A [ci fast] commit marker forces fast."
+        type: string
+        default: wait
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
@@ -46,7 +51,8 @@ jobs:
   pick:
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
-      mode: ${{ github.event_name == 'pull_request' && 'wait' || 'fast' }}
+      # Default wait (self-hosted, free); a [ci fast] commit marker opts a single build into hosted.
+      mode: ${{ contains(github.event.head_commit.message, '[ci fast]') && 'fast' || inputs.mode }}
     secrets: inherit
 
   build:

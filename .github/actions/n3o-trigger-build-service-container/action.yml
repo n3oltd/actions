@@ -16,7 +16,7 @@ inputs:
     default: '0'
 
   mode:
-    description: "runner selection mode passed to the build: wait (self-hosted only) or fast (fall back to hosted when the fleet is saturated)."
+    description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable). A [ci fast] commit marker forces fast."
     required: false
     default: wait
 
