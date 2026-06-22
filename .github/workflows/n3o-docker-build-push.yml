@@ -53,7 +53,7 @@ on:
         default: false
 
       mode:
-        description: "runner selection mode: wait (self-hosted only, queue) or fast (prefer self-hosted, fall back to hosted after a short wait)"
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable). A [ci fast] commit marker forces fast."
         type: string
         required: false
         default: wait
@@ -66,7 +66,8 @@ jobs:
   pick:
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
-      mode: ${{ inputs.mode }}
+      # Default wait (self-hosted, free); a [ci fast] commit marker opts a single build into hosted.
+      mode: ${{ contains(github.event.head_commit.message, '[ci fast]') && 'fast' || inputs.mode }}
     secrets: inherit
 
   job1:

@@ -29,7 +29,7 @@ on:
         required: false
         default: ubuntu-latest
       mode:
-        description: "wait (self-hosted, free, queues until a runner frees) or fast (GitHub-hosted, immediate, billable)."
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable). A [ci fast] commit marker forces fast."
         type: string
         required: false
         default: wait
