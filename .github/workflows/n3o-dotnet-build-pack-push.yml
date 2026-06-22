@@ -41,6 +41,11 @@ on:
         type: string
         default: wait
 
+# Build only the latest commit per repo+ref; cancel superseded bump-cascade runs.
+concurrency:
+  group: dotnet-build-pack-push-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
