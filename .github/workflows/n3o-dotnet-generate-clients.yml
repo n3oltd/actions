@@ -11,6 +11,11 @@ on:
         type: string
         default: src
 
+      fast:
+        description: 'Fast: build on a GitHub-hosted runner (immediate, billable) instead of the self-hosted fleet (queued, free)'
+        type: boolean
+        default: false
+
 env:
   AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
   AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
@@ -76,6 +81,11 @@ jobs:
             exit 0
           fi
 
+          # Tagging the commit [ci fast] makes the downstream build it triggers run on a
+          # GitHub-hosted runner (immediate, billable) instead of queueing on the self-hosted fleet.
+          MSG='chore: generate clients [no-generate-clients]'
+          if [ "${{ inputs.fast }}" = "true" ]; then MSG="$MSG [ci fast]"; fi
+
           git add -A
-          git commit -m 'chore: generate clients [no-generate-clients]'
+          git commit -m "$MSG"
           git push
