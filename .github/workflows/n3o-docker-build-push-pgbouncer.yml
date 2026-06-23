@@ -25,9 +25,10 @@ jobs:
           password: ${{ secrets.ACR_PASSWORD }}
 
       - name: fetch dockerfile
-        uses: wei/wget@v1
-        with:
-          args: -O pgbouncer https://raw.githubusercontent.com/n3oltd/actions/main/docker/pgbouncer
+        shell: bash
+        run: |
+          curl -fsSL -o pgbouncer \
+            https://raw.githubusercontent.com/n3oltd/actions/main/docker/pgbouncer
 
       - id: meta-pgbouncer
         name: prepare pgbouncer

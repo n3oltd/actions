@@ -68,9 +68,10 @@ jobs:
           password: ${{ secrets.acr-password }}
 
       - name: Fetch Dockerfile
-        uses: wei/wget@v1
-        with:
-          args: -O ${{ inputs.dockerfile }} https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}
+        shell: bash
+        run: |
+          curl -fsSL -o "${{ inputs.dockerfile }}" \
+            "https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}"
 
       - id: meta
         name: Set tags
