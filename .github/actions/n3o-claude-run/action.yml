@@ -43,7 +43,7 @@ inputs:
     default: '.'
   github-token:
     description: >
-      Token with read access to the private n3oltd/claude plugin marketplace (e.g. the org-wide
+      Token with read access to the private n3oltd/agents plugin marketplace (e.g. the org-wide
       GH_PAT). When set, the run loads the n3o-conventions plugin so its PR hook (work-issue +
       template) applies to any PR the agent opens. Empty skips it — the run proceeds unguarded.
     required: false
@@ -82,7 +82,7 @@ runs:
         export GIT_CONFIG_COUNT=1
         export GIT_CONFIG_KEY_0="url.https://x-access-token:${GH_TOKEN}@github.com/.insteadOf"
         export GIT_CONFIG_VALUE_0="https://github.com/"
-        claude plugin marketplace add n3oltd/claude 2>/dev/null \
+        claude plugin marketplace add n3oltd/agents 2>/dev/null \
           || claude plugin marketplace update n3o-tools 2>/dev/null || true
         claude plugin install n3o-conventions@n3o-tools --scope user 2>/dev/null || true
 
