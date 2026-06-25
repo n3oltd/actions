@@ -91,5 +91,18 @@ until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   sleep 2
 done
 
+# Seed the read-only / read-write agent roles (idempotent; md5 so pgbouncer can proxy them)
+if [ -n "${AGENT_RO_PASSWORD}" ] && [ -n "${AGENT_RW_PASSWORD}" ]; then
+  psql -U "${POSTGRES_USER}" -d postgres -v ro_pw="${AGENT_RO_PASSWORD}" -v rw_pw="${AGENT_RW_PASSWORD}" <<'EOSQL'
+SET password_encryption = 'md5';
+DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_ro') THEN CREATE ROLE n3o_agent_ro LOGIN; END IF; END $$;
+DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_rw') THEN CREATE ROLE n3o_agent_rw LOGIN; END IF; END $$;
+ALTER ROLE n3o_agent_ro PASSWORD :'ro_pw';
+ALTER ROLE n3o_agent_rw PASSWORD :'rw_pw';
+GRANT pg_read_all_data TO n3o_agent_ro;
+GRANT pg_read_all_data, pg_write_all_data TO n3o_agent_rw;
+EOSQL
+fi
+
 pg_pid=$!
 wait "$pg_pid"
