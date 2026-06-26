@@ -137,13 +137,60 @@ jobs:
             exit 1
           fi
 
+      # continue-on-error keeps the job alive after a failed/cut-short run so the report-back step
+      # still fires — the thread must never go silent. WebFetch/WebSearch let the agent follow
+      # Sentry/doc links rather than stall on a rejected permission. max-turns/max-cost are runaway
+      # guards, not budgets — sized for a diagnose that clones and build-verifies.
       - name: Run Claude
+        id: claude
+        continue-on-error: true
         uses: n3oltd/actions/.github/actions/n3o-claude-run@main
         with:
           prompt-file: ${{ runner.temp }}/prompt.md
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          allowed-tools: Read Grep Glob Edit Write Bash mcp__n3o__*
+          allowed-tools: Read Grep Glob Edit Write Bash WebFetch WebSearch mcp__n3o__*
           mcp-config: ${{ env.MCP_CONFIG }}
-          max-turns: '120'
-          max-cost-usd: '5'
+          max-turns: '150'
+          max-cost-usd: '6'
           github-token: ${{ secrets.GH_PAT }}
+
+      # The prompt posts its own result on success; a cut-short (error_max_turns/max_cost) or
+      # crashed run posts nothing, so report back here. Fire only when Claude errored or produced
+      # no result at all (empty subtype) — a clean run, and the post-run cost tripwire where the
+      # agent already commented, are both left alone, so we never double-post.
+      - name: Report back when the run could not finish
+        if: ${{ steps.claude.outputs.is-error == 'true' || steps.claude.outputs.subtype == '' }}
+        env:
+          COMMAND: ${{ steps.parse.outputs.command }}
+          SUBTYPE: ${{ steps.claude.outputs.subtype }}
+          NUM_TURNS: ${{ steps.claude.outputs.num-turns }}
+          COST_USD: ${{ steps.claude.outputs.cost-usd }}
+          LAST_TEXT: ${{ steps.claude.outputs.last-text }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          case "$SUBTYPE" in
+            error_max_turns) reason="ran out of its turn budget (${NUM_TURNS:-?} turns)";;
+            error_max_cost)  reason="hit its cost ceiling (\$${COST_USD:-?})";;
+            "")              reason="failed before producing a result";;
+            *)               reason="ended early ($SUBTYPE)";;
+          esac
+          {
+            echo "@$COMMENTER \`/babar $COMMAND\` couldn't complete — it $reason, so it didn't finish its reply."
+            echo
+            if [ -n "$LAST_TEXT" ]; then
+              echo "Here's how far it got before stopping:"
+              echo
+              echo "> ${LAST_TEXT//$'\n'/$'\n'> }"
+              echo
+            fi
+            echo "Re-run with a hint to narrow the task — add a focus or the likely area after the command, e.g. \`/babar $COMMAND <focus or area>\` — so it can finish within budget. [Run log]($RUN_URL)."
+          } > "$RUNNER_TEMP/babar-failure.md"
+          gh issue comment "$THREAD" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/babar-failure.md"
+
+      # Re-surface the failure continue-on-error masked, so `gh run list` and required checks
+      # still reflect that the run did not succeed.
+      - name: Fail the job if the run did not succeed
+        if: ${{ steps.claude.outcome == 'failure' }}
+        run: |
+          echo "::error::Claude run did not succeed (subtype=${{ steps.claude.outputs.subtype }}, is_error=${{ steps.claude.outputs.is-error }})"
+          exit 1

@@ -51,8 +51,16 @@ inputs:
 
 outputs:
   result:
-    description: Final result text from Claude
+    description: Final result text from Claude (empty when the run ended without a result, e.g. error_max_turns)
     value: ${{ steps.run.outputs.result }}
+  last-text:
+    description: >
+      The last assistant text message of the run. Unlike `result` this is populated even when the
+      run is cut short (error_max_turns / error_max_cost), so a caller can report partial findings.
+    value: ${{ steps.run.outputs.last-text }}
+  subtype:
+    description: Result subtype reported by Claude (e.g. success, error_max_turns, error_max_cost)
+    value: ${{ steps.run.outputs.subtype }}
   is-error:
     description: Whether Claude reported an error result
     value: ${{ steps.run.outputs.is-error }}
@@ -144,15 +152,27 @@ runs:
         is_error=$(printf '%s' "$result_json" | jq -r '.is_error // false')
         num_turns=$(printf '%s' "$result_json" | jq -r '.num_turns // 0')
         cost_usd=$(printf '%s' "$result_json" | jq -r '.total_cost_usd // 0')
+        subtype=$(printf '%s' "$result_json" | jq -r '.subtype // ""')
         result_text=$(printf '%s' "$result_json" | jq -r '.result // ""')
+
+        # The final result message carries no text when the run is cut short (e.g. error_max_turns),
+        # so also surface the last assistant text — that's the agent's most recent reasoning/findings
+        # and is what a caller reports when the run never produced a clean result. Capped so a runaway
+        # message can't blow the step-output / downstream comment size limits.
+        last_text=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' "$raw" 2>/dev/null | tail -200)
+        last_text=${last_text:0:8000}
 
         {
           echo "is-error=$is_error"
           echo "num-turns=$num_turns"
           echo "cost-usd=$cost_usd"
+          echo "subtype=$subtype"
           echo "result<<__N3O_RESULT_EOF__"
           printf '%s\n' "$result_text"
           echo "__N3O_RESULT_EOF__"
+          echo "last-text<<__N3O_LASTTEXT_EOF__"
+          printf '%s\n' "$last_text"
+          echo "__N3O_LASTTEXT_EOF__"
         } >> "$GITHUB_OUTPUT"
 
         echo "Claude run: subtype=${result_json:+$(printf '%s' "$result_json" | jq -r '.subtype // "?"')} turns=$num_turns cost=\$$cost_usd"
