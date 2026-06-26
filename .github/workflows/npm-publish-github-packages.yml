@@ -39,7 +39,7 @@ jobs:
         run: |
           cp README.md dist/README.md
           cp package.json dist/package.json          
-          version=$(date +"%Y.%m.%d")-${{ github.run_number }}          
+          version=$(date -u +"%Y.%m.%d")-${{ github.run_number }}          
           npm version $version --git-tag-version=false
           npm publish --tag latest
         env:

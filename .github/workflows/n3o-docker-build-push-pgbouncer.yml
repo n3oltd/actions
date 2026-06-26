@@ -35,7 +35,7 @@ jobs:
         run: |
           DOCKER_IMAGE_NAME=n3o-pgbouncer
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
-          NOW=$(date +'%Y.%-m.%-d')
+          NOW=$(date -u +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"       
           VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
           LATESTTAG="${DOCKER_IMAGE}:latest"

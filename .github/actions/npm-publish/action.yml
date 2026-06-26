@@ -22,7 +22,7 @@ runs:
     - name: npm publish
       shell: bash
       run: |
-        version=$(date +"%Y.%m.%d")-${{ github.run_number }}
+        version=$(date -u +"%Y.%m.%d")-${{ github.run_number }}
         packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
         for packageDirectory in $packageDirectories
         do
