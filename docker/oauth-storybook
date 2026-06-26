@@ -1,14 +1,14 @@
 ########################
 ### base
 ########################
-FROM quay.io/oauth2-proxy/oauth2-proxy:latest AS base
+FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS base
 
 WORKDIR /site
 
 ########################
 ### build
 ########################
-FROM node:20 AS build
+FROM node:22 AS build
 
 COPY / /site
 
