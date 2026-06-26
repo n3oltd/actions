@@ -1,0 +1,83 @@
+# syntax=docker/dockerfile:1
+#
+# oauth-next-static — oauth2-proxy fronting a Next.js app and a static site as one
+# origin. Companion to oauth-static-site / oauth-storybook.
+#
+#   ${APP_ROUTE}*  ->  Next.js server (next start)         :${APP_PORT}
+#   /*             ->  static site (npm run build -> ./out)  /var/www
+#
+# Build-args:
+#   APP_DIR    context-relative dir of the Next.js app (pnpm)
+#   APP_ROUTE  the app's basePath / upstream route prefix
+#   APP_PORT   port next start listens on
+#
+# Contract: root `npm run build` emits ./out; APP_DIR is a self-contained pnpm
+# Next.js app whose config sets basePath to APP_ROUTE. oauth2-proxy auth settings
+# are applied at deploy time, not baked here.
+
+ARG APP_DIR=app
+ARG APP_ROUTE=/app
+ARG APP_PORT=3000
+
+########################
+### oauth2-proxy binary (pinned; bump deliberately)
+########################
+FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS oauth2proxy
+
+########################
+### build the Next.js app
+########################
+FROM node:22-slim AS app
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+WORKDIR /app
+ARG APP_DIR
+COPY ${APP_DIR}/ ./
+RUN pnpm install --frozen-lockfile
+RUN pnpm build
+
+########################
+### build the static site (-> ./out, served at /var/www)
+########################
+FROM node:22-slim AS static
+WORKDIR /site
+COPY . .
+RUN npm ci --omit=dev
+RUN npm run build
+
+########################
+### final
+########################
+FROM node:22-slim AS final
+WORKDIR /app
+COPY --from=oauth2proxy /bin/oauth2-proxy /usr/local/bin/oauth2-proxy
+COPY --from=app /app /app/server
+COPY --from=static /site/out /var/www
+
+# Run the Next.js server and oauth2-proxy together; forward SIGTERM to both and
+# exit when either does, so the platform restarts the container.
+COPY <<'EOF' /usr/local/bin/entrypoint.sh
+#!/bin/bash
+cd /app/server || exit 1
+node_modules/.bin/next start -H 127.0.0.1 -p "${APP_PORT:-3000}" &
+app=$!
+oauth2-proxy &
+proxy=$!
+trap 'kill -TERM "$app" "$proxy" 2>/dev/null' TERM INT
+wait -n
+kill -TERM "$app" "$proxy" 2>/dev/null
+EOF
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ARG APP_ROUTE
+ARG APP_PORT
+ENV NODE_ENV=production
+ENV APP_PORT=${APP_PORT}
+ENV OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:8080
+ENV OAUTH2_PROXY_UPSTREAMS=http://127.0.0.1:${APP_PORT}${APP_ROUTE}/,file:///var/www/#/
+ENV OAUTH2_PROXY_REVERSE_PROXY=true
+ENV WEBSITES_PORT=8080
+
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
