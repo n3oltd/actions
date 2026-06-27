@@ -120,7 +120,7 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
           elif [ "${{ inputs.version-strategy }}" = "date" ]; then
-            NOW=$(date +'%Y.%-m.%-d')
+            NOW=$(date -u +'%Y.%-m.%-d')
             VERSION="$NOW.${{ github.run_number }}"
           else
             VERSION=1.0.0

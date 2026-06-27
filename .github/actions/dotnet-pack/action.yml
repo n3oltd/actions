@@ -28,7 +28,7 @@ runs:
     - name: dotnet-pack
       shell: bash
       run: |
-        version=$(date +"%Y.%m.%d").${{ github.run_number }}
+        version=$(date -u +"%Y.%m.%d").${{ github.run_number }}
         if [ "${{ inputs.version-suffix }}" != "" ];then
           version=$version-${{ inputs.version-suffix }}
         fi

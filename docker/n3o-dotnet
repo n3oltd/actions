@@ -13,6 +13,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 ARG FEED_URL
 ARG PAT
 ARG PROJECT
+ARG PROJECT_PATH
 ARG CONFIGURATION
 
 WORKDIR /src
@@ -23,12 +24,13 @@ ENV PROJECT=${PROJECT}
 ENV DLL=.dll
 
 COPY . .
-WORKDIR "/src/${PROJECT}"
+WORKDIR "/src/${PROJECT_PATH}"
 
 RUN apt-get update
 RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
-RUN dotnet build -c "${CONFIGURATION}" -o /app
-RUN rm -f /app/appsettings.json
+# No -o here: -o overrides every project's OutputPath, breaking build-time codegen targets
+# that exec a sibling project's dll from its own bin/. The publish stage produces /app.
+RUN dotnet build -c "${CONFIGURATION}"
 
 ########################
 ### publish
