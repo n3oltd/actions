@@ -41,6 +41,11 @@ on:
         type: string
         default: wait
 
+      paths:
+        description: "Optional path glob; when set, build/pack/push only runs if a matching file changed. Empty (default) always runs."
+        type: string
+        default: ''
+
 # Build only the latest commit per repo+ref; cancel superseded bump-cascade runs.
 concurrency:
   group: dotnet-build-pack-push-${{ github.repository }}-${{ github.ref }}
@@ -53,7 +58,32 @@ env:
   AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - if: inputs.paths != ''
+        uses: actions/checkout@v4
+      - if: inputs.paths != ''
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            match:
+              - '${{ inputs.paths }}'
+      - id: decide
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.paths }}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=${{ steps.filter.outputs.match }}" >> "$GITHUB_OUTPUT"
+          fi
+
   pick:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
       # Default wait (self-hosted, free); a [ci fast] commit marker opts a single build into hosted.
@@ -61,7 +91,8 @@ jobs:
     secrets: inherit
 
   build:
-    needs: pick
+    needs: [gate, pick]
+    if: needs.gate.outputs.run == 'true'
     runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:
