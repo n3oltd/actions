@@ -1,6 +1,6 @@
 name: n3o dotnet + cli setup
 description: >
-  Sets up the .NET SDK and installs the n3o CLI in one step. Bundles actions/setup-dotnet
+  Sets up the .NET SDK and installs the n3o CLI in one step. Bundles n3o-dotnet-setup
   followed by n3o-cli-install (which the CLI's dotnet tool install requires). Azure inputs
   are optional for callers that only need the nuget source token.
 
@@ -28,8 +28,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # Detects the baked SDK and skips the download itself.
-    - uses: actions/setup-dotnet@v5
+    - uses: n3oltd/actions/.github/actions/n3o-dotnet-setup@main
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 

@@ -94,7 +94,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v5
+      - uses: n3oltd/actions/.github/actions/n3o-dotnet-setup@main
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
 

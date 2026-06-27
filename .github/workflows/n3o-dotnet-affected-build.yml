@@ -1,0 +1,68 @@
+# Reusable workflow: build only the projects affected between two commits (and their dependents).
+name: dotnet affected build
+
+on:
+  workflow_call:
+    inputs:
+      from:
+        description: Base commit to diff from; empty / zero-sha falls back to <to>~1.
+        type: string
+        default: ''
+      to:
+        description: Head commit to diff to.
+        type: string
+        required: true
+      build-configuration:
+        type: string
+        default: Release
+      mode:
+        description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable). A [ci fast] commit marker forces fast."
+        type: string
+        default: wait
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ contains(github.event.head_commit.message, '[ci fast]') && 'fast' || inputs.mode }}
+    secrets: inherit
+
+  build:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # dotnet-affected diffs from..to; needs full history
+          filter: blob:none
+
+      - uses: n3oltd/actions/.github/actions/n3o-dotnet-setup@main
+
+      - name: install dotnet-affected
+        shell: bash
+        run: |
+          dotnet tool install --global dotnet-affected
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: compute affected
+        id: affected
+        shell: bash
+        env:
+          FROM_SHA: ${{ inputs.from }}
+          TO_SHA: ${{ inputs.to }}
+        run: |
+          base="$FROM_SHA"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then base="${TO_SHA}~1"; fi
+          if dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected; then
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=false" >> "$GITHUB_OUTPUT"   # the tool exits non-zero when nothing is affected
+          fi
+
+      - name: build affected
+        if: steps.affected.outputs.any == 'true'
+        shell: bash
+        env:
+          GH_USERNAME: n3oltd
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: dotnet build "$RUNNER_TEMP/affected.proj" -c "${{ inputs.build-configuration }}"
