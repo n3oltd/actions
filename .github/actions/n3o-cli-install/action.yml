@@ -20,11 +20,15 @@ runs:
   steps:
     - name: dotnet tool install n3o
       env:
+        GH_USERNAME: n3oltd
+        GH_PAT: ${{ inputs.access-token }}
         AZURE_CLIENT_ID: ${{ inputs.azure-client-id }}
         AZURE_CLIENT_SECRET: ${{ inputs.azure-client-secret }}
         AZURE_TENANT_ID: ${{ inputs.azure-tenant-id }}
       shell: bash
       run: |
-        dotnet nuget add source https://nuget.pkg.github.com/n3oltd/index.json --name n3oltd --username n3oltd --password ${{ inputs.access-token }} --store-password-in-clear-text
+        if ! dotnet nuget list source 2>/dev/null | grep -qi 'nuget.pkg.github.com/n3oltd'; then
+          dotnet nuget add source https://nuget.pkg.github.com/n3oltd/index.json --name n3oltd --username "$GH_USERNAME" --password "$GH_PAT" --store-password-in-clear-text
+        fi
         dotnet tool install --global --no-cache n3o
         echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
