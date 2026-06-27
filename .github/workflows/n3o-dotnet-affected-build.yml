@@ -19,6 +19,10 @@ on:
         description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable). A [ci fast] commit marker forces fast."
         type: string
         default: wait
+    outputs:
+      affected-projects:
+        description: "JSON array of affected project names (.csproj basenames, incl. dependents); '[]' when none."
+        value: ${{ jobs.build.outputs.affected-projects }}
 
 jobs:
   pick:
@@ -30,6 +34,8 @@ jobs:
   build:
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
+    outputs:
+      affected-projects: ${{ steps.affected.outputs.projects }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -55,9 +61,17 @@ jobs:
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then base="${TO_SHA}~1"; fi
           if dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected; then
             echo "any=true" >> "$GITHUB_OUTPUT"
+            # The traversal project lists every affected project (changed + dependents) as
+            # <ProjectReference Include="…/Name.csproj" />; expose their basenames so a caller can
+            # gate downstream work on a specific project being affected.
+            projects="$(grep -oE 'Include="[^"]+\.csproj"' "$RUNNER_TEMP/affected.proj" \
+              | sed -E 's/.*[\/\\]//; s/\.csproj"$//' \
+              | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
           else
             echo "any=false" >> "$GITHUB_OUTPUT"   # the tool exits non-zero when nothing is affected
+            projects='[]'
           fi
+          echo "projects=$projects" >> "$GITHUB_OUTPUT"
 
       - name: build affected
         if: steps.affected.outputs.any == 'true'
