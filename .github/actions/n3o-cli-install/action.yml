@@ -27,9 +27,6 @@ runs:
         AZURE_TENANT_ID: ${{ inputs.azure-tenant-id }}
       shell: bash
       run: |
-        # Add the n3oltd feed only if it isn't already configured (a repo nuget.config may define it,
-        # in which case adding it again would fail). GH_USERNAME/GH_PAT are in the env either way so a
-        # config that references %GH_USERNAME%/%GH_PAT% can authenticate.
         if ! dotnet nuget list source 2>/dev/null | grep -qi 'nuget.pkg.github.com/n3oltd'; then
           dotnet nuget add source https://nuget.pkg.github.com/n3oltd/index.json --name n3oltd --username "$GH_USERNAME" --password "$GH_PAT" --store-password-in-clear-text
         fi
