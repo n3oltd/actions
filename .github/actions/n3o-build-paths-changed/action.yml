@@ -1,0 +1,22 @@
+name: n3o build paths changed
+description: Coarse CI pre-gate — true when any build-relevant path changed (src, CPM props, global.json, nuget.config).
+
+outputs:
+  changed:
+    description: "'true' when a build-relevant path changed"
+    value: ${{ steps.filter.outputs.build }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          build:
+            - 'src/**'
+            - 'Directory.Build.props'
+            - 'Directory.Packages.props'
+            - 'global.json'
+            - 'nuget.config'
