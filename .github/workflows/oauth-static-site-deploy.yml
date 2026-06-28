@@ -82,7 +82,7 @@ jobs:
           client_id: "${{ inputs.client-id }}"
           client_secret: "${{ secrets.client-secret }}"
           cookie_secret: "${{ secrets.cookie-secret }}"
-          custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:latest"
+          custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:sha-${{ github.sha }}"
           email_domains: "${{ inputs.email-domains }}"
           resource_group: "${{ inputs.resource-group }}"
           tenant_id: "${{ inputs.tenant-id }}"
