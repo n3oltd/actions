@@ -60,32 +60,42 @@ jobs:
           base="$FROM_SHA"
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then base="${TO_SHA}~1"; fi
 
-          # dotnet-affected diffs the project graph between two commits, but a STRUCTURAL change is
-          # not reliably traced: a new/removed project, a changed ProjectReference, or a build-config
-          # file (props/slnx/global.json/nuget.config/lock). A new project's dependency edge into an
-          # existing project can be missed, so an existing project that should rebuild doesn't — the
-          # affected set under-builds. When the diff touches any such file, build EVERYTHING and
-          # report every project affected. Routine source changes keep the fast affected path.
-          structural='(\.csproj$|\.slnx?$|(^|/)Directory\.[A-Za-z]+\.props$|(^|/)global\.json$|(^|/)nuget\.config$|(^|/)packages\.lock\.json$)'
-          if git diff --name-only "$base" "$TO_SHA" | grep -qiE "$structural"; then
-            echo "full=true" >> "$GITHUB_OUTPUT"
+          changed="$(git diff --name-only "$base" "$TO_SHA")"
+
+          # A genuinely-global config change (props/global.json/nuget.config) alters the build for
+          # EVERY project — build the whole solution. Per-project files (.csproj/.slnx/lock) stay on
+          # the affected path below.
+          global='(^|/)(Directory\.Build\.props|Directory\.Packages\.props|global\.json|nuget\.config)$'
+          if printf '%s\n' "$changed" | grep -qiE "$global"; then
+            echo "scope=full" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
             projects="$(find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' \
               | sed -E 's#.*/##; s/\.csproj$//' | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
-          elif dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected; then
-            echo "full=false" >> "$GITHUB_OUTPUT"
-            echo "any=true" >> "$GITHUB_OUTPUT"
-            # The traversal project lists every affected project (changed + dependents) as
-            # <ProjectReference Include="…/Name.csproj" />; expose their basenames so a caller can
-            # gate downstream work on a specific project being affected.
-            projects="$(grep -oE 'Include="[^"]+\.csproj"' "$RUNNER_TEMP/affected.proj" \
-              | sed -E 's/.*[\/\\]//; s/\.csproj"$//' \
-              | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
-          else
-            echo "full=false" >> "$GITHUB_OUTPUT"
-            echo "any=false" >> "$GITHUB_OUTPUT"   # the tool exits non-zero when nothing is affected
-            projects='[]'
+            echo "projects=$projects" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "scope=affected" >> "$GITHUB_OUTPUT"
+
+          # dotnet-affected: the changed projects + their dependents (exits non-zero when nothing is
+          # affected — tolerated). It doesn't reliably trace a brand-new project's dependency edge,
+          # so the build step also builds the directly-changed .csproj explicitly (changed-csprojs).
+          dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected || true
+
+          : > "$RUNNER_TEMP/changed-csprojs.txt"
+          printf '%s\n' "$changed" | grep -E '\.csproj$' | while read -r c; do
+            [ -f "$c" ] && printf '%s\n' "$(cd "$(dirname "$c")" && pwd)/$(basename "$c")" >> "$RUNNER_TEMP/changed-csprojs.txt"
+          done
+
+          if [ -f "$RUNNER_TEMP/affected.proj" ] || [ -s "$RUNNER_TEMP/changed-csprojs.txt" ]; then
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          aff=''
+          [ -f "$RUNNER_TEMP/affected.proj" ] && aff="$(grep -oE 'Include="[^"]+\.csproj"' "$RUNNER_TEMP/affected.proj" | sed -E 's/.*[\/\\]//; s/\.csproj"$//')"
+          chg="$(sed -E 's#.*/##; s/\.csproj$//' "$RUNNER_TEMP/changed-csprojs.txt" 2>/dev/null)"
+          projects="$(printf '%s\n%s\n' "$aff" "$chg" | grep -v '^$' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
           echo "projects=$projects" >> "$GITHUB_OUTPUT"
 
       - name: build affected
@@ -95,8 +105,12 @@ jobs:
           GH_USERNAME: n3oltd
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          if [ "${{ steps.affected.outputs.full }}" = "true" ]; then
-            dotnet build -c "${{ inputs.build-configuration }}"   # full solution — structural change
+          cfg="${{ inputs.build-configuration }}"
+          # -m:4 caps MSBuild parallelism to the pod's cpu limit so peak memory stays within the
+          # runner (16Gi) even on a full-solution build.
+          if [ "${{ steps.affected.outputs.scope }}" = "full" ]; then
+            dotnet build -c "$cfg" -m:4
           else
-            dotnet build "$RUNNER_TEMP/affected.proj" -c "${{ inputs.build-configuration }}"
+            [ -f "$RUNNER_TEMP/affected.proj" ] && dotnet build "$RUNNER_TEMP/affected.proj" -c "$cfg" -m:4
+            while read -r c; do [ -n "$c" ] && dotnet build "$c" -c "$cfg" -m:4; done < "$RUNNER_TEMP/changed-csprojs.txt"
           fi
