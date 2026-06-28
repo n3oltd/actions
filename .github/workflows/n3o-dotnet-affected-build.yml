@@ -59,7 +59,21 @@ jobs:
         run: |
           base="$FROM_SHA"
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then base="${TO_SHA}~1"; fi
-          if dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected; then
+
+          # dotnet-affected diffs the project graph between two commits, but a STRUCTURAL change is
+          # not reliably traced: a new/removed project, a changed ProjectReference, or a build-config
+          # file (props/slnx/global.json/nuget.config/lock). A new project's dependency edge into an
+          # existing project can be missed, so an existing project that should rebuild doesn't — the
+          # affected set under-builds. When the diff touches any such file, build EVERYTHING and
+          # report every project affected. Routine source changes keep the fast affected path.
+          structural='(\.csproj$|\.slnx?$|(^|/)Directory\.[A-Za-z]+\.props$|(^|/)global\.json$|(^|/)nuget\.config$|(^|/)packages\.lock\.json$)'
+          if git diff --name-only "$base" "$TO_SHA" | grep -qiE "$structural"; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            projects="$(find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' \
+              | sed -E 's#.*/##; s/\.csproj$//' | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
+          elif dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected; then
+            echo "full=false" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
             # The traversal project lists every affected project (changed + dependents) as
             # <ProjectReference Include="…/Name.csproj" />; expose their basenames so a caller can
@@ -68,6 +82,7 @@ jobs:
               | sed -E 's/.*[\/\\]//; s/\.csproj"$//' \
               | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
           else
+            echo "full=false" >> "$GITHUB_OUTPUT"
             echo "any=false" >> "$GITHUB_OUTPUT"   # the tool exits non-zero when nothing is affected
             projects='[]'
           fi
@@ -79,4 +94,9 @@ jobs:
         env:
           GH_USERNAME: n3oltd
           GH_PAT: ${{ secrets.GH_PAT }}
-        run: dotnet build "$RUNNER_TEMP/affected.proj" -c "${{ inputs.build-configuration }}"
+        run: |
+          if [ "${{ steps.affected.outputs.full }}" = "true" ]; then
+            dotnet build -c "${{ inputs.build-configuration }}"   # full solution — structural change
+          else
+            dotnet build "$RUNNER_TEMP/affected.proj" -c "${{ inputs.build-configuration }}"
+          fi
