@@ -1,0 +1,65 @@
+# Reusable workflow that mirrors one subtree of a monorepo to an external client repo,
+# preserving history. A monorepo enables it with a thin per-client caller on push to main
+# (path-filtered to that client's subtree) — see n3oltd/sites/.github/workflows/mirror-*.yml.
+#
+# It splits the subtree out with full history (`git subtree split --prefix=<path>`) and
+# force-pushes the resulting commit to the client repo over SSH, using a per-client deploy
+# key. Generic by design: adding a client is a new caller (subtree-path + target + key),
+# not a change to this workflow.
+name: n3o mirror subtree
+
+on:
+  workflow_call:
+    inputs:
+      subtree-path:
+        description: 'Monorepo path of the subtree to mirror (e.g. src/site-mh)'
+        required: true
+        type: string
+      target-repo-url:
+        description: 'SSH URL of the client repo (e.g. ssh://git@github.com/muslimhands/website.git)'
+        required: true
+        type: string
+      target-branch:
+        description: 'Branch to force-push on the client repo'
+        required: false
+        default: main
+        type: string
+    secrets:
+      ssh-key:
+        description: 'SSH deploy key (private) with write access to the client repo'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history is required for the subtree split
+
+      - name: configure ssh
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.ssh-key }}" > ~/.ssh/id_mirror
+          chmod 600 ~/.ssh/id_mirror
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: split and push subtree
+        env:
+          GIT_SSH_COMMAND: "ssh -i ~/.ssh/id_mirror -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+        run: |
+          set -euo pipefail
+
+          if [ ! -d "${{ inputs.subtree-path }}" ]; then
+            echo "::error::subtree-path '${{ inputs.subtree-path }}' does not exist"; exit 1
+          fi
+
+          # Re-root the subtree's history at the repo root (full history preserved) and force-push
+          # it to the client repo. Force is intentional: the client repo is a downstream mirror.
+          sha=$(git subtree split --prefix="${{ inputs.subtree-path }}")
+          echo "Mirroring ${{ inputs.subtree-path }} ($sha) -> ${{ inputs.target-repo-url }} (${{ inputs.target-branch }})"
+          git push --force "${{ inputs.target-repo-url }}" "$sha:refs/heads/${{ inputs.target-branch }}"
