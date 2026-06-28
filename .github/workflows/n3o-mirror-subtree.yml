@@ -42,9 +42,11 @@ jobs:
           fetch-depth: 0   # full history is required for the subtree split
 
       - name: configure ssh
+        env:
+          SSH_KEY: ${{ secrets.ssh-key }}   # via env: a multi-line key inlined into the script breaks it
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.ssh-key }}" > ~/.ssh/id_mirror
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_mirror
           chmod 600 ~/.ssh/id_mirror
           ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
 
