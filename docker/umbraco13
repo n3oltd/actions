@@ -25,7 +25,7 @@ COPY . .
 # directory, context-relative); single-repo callers build with the project's parent as the context
 # and pass PROJECT only, so PROJECT_PATH defaults to PROJECT.
 RUN cd "/src/${PROJECT_PATH:-$PROJECT}" \
- && dotnet build --configuration Release --output /build /p:Version=${VERSION} /p:SourceRevisionId=${SOURCE_REVISION_ID}
+ && dotnet build --configuration Release --output /build /p:Version=${VERSION:-1.0.0} /p:SourceRevisionId=${SOURCE_REVISION_ID}
 
 ########################
 ### publish
@@ -38,7 +38,7 @@ ARG VERSION
 ARG SOURCE_REVISION_ID
 
 RUN cd "/src/${PROJECT_PATH:-$PROJECT}" \
- && dotnet publish "${PROJECT}.csproj" --configuration Release --output /publish /p:Version=${VERSION} /p:SourceRevisionId=${SOURCE_REVISION_ID}
+ && dotnet publish "${PROJECT}.csproj" --configuration Release --output /publish /p:Version=${VERSION:-1.0.0} /p:SourceRevisionId=${SOURCE_REVISION_ID}
 
 ########################
 ### final
