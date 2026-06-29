@@ -81,8 +81,10 @@ jobs:
           # so the build step also builds the directly-changed .csproj explicitly (changed-csprojs).
           dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected || true
 
+          # GitHub runs steps with `bash -e -o pipefail`, so a grep that matches nothing (exit 1)
+          # aborts the step. Guard each grep that may legitimately find nothing with `|| true`.
           : > "$RUNNER_TEMP/changed-csprojs.txt"
-          printf '%s\n' "$changed" | grep -E '\.csproj$' | while read -r c; do
+          printf '%s\n' "$changed" | { grep -E '\.csproj$' || true; } | while read -r c; do
             [ -f "$c" ] && printf '%s\n' "$(cd "$(dirname "$c")" && pwd)/$(basename "$c")" >> "$RUNNER_TEMP/changed-csprojs.txt"
           done
 
@@ -93,9 +95,9 @@ jobs:
           fi
 
           aff=''
-          [ -f "$RUNNER_TEMP/affected.proj" ] && aff="$(grep -oE 'Include="[^"]+\.csproj"' "$RUNNER_TEMP/affected.proj" | sed -E 's/.*[\/\\]//; s/\.csproj"$//')"
+          [ -f "$RUNNER_TEMP/affected.proj" ] && aff="$({ grep -oE 'Include="[^"]+\.csproj"' "$RUNNER_TEMP/affected.proj" || true; } | sed -E 's/.*[\/\\]//; s/\.csproj"$//')"
           chg="$(sed -E 's#.*/##; s/\.csproj$//' "$RUNNER_TEMP/changed-csprojs.txt" 2>/dev/null)"
-          projects="$(printf '%s\n%s\n' "$aff" "$chg" | grep -v '^$' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
+          projects="$(printf '%s\n%s\n' "$aff" "$chg" | { grep -v '^$' || true; } | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
           echo "projects=$projects" >> "$GITHUB_OUTPUT"
 
       - name: build affected
