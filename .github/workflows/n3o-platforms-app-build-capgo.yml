@@ -11,8 +11,15 @@ on:
         type: string
         required: true
 
+      sentry-project:
+        description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
+        type: string
+        required: false
+        default: ''
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
 jobs:
   build-web:
@@ -34,6 +41,13 @@ jobs:
           curl -fSsL -o packages/formatter/src/localization.json "$BASE_URL/subscription/localization.json" &
           wait
 
+      - name: Compute version
+        id: version
+        run: |
+          version="$(date +"%Y.%m.%d")-${{ github.run_number }}"
+          release="platforms-app@$version-${{ inputs.subscription-code }}"
+          echo "release=$release" >> $GITHUB_OUTPUT
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -48,7 +62,7 @@ jobs:
         run: npm run build:platforms-app
         env:
           VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
-          VITE_ENVIRONMENT: development
+          VITE_SENTRY_RELEASE: ${{ steps.version.outputs.release }}
 
       # note: upto this point, its similar to the build-web job from *build-native.yml
       - name: Use Capgo to upload bundle
@@ -60,3 +74,12 @@ jobs:
           # todo: sort this out in the current monorepo
           package-json-path: "./apps/platforms-app/package.json"
           node-modules-path: "./node_modules,./apps/platforms-app/node_modules"
+
+      - name: sentry release
+        if: inputs.sentry-project != ''
+        uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
+        with:
+          project: ${{ inputs.sentry-project }}
+          release: ${{ steps.version.outputs.release }}
+          sourcemaps: ./apps/platforms-app/dist
+          auth-token: ${{ env.SENTRY_AUTH_TOKEN }}
