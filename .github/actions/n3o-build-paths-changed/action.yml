@@ -1,6 +1,12 @@
 name: n3o build paths changed
 description: Coarse CI pre-gate — true when any build-relevant path changed (src, CPM props, global.json, nuget.config).
 
+inputs:
+  base:
+    description: Base ref/sha to diff against. Empty uses the event default (the push's before-sha).
+    required: false
+    default: ''
+
 outputs:
   changed:
     description: "'true' when a build-relevant path changed"
@@ -13,6 +19,7 @@ runs:
     - uses: dorny/paths-filter@v3
       id: filter
       with:
+        base: ${{ inputs.base }}
         filters: |
           build:
             - 'src/**'
