@@ -166,8 +166,36 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # The ACR push intermittently fails on a transient registry error (e.g. BlobNotFound) after a
+      # good build. Try once (non-fatal), then retry; the buildx builder still holds the layers so
+      # the retry only re-pushes. The job fails only if both attempts fail.
       - name: build and push
+        id: build
         if: steps.check-existing.outputs.exists != 'true'
+        continue-on-error: true
+        uses: docker/build-push-action@v7
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ inputs.context }}
+          target: final
+          file: ${{ inputs.dockerfile }}
+          build-args: ${{ steps.build-args.outputs.args }}
+          secrets: |
+            github_token=${{ env.GH_PAT }}
+            sentry_auth_token=${{ env.SENTRY_AUTH_TOKEN }}
+            ${{ inputs.secrets }}
+          push: true
+          tags: |
+            ${{ steps.metadata.outputs.version-tag }}
+            ${{ steps.metadata.outputs.latest-tag }}
+            n3oltd.azurecr.io/${{ inputs.container-repository }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.metadata.outputs.created }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: build and push (retry)
+        if: steps.check-existing.outputs.exists != 'true' && steps.build.outcome == 'failure'
         uses: docker/build-push-action@v7
         with:
           builder: ${{ steps.buildx.outputs.name }}
