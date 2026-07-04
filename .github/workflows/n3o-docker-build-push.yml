@@ -64,6 +64,8 @@ env:
 
 jobs:
   pick:
+    # Name by the service so the run's job list identifies each build rather than repeating "pick".
+    name: ${{ inputs.container-repository }} (pick)
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
       # Default wait (self-hosted, free); a [ci fast] commit marker opts a single build into hosted.
@@ -71,7 +73,7 @@ jobs:
     secrets: inherit
 
   job1:
-    name: build-push
+    name: ${{ inputs.container-repository }}
     needs: pick
 
     # Default mode (wait) keeps these builds self-hosted only so they don't consume paid GitHub
