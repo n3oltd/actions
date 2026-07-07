@@ -1,7 +1,5 @@
-# syntax=docker/dockerfile:1
-#
 # oauth-next-static — oauth2-proxy fronting a Next.js app and a static site as one
-# origin. Companion to oauth-static-site / oauth-storybook.
+# origin.
 #
 #   ${APP_ROUTE}*  ->  Next.js server (next start)         :${APP_PORT}
 #   /*             ->  static site (npm run build -> ./out)  /var/www
@@ -12,8 +10,7 @@
 #   APP_PORT   port next start listens on
 #
 # Contract: root `npm run build` emits ./out; APP_DIR is a self-contained pnpm
-# Next.js app whose config sets basePath to APP_ROUTE. oauth2-proxy auth settings
-# are applied at deploy time, not baked here.
+# Next.js app whose config sets basePath to APP_ROUTE.
 
 ARG APP_DIR=app
 ARG APP_ROUTE=/app
