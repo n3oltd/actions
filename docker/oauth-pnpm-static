@@ -1,8 +1,5 @@
-# syntax=docker/dockerfile:1
-#
 # oauth-pnpm-static — oauth2-proxy serving a static site built out of a pnpm
-# workspace package. Companion to oauth-static-site (single-root yarn repo) and
-# oauth-next-static (Next.js app + static umbrella).
+# workspace package.
 #
 #   /*  ->  the built site (static, /var/www)
 #
