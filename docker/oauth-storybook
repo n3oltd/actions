@@ -1,0 +1,29 @@
+########################
+### base
+########################
+FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS base
+
+WORKDIR /site
+
+########################
+### build
+########################
+FROM node:22 AS build
+
+COPY / /site
+
+WORKDIR /site
+RUN npm install --legacy-peer-deps
+RUN npm run build-storybook
+
+########################
+### final
+########################
+FROM base AS final
+
+ENV OAUTH2_PROXY_HTTP_ADDRESS "0.0.0.0:8080"
+ENV OAUTH2_PROXY_UPSTREAMS file:///var/www/#/
+
+COPY --from=build /site/storybook-static /var/www
+
+EXPOSE 8080

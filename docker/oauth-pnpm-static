@@ -35,8 +35,17 @@ WORKDIR /repo
 COPY . .
 ARG PACKAGE
 ARG BUILD_SCRIPT
-RUN pnpm install --frozen-lockfile --filter "${PACKAGE}..."
+ARG OUTPUT_DIR
+# The registry token arrives as a build secret so it never bakes into a layer.
+RUN --mount=type=secret,id=github_token \
+    if [ -s /run/secrets/github_token ]; then \
+      echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/github_token)" > /root/.npmrc; \
+    fi \
+ && pnpm install --frozen-lockfile --filter "${PACKAGE}..." \
+ && rm -f /root/.npmrc
 RUN pnpm --filter "${PACKAGE}" run "${BUILD_SCRIPT}"
+# Fail here, not with an empty site: the declared output must exist.
+RUN test -n "${OUTPUT_DIR}" && test -d "/repo/${OUTPUT_DIR}"
 
 ########################
 ### final
