@@ -1,0 +1,49 @@
+# syntax=docker/dockerfile:1
+#
+# oauth-pnpm-static — oauth2-proxy serving a static site built out of a pnpm
+# workspace package. Companion to oauth-static-site (single-root yarn repo) and
+# oauth-next-static (Next.js app + static umbrella).
+#
+#   /*  ->  the built site (static, /var/www)
+#
+# Build-args:
+#   PACKAGE       workspace package whose build script emits the site
+#   BUILD_SCRIPT  package script to run (default: build)
+#   OUTPUT_DIR    context-relative path of the built static output
+#
+# oauth2-proxy auth settings are applied at deploy time, not baked here.
+
+ARG PACKAGE
+ARG BUILD_SCRIPT=build
+ARG OUTPUT_DIR
+
+########################
+### oauth2-proxy binary (pinned; bump deliberately)
+########################
+FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS oauth2proxy
+
+########################
+### build the site
+########################
+FROM node:24-slim AS build
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV CI=true
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /repo
+COPY . .
+ARG PACKAGE
+ARG BUILD_SCRIPT
+RUN pnpm install --frozen-lockfile --filter "${PACKAGE}..."
+RUN pnpm --filter "${PACKAGE}" run "${BUILD_SCRIPT}"
+
+########################
+### final
+########################
+FROM oauth2proxy AS final
+ENV OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:8080
+ENV OAUTH2_PROXY_UPSTREAMS=file:///var/www/#/
+ARG OUTPUT_DIR
+COPY --from=build /repo/${OUTPUT_DIR} /var/www
+EXPOSE 8080
