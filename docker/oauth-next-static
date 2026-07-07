@@ -10,8 +10,7 @@
 #   APP_PORT   port next start listens on
 #
 # Contract: root `npm run build` emits ./out; APP_DIR is a self-contained pnpm
-# Next.js app whose config sets basePath to APP_ROUTE. oauth2-proxy auth settings
-# are applied at deploy time, not baked here.
+# Next.js app whose config sets basePath to APP_ROUTE.
 
 ARG APP_DIR=app
 ARG APP_ROUTE=/app
