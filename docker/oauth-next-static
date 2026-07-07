@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-#
 # oauth-next-static — oauth2-proxy fronting a Next.js app and a static site as one
 # origin.
 #
