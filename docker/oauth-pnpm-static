@@ -7,8 +7,6 @@
 #   PACKAGE       workspace package whose build script emits the site
 #   BUILD_SCRIPT  package script to run (default: build)
 #   OUTPUT_DIR    context-relative path of the built static output
-#
-# oauth2-proxy auth settings are applied at deploy time, not baked here.
 
 ARG PACKAGE
 ARG BUILD_SCRIPT=build
