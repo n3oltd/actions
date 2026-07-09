@@ -51,15 +51,22 @@ runs:
             if [ "${{ inputs.version-suffix }}" != "" ];then
               npm version $version --preid=${{ inputs.version-suffix }}
             else
-              npm version $version; 
+              npm version $version;
             fi
             echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
             echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
-            if [ "${{ inputs.version-suffix }}" != "" ];then
-              npm publish --tag=${{ inputs.version-suffix }}  
+            name=$(npm pkg get name | tr -d '"')
+            effective=$(npm pkg get version | tr -d '"')
+            # An already-published version means a rerun after a partial publish: done, not an error.
+            if npm view "$name@$effective" version > /dev/null 2>&1; then
+              echo "skip (already published): $name@$effective"
+            elif [ "${{ inputs.version-suffix }}" != "" ];then
+              npm publish --tag=${{ inputs.version-suffix }}
             else
               npm publish --tag=latest
-            fi )
+            fi
+            # prepack installs a per-package node_modules; across hundreds of packages that fills the disk.
+            rm -rf node_modules )
         done
       working-directory: ${{github.workspace}}
       env: 
