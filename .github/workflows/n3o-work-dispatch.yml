@@ -108,13 +108,17 @@ jobs:
         id: gate
         env:
           PR_MERGED: ${{ github.event.pull_request.merged }}
-          ACTOR: ${{ github.actor }}
+          # Exempt by PR author, not github.actor: a human editing a bot's PR retriggers
+          # the run with the human as actor, which must not defeat the exemption.
+          AUTHOR: ${{ github.event.pull_request.user.login }}
           # Escape hatch for a genuine untracked chore: a `no-work-issue` marker in the PR body.
           OPT_OUT: ${{ contains(github.event.pull_request.body, 'no-work-issue') }}
         run: |
           skip=false
           if [ "$PR_MERGED" = "true" ] || [ "$OPT_OUT" = "true" ]; then skip=true; fi
-          if [ "$ACTOR" = "dependabot[bot]" ] || [ "$ACTOR" = "n3o-babar[bot]" ]; then skip=true; fi
+          case "$AUTHOR" in
+            "dependabot[bot]"|"n3o-babar[bot]"|"n3o-github") skip=true;;
+          esac
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
       - name: app token
