@@ -1,15 +1,29 @@
 name: n3o dotnet setup
-description: Central .NET SDK setup (setup-dotnet@v5 — skips the install when the SDK is baked into the runner).
+description: Central .NET SDK setup — uses the baked-in SDK on self-hosted runners, installs via setup-dotnet on GitHub-hosted.
 
 inputs:
   dotnet-version:
-    description: .NET SDK version to install
+    description: .NET SDK version to install on GitHub-hosted runners (self-hosted uses the baked-in SDK)
     required: false
     default: '10.x'
 
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-dotnet@v5
+    # Self-hosted bakes the SDK into a read-only /usr/share/dotnet; setup-dotnet would fail
+    # installing a newer patch there. Use the baked-in SDK.
+    - name: Use baked-in .NET SDK (self-hosted)
+      if: runner.environment != 'github-hosted'
+      shell: bash
+      run: |
+        if ! command -v dotnet >/dev/null 2>&1; then
+          echo "::error::dotnet not found on PATH; expected the self-hosted runner image to bake in the .NET SDK." >&2
+          exit 1
+        fi
+        echo "Using baked-in .NET SDK $(dotnet --version) at $(command -v dotnet)"
+
+    - name: Install .NET SDK (GitHub-hosted)
+      if: runner.environment == 'github-hosted'
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
