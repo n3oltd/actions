@@ -30,7 +30,15 @@ WORKDIR /repo
 COPY . .
 ARG PACKAGE
 ARG BUILD_SCRIPT
-RUN pnpm install --frozen-lockfile --filter "${PACKAGE}..."
+# The workspace lockfile can reference private @n3oltd GitHub Packages, which the
+# supply-chain check resolves for every entry. The committed .npmrc only maps the
+# scope to the registry; pnpm needs a literal auth token, written for this RUN only
+# (the build stage is not the pushed image, and the token is restored out again).
+RUN --mount=type=secret,id=github_token,required=true sh -eu -c '\
+  touch .npmrc && cp .npmrc .npmrc.bak && \
+  printf "\n//npm.pkg.github.com/:_authToken=%s\n" "$(cat /run/secrets/github_token)" >> .npmrc && \
+  pnpm install --frozen-lockfile --filter "${PACKAGE}..." && \
+  mv .npmrc.bak .npmrc'
 RUN pnpm --filter "${PACKAGE}" run "${BUILD_SCRIPT}"
 
 ########################
