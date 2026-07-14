@@ -10,8 +10,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # Self-hosted bakes the SDK into a read-only /usr/share/dotnet; setup-dotnet would fail
-    # installing a newer patch there. Use the baked-in SDK.
     - name: Use baked-in .NET SDK (self-hosted)
       if: runner.environment != 'github-hosted'
       shell: bash
