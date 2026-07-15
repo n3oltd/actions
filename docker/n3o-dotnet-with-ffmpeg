@@ -1,0 +1,86 @@
+########################
+### base
+########################
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+
+ARG FEED_URL
+ARG PAT
+ARG PROJECT
+ARG PROJECT_PATH
+ARG CONFIGURATION
+
+WORKDIR /src
+
+ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED true
+ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"n3oltd\", \"password\":\"${PAT}\"}]}
+ENV PROJECT=${PROJECT}
+ENV DLL=.dll
+
+COPY . .
+WORKDIR "/src/${PROJECT_PATH}"
+
+RUN apt-get update
+RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
+# No -o here: -o overrides every project's OutputPath, breaking build-time codegen targets
+# that exec a sibling project's dll from its own bin/. The publish stage produces /app.
+RUN dotnet build -c "${CONFIGURATION}"
+
+########################
+### publish
+########################
+FROM build AS publish
+
+ARG PROJECT
+
+RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app
+
+########################
+### final
+########################
+FROM base AS final
+
+ARG PROJECT
+
+RUN apt-get update
+RUN apt-get install --assume-yes curl
+
+RUN mkdir -p /dotnet-tools
+
+RUN curl -Lo /dotnet-tools/dotnet-trace https://aka.ms/dotnet-trace/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-dump https://aka.ms/dotnet-dump/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-gcdump https://aka.ms/dotnet-gcdump/linux-x64 && \
+    curl -Lo /dotnet-tools/dotnet-counters https://aka.ms/dotnet-counters/linux-x64
+
+RUN chmod +x /dotnet-tools/dotnet-*
+
+ENV PATH="/dotnet-tools:$PATH"
+
+RUN apt-get --yes install zip unzip curl
+RUN apt-get --yes install libgdiplus
+RUN apt-get --yes install ffmpeg
+
+WORKDIR /app
+ENV ASPNETCORE_URLS http://*:80
+COPY --from=publish /app .
+ENV DLL="${PROJECT}.dll"
+RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+# Below currently needed by TextMarketer API
+RUN sed -i '/\[openssl_init\]/a ssl_conf = ssl_sect' /etc/ssl/openssl.cnf
+RUN printf "\n[ssl_sect]\nsystem_default = system_default_sect\n" >> /etc/ssl/openssl.cnf
+RUN printf "\n[system_default_sect]\nMinProtocol = TLSv1.2\nCipherString = DEFAULT@SECLEVEL=0" >> /etc/ssl/openssl.cnf
+RUN printf "\nOptions = UnsafeLegacyRenegotiation" >> /etc/ssl/openssl.cnf
+
+RUN hash -r
+
+ENTRYPOINT ["./entrypoint.sh"]
+
+EXPOSE 80
