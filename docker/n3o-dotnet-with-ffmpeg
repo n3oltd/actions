@@ -1,6 +1,3 @@
-﻿### n3o-dotnet + ffmpeg, for services running media transcode jobs. Keep in lockstep with
-### docker/n3o-dotnet: the only intended difference is the ffmpeg install in the final stage.
-
 ########################
 ### base
 ########################
