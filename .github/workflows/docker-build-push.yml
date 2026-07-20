@@ -55,7 +55,7 @@ jobs:
     runs-on: n3o-github-runner
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - id: buildx
         uses: docker/setup-buildx-action@v4

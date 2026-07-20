@@ -92,7 +92,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: n3oltd/actions/.github/actions/n3o-dotnet-setup@main
         with:
@@ -107,7 +107,7 @@ jobs:
 
       - name: cache turbo
         if: ${{ inputs.setup-node && runner.environment == 'github-hosted' }}
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ inputs.working-directory }}/.turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
@@ -137,7 +137,7 @@ jobs:
       # shared package cache instead of actions/cache's tarball transfer.
       - name: cache nuget packages
         if: runner.environment == 'github-hosted'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/Directory.Packages.props', '**/Directory.Build.props') }}

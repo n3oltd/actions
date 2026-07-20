@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: app token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.N3O_APP_ID }}
           private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}

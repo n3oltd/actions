@@ -1,4 +1,4 @@
-﻿# Builds and publishes a Create React App project on the self-hosted React-App-Runner.
+# Builds and publishes a Create React App project on the self-hosted React-App-Runner.
 # Sets up Node, configures the GitHub npm registry, installs dependencies with sourcemaps
 # and Sentry, then runs the production build. Called by React app repos to build releases.
 name: react app build and publish
@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: setup-node
         uses: n3oltd/actions/.github/actions/n3o-node-setup@main

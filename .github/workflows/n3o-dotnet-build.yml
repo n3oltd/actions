@@ -1,4 +1,4 @@
-﻿# Reusable workflow that checks out the repo and runs a .NET restore and build.
+# Reusable workflow that checks out the repo and runs a .NET restore and build.
 # Use it for CI on repos that only need to verify the solution compiles.
 name: 'dotnet build'
 
@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: n3oltd/actions/.github/actions/n3o-dotnet-setup@main
 
