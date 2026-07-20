@@ -27,7 +27,6 @@ jobs:
         with:
           node-version: '22.x'
           registry-url: 'https://npm.pkg.github.com'
-          token: ${{ env.GH_PAT }}
 
       - name: npm install and build
         run: |
