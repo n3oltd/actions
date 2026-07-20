@@ -20,7 +20,7 @@ runs:
     # GitHub-hosted runners only; the ephemeral self-hosted fleet has no package cache (restores fresh each job).
     - name: cache nuget packages
       if: runner.environment == 'github-hosted'
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.nuget/packages
         key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/Directory.Packages.props', '**/Directory.Build.props') }}
