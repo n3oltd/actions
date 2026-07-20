@@ -36,7 +36,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
         with:

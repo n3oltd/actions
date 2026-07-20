@@ -1,4 +1,4 @@
-﻿# Builds and pushes an N3O service Docker image to ACR with date/latest/sha
+# Builds and pushes an N3O service Docker image to ACR with date/latest/sha
 # tags, skipping the build if an image for the commit already exists, and
 # optionally extracts sourcemaps and creates a Sentry release.
 name: 'docker-build-push'
@@ -83,7 +83,7 @@ jobs:
     runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch }}
 

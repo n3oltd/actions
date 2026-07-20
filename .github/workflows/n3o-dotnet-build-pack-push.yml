@@ -1,4 +1,4 @@
-﻿# Reusable workflow that builds .NET projects, packs the listed NuGet packages and
+# Reusable workflow that builds .NET projects, packs the listed NuGet packages and
 # pushes them to the feed, optionally publishing generated npm client packages too.
 # Use it as the main CI/CD pipeline for releasing a repo's NuGet (and npm) artifacts.
 name: dotnet build, pack and push
@@ -64,10 +64,10 @@ jobs:
       run: ${{ steps.decide.outputs.run }}
     steps:
       - if: inputs.paths != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - if: inputs.paths != ''
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             match:
@@ -97,7 +97,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Installs a specific Node version, not the baked one.
       - name: setup-node

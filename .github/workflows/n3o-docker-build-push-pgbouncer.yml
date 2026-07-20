@@ -1,4 +1,4 @@
-﻿# Builds and pushes the N3O PgBouncer Docker image to ACR with date and
+# Builds and pushes the N3O PgBouncer Docker image to ACR with date and
 # latest tags, fetching the Dockerfile from the actions repo. Takes no
 # inputs.
 name: 'docker-build-push-pgbouncer'
@@ -12,7 +12,7 @@ jobs:
     runs-on: n3o-github-runner
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
                             
       - id: buildx
         uses: docker/setup-buildx-action@v4

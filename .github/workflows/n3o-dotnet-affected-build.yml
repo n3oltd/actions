@@ -37,7 +37,7 @@ jobs:
     outputs:
       affected-projects: ${{ steps.affected.outputs.projects }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # dotnet-affected diffs from..to; needs full history
           filter: blob:none
