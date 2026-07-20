@@ -1,0 +1,38 @@
+name: n3o node setup
+description: The one place actions/setup-node is pinned.
+
+inputs:
+  node-version:
+    description: Node version. Omit when node-version-file is set.
+    required: false
+  node-version-file:
+    description: File to read the Node version from.
+    required: false
+  registry-url:
+    description: npm registry to write auth config for.
+    required: false
+  scope:
+    description: npm scope bound to the registry.
+    required: false
+  token:
+    description: Resolves the Node version manifest. npm registry auth reads NODE_AUTH_TOKEN from each npm step's env.
+    required: false
+  cache:
+    description: Package manager whose global cache to restore.
+    required: false
+  cache-dependency-path:
+    description: Lockfile path(s) the cache key derives from.
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version-file }}
+        registry-url: ${{ inputs.registry-url }}
+        scope: ${{ inputs.scope }}
+        token: ${{ inputs.token || (github.server_url == 'https://github.com' && github.token) || '' }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}

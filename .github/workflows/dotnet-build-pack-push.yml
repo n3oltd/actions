@@ -98,7 +98,7 @@ jobs:
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
 
-      - uses: actions/setup-node@v4
+      - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
         if: ${{ inputs.setup-node }}
         with:
           node-version-file: .nvmrc

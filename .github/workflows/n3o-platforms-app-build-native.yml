@@ -38,7 +38,7 @@ jobs:
           wait
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: n3oltd/actions/.github/actions/n3o-node-setup@main
         with:
           node-version: '22.x'
           cache: "npm"
@@ -106,7 +106,7 @@ jobs:
           echo "CI_BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: n3oltd/actions/.github/actions/n3o-node-setup@main
         with:
           node-version: '22.x'
           cache: "npm"
