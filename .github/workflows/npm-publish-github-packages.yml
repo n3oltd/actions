@@ -33,6 +33,8 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
         working-directory: ${{ inputs.working-directory }}
           
       - name: npm publish
@@ -43,5 +45,6 @@ jobs:
           npm version $version --git-tag-version=false
           npm publish --tag latest
         env:
+          NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
           NPM_CONFIG_LOGLEVEL: verbose
         working-directory: ${{ inputs.working-directory }}
