@@ -47,6 +47,8 @@ jobs:
         run: |
           npm install
           npm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm-token }}
 
       - if: ${{ inputs.prepack }}
         run: |
