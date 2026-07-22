@@ -57,7 +57,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
         run: |
-          n3o utilities decrypt --path ./postgresSecrets.yaml --key ${{ secrets[steps.get-secret-name.outputs.secretName] }} > ./postgresSecretsDecrypted.yaml
+          n3o utilities decrypt --path ./postgresSecrets.yaml --key ${{ secrets[steps.get-secret-name.outputs.secretName] }} | tr '\r' '\n' > ./postgresSecretsDecrypted.yaml
               
       - name: Apply Secrets YAML to the cluster
         uses: n3oltd/actions/.github/actions/n3o-kubectl-apply-file@main
