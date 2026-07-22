@@ -168,6 +168,23 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Fleet runners are persistent, so BuildKit cache and images accrue across builds. Prune only
+      # when free space is low: routine builds keep a warm cache; a saturated runner self-heals.
+      - name: reclaim disk if low
+        if: steps.check-existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          avail_gb=$(df -BG --output=avail / 2>/dev/null | tail -1 | tr -dc '0-9' || echo 0)
+          echo "Free space on /: ${avail_gb}G"
+          if [ "${avail_gb:-0}" -lt 25 ]; then
+            echo "::notice title=Reclaiming disk::Low disk (${avail_gb}G) — pruning BuildKit cache and unused images"
+            docker buildx prune --all --force || true
+            docker image prune --all --force || true
+            docker container prune --force || true
+            df -BG / | tail -1
+          fi
+
       # The ACR push intermittently fails on a transient registry error (e.g. BlobNotFound) after a
       # good build. Try once (non-fatal), then retry; the buildx builder still holds the layers so
       # the retry only re-pushes. The job fails only if both attempts fail.
