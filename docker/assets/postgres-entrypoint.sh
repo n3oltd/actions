@@ -23,10 +23,6 @@ sed -i "/log_disconnections/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/log_lock_waits/d" /var/lib/postgresql/data/postgres/postgresql.conf
 
 {
-  echo "archive_mode = on"
-  echo "archive_command = 'pgbackrest --stanza=n3o archive-push %p'"
-  echo "wal_level = replica"
-  echo "max_wal_senders = 3"
   echo "ssl = on"
   echo "ssl_cert_file = '/var/lib/postgresql/server.crt'"
   echo "ssl_key_file = '/var/lib/postgresql/server.key'"
@@ -80,6 +76,10 @@ mkdir /etc/pgbackrest/backup-repo
 
 # Unit of tcp_keepalives_idle is seconds and idle_session_timeout is milliseconds
 exec docker-entrypoint.sh postgres \
+          -c archive_mode=on \
+          -c archive_command="pgbackrest --stanza=n3o archive-push %p" \
+          -c wal_level=replica \
+          -c max_wal_senders=3 \
           -c shared_buffers="${POSTGRES_SHARED_BUFFERS}" \
           -c max_connections="${POSTGRES_MAX_CONNECTIONS}" \
           -c work_mem="${POSTGRES_WORK_MEM}" \
