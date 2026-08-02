@@ -1,6 +1,5 @@
-# Configures and restarts an Azure Web App running the OAuth2 Proxy in front of a static site.
-# Points the app at a Docker image and sets the OAuth2 Proxy app settings for Azure AD sign-in, then restarts the app.
-# Called to deploy or update an OAuth-protected static site on Azure.
+# Deploys an OAuth2-Proxy-fronted static site to an Azure Web App: points it at a
+# container image, sets the Azure AD sign-in settings, and restarts it.
 name: 'oauth-static-site-deploy'
 
 on:
@@ -46,43 +45,37 @@ on:
       cookie-secret:
         required: true
 
-jobs:
-  job1:
-    name: ubuntu-latest
+      registry-username:
+        required: false
 
+      registry-password:
+        required: false
+
+jobs:
+  deploy:
+    name: ${{ inputs.site-name }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Azure Login
-        uses: azure/login@v3
+      - uses: n3oltd/actions/.github/actions/n3o-webapp-deploy@main
         with:
-          creds: ${{ secrets.azure-credentials }}
-
-      - name: Configure and restart webapp
-        run: |
-          az webapp config container set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --docker-custom-image-name ${{ env.custom_image }} --docker-registry-server-url https://n3oltd.azurecr.io
-          az webapp config appsettings set --name ${{ env.app_name }} --resource-group ${{ env.resource_group }} --settings \
-            OAUTH2_PROXY_CLIENT_ID="${{ env.client_id }}" \
-            OAUTH2_PROXY_CLIENT_SECRET="${{ env.client_secret }}" \
-            OAUTH2_PROXY_COOKIE_SECRET="${{ env.cookie_secret }}" \
-            OAUTH2_PROXY_FOOTER="Copyright © N3O Ltd" \
-            OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO="https://n3oltd.blob.core.windows.net/public-assets/logos/logo.svg" \
-            OAUTH2_PROXY_EMAIL_DOMAINS="${{ env.email_domains }}" \
-            OAUTH2_PROXY_PROVIDER="azure" \
-            OAUTH2_PROXY_AZURE_TENANT_ID="${{ env.tenant_id }}" \
-            OAUTH2_PROXY_OIDC_ISSUER_URL="https://login.microsoftonline.com/${{ env.tenant_id }}/v2.0" \
-            OAUTH2_PROXY_REVERSE_PROXY="1" \
-            OAUTH2_PROXY_REAL_CLIENT_IP_HEADER="X-Forwarded-For" \
-            WEBSITES_PORT="8080"
-          az webapp restart --name ${{ env.app_name }} --resource-group ${{ env.resource_group }}
-        env:
-          app_name: "${{ inputs.site-name }}"
-          client_id: "${{ inputs.client-id }}"
-          client_secret: "${{ secrets.client-secret }}"
-          cookie_secret: "${{ secrets.cookie-secret }}"
-          custom_image: "n3oltd.azurecr.io/${{ inputs.docker-image }}:sha-${{ github.sha }}"
-          email_domains: "${{ inputs.email-domains }}"
-          resource_group: "${{ inputs.resource-group }}"
-          tenant_id: "${{ inputs.tenant-id }}"
+          site-name: ${{ inputs.site-name }}
+          resource-group: ${{ inputs.resource-group }}
+          docker-image: ${{ inputs.docker-image }}
+          azure-credentials: ${{ secrets.azure-credentials }}
+          registry-username: ${{ secrets.registry-username }}
+          registry-password: ${{ secrets.registry-password }}
+          app-settings: >-
+            OAUTH2_PROXY_CLIENT_ID="${{ inputs.client-id }}"
+            OAUTH2_PROXY_CLIENT_SECRET="${{ secrets.client-secret }}"
+            OAUTH2_PROXY_COOKIE_SECRET="${{ secrets.cookie-secret }}"
+            OAUTH2_PROXY_FOOTER="Copyright © N3O Ltd"
+            OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO="https://n3oltd.blob.core.windows.net/public-assets/logos/logo.svg"
+            OAUTH2_PROXY_EMAIL_DOMAINS="${{ inputs.email-domains }}"
+            OAUTH2_PROXY_PROVIDER="azure"
+            OAUTH2_PROXY_AZURE_TENANT_ID="${{ inputs.tenant-id }}"
+            OAUTH2_PROXY_OIDC_ISSUER_URL="https://login.microsoftonline.com/${{ inputs.tenant-id }}/v2.0"
+            OAUTH2_PROXY_REVERSE_PROXY="1"
+            OAUTH2_PROXY_REAL_CLIENT_IP_HEADER="X-Forwarded-For"
