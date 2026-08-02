@@ -29,8 +29,7 @@ sed -i "/log_lock_waits/d" /var/lib/postgresql/data/postgres/postgresql.conf
   
 } >> /var/lib/postgresql/data/postgres/postgresql.conf
 
-# /ssl/d matches the settings written above, so every tenant runs with ssl off; removing these
-# turns TLS on across every live database at once.
+# /ssl/d matches the three settings written above, so every tenant runs with ssl off.
 sed -i "/ssl/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
@@ -65,6 +64,8 @@ mkdir /etc/pgbackrest/backup-repo
   echo "start-fast=y"
 } >> /etc/pgbackrest/pgbackrest.conf
 
+chmod 600 /etc/pgbackrest/pgbackrest.conf
+
 # Unit of tcp_keepalives_idle is seconds and idle_session_timeout is milliseconds
 exec docker-entrypoint.sh postgres \
           -c archive_mode=on \
@@ -94,10 +95,19 @@ until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   sleep 2
 done
 
-# auth_query hands pgbouncer whatever pg_authid holds, so this encryption and pgbouncer's
-# auth_type have to agree.
+# Unlogged: ALTER ROLE is not redacted and log/ sits inside PGDATA, which is backed up. The
+# superuser is rewritten because docker-entrypoint sets it only at initdb; pgbouncer needs SCRAM.
+psql -U "${POSTGRES_USER}" -d postgres -v role="${POSTGRES_USER}" -v su_pw="${POSTGRES_PASSWORD}" <<'EOSQL'
+SET log_min_duration_statement = -1;
+SET log_statement = 'none';
+SET password_encryption = 'scram-sha-256';
+ALTER ROLE :"role" PASSWORD :'su_pw';
+EOSQL
+
 if [ -n "${AGENT_RO_PASSWORD}" ] && [ -n "${AGENT_RW_PASSWORD}" ]; then
   psql -U "${POSTGRES_USER}" -d postgres -v ro_pw="${AGENT_RO_PASSWORD}" -v rw_pw="${AGENT_RW_PASSWORD}" <<'EOSQL'
+SET log_min_duration_statement = -1;
+SET log_statement = 'none';
 SET password_encryption = 'scram-sha-256';
 DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_ro') THEN CREATE ROLE n3o_agent_ro LOGIN; END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_rw') THEN CREATE ROLE n3o_agent_rw LOGIN; END IF; END $$;

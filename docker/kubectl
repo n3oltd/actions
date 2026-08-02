@@ -8,9 +8,7 @@ FROM debian:trixie-slim AS base
 ########################
 FROM base AS final
 
-# The upstream kubectl image is distroless, which suits a container whose command is kubectl and
-# nothing else. The jobs that use this one are shell scripts that also report their outcome over
-# HTTP, so they need a shell and curl.
+# The upstream image is distroless; the jobs using this one are shell scripts that report over HTTP.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
  && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key \
