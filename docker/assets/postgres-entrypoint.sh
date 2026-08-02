@@ -27,17 +27,6 @@ sed -i "/log_lock_waits/d" /var/lib/postgresql/data/postgres/postgresql.conf
   echo "ssl_cert_file = '/var/lib/postgresql/server.crt'"
   echo "ssl_key_file = '/var/lib/postgresql/server.key'"
   
-  echo "logging_collector = on"
-  echo "log_directory = 'log'"
-  echo "log_filename = 'postgresql-%Y-%m-%d.log'"
-  echo "log_rotation_age = 1d"
-  echo "log_rotation_size = 0"
-  echo "log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '"
-  echo "log_min_duration_statement = 0"
-  echo "log_checkpoints = on"
-  echo "log_connections = on"
-  echo "log_disconnections = on"
-  echo "log_lock_waits = on"
 } >> /var/lib/postgresql/data/postgres/postgresql.conf
 
 sed -i "/ssl/d" /var/lib/postgresql/data/postgres/postgresql.conf
@@ -80,6 +69,17 @@ exec docker-entrypoint.sh postgres \
           -c archive_command="pgbackrest --stanza=n3o archive-push %p" \
           -c wal_level=replica \
           -c max_wal_senders=3 \
+          -c logging_collector=on \
+          -c log_directory="log" \
+          -c log_filename="postgresql-%Y-%m-%d.log" \
+          -c log_rotation_age=1d \
+          -c log_rotation_size=0 \
+          -c log_line_prefix="%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h " \
+          -c log_min_duration_statement=0 \
+          -c log_checkpoints=on \
+          -c log_connections=on \
+          -c log_disconnections=on \
+          -c log_lock_waits=on \
           -c shared_buffers="${POSTGRES_SHARED_BUFFERS}" \
           -c max_connections="${POSTGRES_MAX_CONNECTIONS}" \
           -c work_mem="${POSTGRES_WORK_MEM}" \
