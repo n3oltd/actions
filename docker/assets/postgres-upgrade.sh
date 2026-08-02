@@ -33,6 +33,9 @@ version=$(cat "$PGDATA/PG_VERSION")
 [ -e "$RETAINED" ] && die "$RETAINED exists; a previous run left state behind"
 [ -e "$NEW" ] && die "$NEW exists; a previous run left state behind"
 
+# fsGroup adds group bits on mount; PostgreSQL refuses to start on them.
+chmod 0700 "$PGDATA"
+
 state=$(control 'Database cluster state')
 [ "$state" = "shut down" ] || die "cluster state is '$state'; pg_upgrade needs a clean shutdown"
 
@@ -52,7 +55,15 @@ if [ "$(control 'Data page checksum version')" = "0" ]; then
   $OLD_BIN/pg_checksums --enable -D "$PGDATA"
 fi
 
-trap 'rm -rf "$NEW"' ERR
+# pg_upgrade writes its log inside the new cluster.
+salvage() {
+  if [ -d "$NEW/pg_upgrade_output.d" ]; then
+    rm -rf "${PGDATA}.upgrade-failed"
+    mv "$NEW/pg_upgrade_output.d" "${PGDATA}.upgrade-failed" || true
+  fi
+  rm -rf "$NEW"
+}
+trap salvage ERR
 
 $NEW_BIN/initdb -D "$NEW" --locale="$PG_LOCALE" --encoding="$PG_ENCODING" -U "$POSTGRES_USER"
 
