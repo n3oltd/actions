@@ -1,14 +1,23 @@
 ########################
 ### base
 ########################
-FROM debian:bookworm-slim AS base
+FROM debian:trixie-slim AS base
 
 ########################
 ### final
 ########################
 FROM base AS final
 
-RUN apt-get update && apt-get install -y wget pgbouncer postgresql-client bash procps && rm -rf /var/lib/apt/lists/*
+# PGDG rather than Debian's own: trixie ships pgbouncer 1.24.1, PGDG ships 1.25.2. 1.21 is the
+# floor for max_prepared_statements, which is what allows prepared statements at all under
+# transaction pooling.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends wget ca-certificates \
+ && echo "deb http://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && wget -qO /etc/apt/trusted.gpg.d/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends pgbouncer postgresql-client bash procps \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /etc/pgbouncer
 
@@ -18,9 +27,7 @@ RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
 RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
 RUN mkdir -p /var/log/pgbouncer
 
-RUN mkdir -p /var/run/pgbouncer && chown -R postgres:postgres /var/run/pgbouncer
-
-ENV AUTH_TYPE=md5
+RUN mkdir -p /var/run/pgbouncer && chown -R postgres:postgres /var/run/pgbouncer /etc/pgbouncer
 
 USER postgres
 
