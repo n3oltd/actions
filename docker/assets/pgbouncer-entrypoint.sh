@@ -18,8 +18,15 @@ done
 VERIFIER=$(psql -h "${HOST}" -p "${PORT}" -U "${POSTGRES_USER}" -d postgres -tAc \
   "SELECT rolpassword FROM pg_authid WHERE rolname = current_user")
 
+# Naming the scheme rather than showing the value: an md5 secret is md5(password||username), so
+# any prefix of it confirms a candidate in an offline attack.
 if [[ "$VERIFIER" != SCRAM-SHA-256\$* ]]; then
-  echo "No SCRAM verifier for ${POSTGRES_USER} (got '${VERIFIER:0:16}'); refusing to start." >&2
+  case "$VERIFIER" in
+    md5*) scheme="an md5" ;;
+    "")   scheme="no" ;;
+    *)    scheme="an unrecognised" ;;
+  esac
+  echo "${POSTGRES_USER} holds ${scheme} secret, not a SCRAM verifier; refusing to start." >&2
   exit 1
 fi
 

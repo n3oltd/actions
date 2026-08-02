@@ -65,6 +65,9 @@ mkdir /etc/pgbackrest/backup-repo
   echo "start-fast=y"
 } >> /etc/pgbackrest/pgbackrest.conf
 
+# Holds the repository cipher passphrase and the storage account key.
+chmod 600 /etc/pgbackrest/pgbackrest.conf
+
 # Unit of tcp_keepalives_idle is seconds and idle_session_timeout is milliseconds
 exec docker-entrypoint.sh postgres \
           -c archive_mode=on \
@@ -94,10 +97,25 @@ until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   sleep 2
 done
 
+# log_min_duration_statement is 0, and PostgreSQL does not redact ALTER ROLE, so without these
+# two settings every password below is written verbatim into log/ — inside PGDATA, and so into
+# every pgBackRest backup of it.
+#
 # auth_query hands pgbouncer whatever pg_authid holds, so this encryption and pgbouncer's
-# auth_type have to agree.
+# auth_type have to agree. docker-entrypoint sets the superuser's password only when it creates
+# the data directory, so a cluster first built under a release whose default was md5 keeps an md5
+# secret indefinitely, and pgbouncer refuses to start against one.
+psql -U "${POSTGRES_USER}" -d postgres -v role="${POSTGRES_USER}" -v su_pw="${POSTGRES_PASSWORD}" <<'EOSQL'
+SET log_min_duration_statement = -1;
+SET log_statement = 'none';
+SET password_encryption = 'scram-sha-256';
+ALTER ROLE :"role" PASSWORD :'su_pw';
+EOSQL
+
 if [ -n "${AGENT_RO_PASSWORD}" ] && [ -n "${AGENT_RW_PASSWORD}" ]; then
   psql -U "${POSTGRES_USER}" -d postgres -v ro_pw="${AGENT_RO_PASSWORD}" -v rw_pw="${AGENT_RW_PASSWORD}" <<'EOSQL'
+SET log_min_duration_statement = -1;
+SET log_statement = 'none';
 SET password_encryption = 'scram-sha-256';
 DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_ro') THEN CREATE ROLE n3o_agent_ro LOGIN; END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_rw') THEN CREATE ROLE n3o_agent_rw LOGIN; END IF; END $$;
