@@ -33,8 +33,7 @@ version=$(cat "$PGDATA/PG_VERSION")
 [ -e "$RETAINED" ] && die "$RETAINED exists; a previous run left state behind"
 [ -e "$NEW" ] && die "$NEW exists; a previous run left state behind"
 
-# fsGroup adds group bits to the volume on mount, and PostgreSQL refuses to start on anything but
-# 0700 or 0750. The image entrypoint normally corrects this; nothing runs it here.
+# fsGroup adds group bits on mount; PostgreSQL refuses to start on them.
 chmod 0700 "$PGDATA"
 
 state=$(control 'Database cluster state')
@@ -56,7 +55,7 @@ if [ "$(control 'Data page checksum version')" = "0" ]; then
   $OLD_BIN/pg_checksums --enable -D "$PGDATA"
 fi
 
-# pg_upgrade writes its diagnosis inside the new cluster, so keep that before discarding it.
+# pg_upgrade writes its log inside the new cluster.
 salvage() {
   if [ -d "$NEW/pg_upgrade_output.d" ]; then
     rm -rf "${PGDATA}.upgrade-failed"
