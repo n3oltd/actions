@@ -29,9 +29,8 @@ sed -i "/log_lock_waits/d" /var/lib/postgresql/data/postgres/postgresql.conf
   
 } >> /var/lib/postgresql/data/postgres/postgresql.conf
 
-# These three delete the ssl settings written immediately above, because /ssl/d matches them
-# too. Every tenant therefore runs with ssl off. Removing them turns TLS on across every live
-# database at once, so it needs its own change rather than a quiet fix here.
+# /ssl/d matches the settings written above, so every tenant runs with ssl off; removing these
+# turns TLS on across every live database at once.
 sed -i "/ssl/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
@@ -95,8 +94,8 @@ until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   sleep 2
 done
 
-# Seed the read-only / read-write agent roles (idempotent). auth_query hands pgbouncer whatever
-# pg_authid holds, so this encryption and pgbouncer's auth_type have to agree.
+# auth_query hands pgbouncer whatever pg_authid holds, so this encryption and pgbouncer's
+# auth_type have to agree.
 if [ -n "${AGENT_RO_PASSWORD}" ] && [ -n "${AGENT_RW_PASSWORD}" ]; then
   psql -U "${POSTGRES_USER}" -d postgres -v ro_pw="${AGENT_RO_PASSWORD}" -v rw_pw="${AGENT_RW_PASSWORD}" <<'EOSQL'
 SET password_encryption = 'scram-sha-256';

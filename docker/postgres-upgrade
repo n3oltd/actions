@@ -8,11 +8,14 @@ FROM postgres:18 AS base
 ########################
 FROM base AS final
 
-# pg_upgrade needs both majors present at once. PGDG carries every supported version for trixie,
-# which is what the postgres image already builds on.
+# pg_upgrade needs both majors present at once.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends postgresql-17 procps \
  && rm -rf /var/lib/apt/lists/*
+
+# pg_upgrade writes its logs and its delete_old_cluster.sh into the working directory, and the
+# base image leaves it at / where the postgres user cannot write.
+WORKDIR /tmp
 
 COPY --chmod=0755 postgres-upgrade.sh /usr/local/bin/postgres-upgrade.sh
 

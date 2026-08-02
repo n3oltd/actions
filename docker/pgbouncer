@@ -19,8 +19,6 @@ RUN apt-get update \
 
 WORKDIR /etc/pgbouncer
 
-# COPY, not a RUN that fetches: a RUN's cache key is its command string, which never changes, so
-# a warm builder reuses the layer and ships whatever the entrypoint was when it was first built.
 COPY --chmod=0755 pgbouncer-entrypoint.sh /usr/local/bin/pgbouncer-entrypoint.sh
 
 RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt \

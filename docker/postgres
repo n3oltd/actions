@@ -12,8 +12,6 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends pgbackrest pgbadger procps \
  && rm -rf /var/lib/apt/lists/*
 
-# COPY, not a RUN that fetches: a RUN's cache key is its command string, which never changes, so
-# a warm builder reuses the layer and ships whatever the entrypoint was when it was first built.
 COPY --chmod=0755 postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
 
 RUN mkdir -p /var/lib/postgresql /etc/pgbackrest \
