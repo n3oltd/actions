@@ -1,0 +1,31 @@
+########################
+### base
+########################
+FROM debian:trixie-slim AS base
+
+########################
+### final
+########################
+FROM base AS final
+
+# The upstream kubectl image is distroless, which suits a container whose command is kubectl and
+# nothing else. The jobs that use this one are shell scripts that also report their outcome over
+# HTTP, so they need a shell and curl.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+ && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key \
+      | gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg \
+ && echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /" \
+      > /etc/apt/sources.list.d/kubernetes.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends kubectl \
+ && apt-get purge -y gnupg \
+ && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --uid 65532 --create-home --shell /bin/bash nonroot
+
+USER nonroot
+WORKDIR /home/nonroot
+
+CMD ["/bin/bash"]

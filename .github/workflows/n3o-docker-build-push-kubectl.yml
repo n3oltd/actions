@@ -1,8 +1,6 @@
-# Builds and pushes the N3O Postgres major-upgrade Docker image to ACR with date
-# and latest tags, fetching the Dockerfile from the actions repo. Takes no
-# inputs. Dispatchable, because the image is built for a migration rather than
-# on a pipeline.
-name: 'docker-build-push-postgres-upgrade'
+# Builds and pushes the N3O kubectl Docker image to ACR with date and latest
+# tags, fetching the Dockerfile from the actions repo. Takes no inputs.
+name: 'docker-build-push-kubectl'
 
 on:
   workflow_call:
@@ -26,18 +24,16 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: fetch dockerfile and entrypoint
+      - name: fetch dockerfile
         shell: bash
         run: |
-          curl -fsSL -o postgres-upgrade \
-            https://raw.githubusercontent.com/n3oltd/actions/main/docker/postgres-upgrade
-          curl -fsSL -o postgres-upgrade.sh \
-            https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/postgres-upgrade.sh
+          curl -fsSL -o kubectl \
+            https://raw.githubusercontent.com/n3oltd/actions/main/docker/kubectl
 
-      - id: meta-postgres-upgrade
-        name: prepare postgres-upgrade
+      - id: meta-kubectl
+        name: prepare kubectl
         run: |
-          DOCKER_IMAGE_NAME=n3o-postgres-upgrade
+          DOCKER_IMAGE_NAME=n3o-kubectl
           DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
           NOW=$(date -u +'%Y.%-m.%-d')
           VERSION="$NOW.${{ github.run_number }}"
@@ -46,12 +42,12 @@ jobs:
           echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
           echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
 
-      - name: build and push postgres-upgrade
+      - name: build and push kubectl
         uses: docker/build-push-action@v7
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
           target: final
-          file: postgres-upgrade
+          file: kubectl
           push: true
-          tags: ${{ steps.meta-postgres-upgrade.outputs.versiontag }} , ${{ steps.meta-postgres-upgrade.outputs.latesttag }}
+          tags: ${{ steps.meta-kubectl.outputs.versiontag }} , ${{ steps.meta-kubectl.outputs.latesttag }}

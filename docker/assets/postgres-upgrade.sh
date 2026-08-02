@@ -21,8 +21,7 @@ control() { $OLD_BIN/pg_controldata -D "$PGDATA" | awk -F': +' -v k="$1" '$0 ~ k
 version=$(cat "$PGDATA/PG_VERSION")
 [ "$version" = "17" ] || die "expected a version 17 cluster at $PGDATA, found $version"
 
-# Leftovers mean a previous run stopped partway. Resolving that is a judgement about which copy
-# holds the tenant's data, so it is never made here.
+# Resolving leftovers is a judgement about which copy holds the tenant's data, never made here.
 [ -e "$RETAINED" ] && die "$RETAINED exists; a previous run left state behind"
 [ -e "$NEW" ] && die "$NEW exists; a previous run left state behind"
 
@@ -33,9 +32,8 @@ used=$(du -sk "$PGDATA" | cut -f1)
 free=$(df -Pk "$(dirname "$PGDATA")" | awk 'NR==2 {print $4}')
 [ "$free" -gt "$used" ] || die "copy needs ${used}kB, volume has ${free}kB free"
 
-# 18 initdb turns checksums on and pg_upgrade refuses a mismatch. Enabling them on the old
-# cluster rather than disabling them on the new is the direction that gains something, and the
-# cluster is already stopped, which is the only time it can be done.
+# 18's initdb turns checksums on and pg_upgrade refuses a mismatch; a stopped cluster is the
+# only time they can be enabled.
 if [ "$(control 'Data page checksum version')" = "0" ]; then
   echo "postgres-upgrade: enabling data checksums"
   $OLD_BIN/pg_checksums --enable -D "$PGDATA"
@@ -45,12 +43,10 @@ trap 'rm -rf "$NEW"' ERR
 
 $NEW_BIN/initdb -D "$NEW" --locale="$PG_LOCALE" --encoding="$PG_ENCODING" -U "$POSTGRES_USER"
 
-cd /tmp
-for phase in --check ''; do
-  $NEW_BIN/pg_upgrade --old-bindir="$OLD_BIN" --new-bindir="$NEW_BIN" \
-                      --old-datadir="$PGDATA" --new-datadir="$NEW" \
-                      --username="$POSTGRES_USER" ${phase}
-done
+upgrade=("$NEW_BIN/pg_upgrade" --old-bindir="$OLD_BIN" --new-bindir="$NEW_BIN"
+         --old-datadir="$PGDATA" --new-datadir="$NEW" --username="$POSTGRES_USER")
+"${upgrade[@]}" --check
+"${upgrade[@]}"
 
 # initdb writes a narrower pg_hba than the image entrypoint does, and the entrypoint only writes
 # one for a data directory it created, so an upgraded cluster would silently stop accepting
