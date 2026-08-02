@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM postgres:17 AS base
+FROM postgres:18 AS base
 
 ########################
 ### final
