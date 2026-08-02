@@ -95,9 +95,8 @@ until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   sleep 2
 done
 
-# Seed the read-only / read-write agent roles (idempotent). Re-running ALTER ROLE on every start
-# is what migrates an existing md5 hash to a SCRAM verifier, so pgbouncer's auth_query returns a
-# verifier it can check under auth_type=scram-sha-256.
+# Seed the read-only / read-write agent roles (idempotent). auth_query hands pgbouncer whatever
+# pg_authid holds, so this encryption and pgbouncer's auth_type have to agree.
 if [ -n "${AGENT_RO_PASSWORD}" ] && [ -n "${AGENT_RW_PASSWORD}" ]; then
   psql -U "${POSTGRES_USER}" -d postgres -v ro_pw="${AGENT_RO_PASSWORD}" -v rw_pw="${AGENT_RW_PASSWORD}" <<'EOSQL'
 SET password_encryption = 'scram-sha-256';

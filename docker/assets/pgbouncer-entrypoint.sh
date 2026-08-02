@@ -8,13 +8,8 @@ AUTH_FILE="${PG_CONFIG_DIR}/userlist.txt"
 
 mkdir -p "$PG_CONFIG_DIR"
 
-# Application logins resolve through auth_query against pg_shadow, which returns the role's SCRAM
-# verifier. The auth file exists only so the admin and stats console has a credential to check,
-# and it holds that verifier rather than the password — a verifier cannot be replayed to obtain a
-# login, so nothing password-equivalent is written to disk.
-#
-# Reading it needs the database up. pgbouncer and postgres share the pod's network namespace and
-# pg_hba grants trust on 127.0.0.1, so no credential is needed to fetch it.
+# No credential is needed here: postgres shares the pod's network namespace and pg_hba grants
+# trust on 127.0.0.1.
 until pg_isready -h "${HOST}" -p "${PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
   echo "Waiting for Postgres before reading the SCRAM verifier..."
   sleep 2
@@ -28,6 +23,8 @@ if [[ "$VERIFIER" != SCRAM-SHA-256\$* ]]; then
   exit 1
 fi
 
+# Only the admin console reads this; application logins go through auth_query. A verifier cannot
+# be replayed into a login, so nothing password-equivalent lands on disk.
 umask 077
 printf '"%s" "%s"\n' "${POSTGRES_USER}" "${VERIFIER}" > "$AUTH_FILE"
 

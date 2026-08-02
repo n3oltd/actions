@@ -8,9 +8,7 @@ FROM debian:trixie-slim AS base
 ########################
 FROM base AS final
 
-# PGDG rather than Debian's own: trixie ships pgbouncer 1.24.1, PGDG ships 1.25.2. 1.21 is the
-# floor for max_prepared_statements, which is what allows prepared statements at all under
-# transaction pooling.
+# PGDG rather than Debian's own, whose pgbouncer predates max_prepared_statements.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget ca-certificates \
  && echo "deb http://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
