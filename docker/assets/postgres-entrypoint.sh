@@ -87,17 +87,19 @@ exec docker-entrypoint.sh postgres \
           -c max_connections="${POSTGRES_MAX_CONNECTIONS}" \
           -c work_mem="${POSTGRES_WORK_MEM}" \
           -c tcp_keepalives_idle="${POSTGRES_TCP_KEEPALIVES_IDLE}" \
-          -c idle_session_timeout="${POSTGRES_IDLE_SESSION_TIMEOUT}" &
+          -c idle_session_timeout="${POSTGRES_IDLE_SESSION_TIMEOUT}" \
+          -c password_encryption=scram-sha-256 &
 
 until pg_isready -U "${POSTGRES_USER}" -d :"${POSTGRES_USER}"; do
   echo "Waiting for Postgres to be ready..."
   sleep 2
 done
 
-# Seed the read-only / read-write agent roles (idempotent; md5 so pgbouncer can proxy them)
+# Seed the read-only / read-write agent roles (idempotent). auth_query hands pgbouncer whatever
+# pg_authid holds, so this encryption and pgbouncer's auth_type have to agree.
 if [ -n "${AGENT_RO_PASSWORD}" ] && [ -n "${AGENT_RW_PASSWORD}" ]; then
   psql -U "${POSTGRES_USER}" -d postgres -v ro_pw="${AGENT_RO_PASSWORD}" -v rw_pw="${AGENT_RW_PASSWORD}" <<'EOSQL'
-SET password_encryption = 'md5';
+SET password_encryption = 'scram-sha-256';
 DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_ro') THEN CREATE ROLE n3o_agent_ro LOGIN; END IF; END $$;
 DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'n3o_agent_rw') THEN CREATE ROLE n3o_agent_rw LOGIN; END IF; END $$;
 ALTER ROLE n3o_agent_ro PASSWORD :'ro_pw';
