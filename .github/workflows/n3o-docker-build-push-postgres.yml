@@ -5,6 +5,7 @@ name: 'docker-build-push-postgres'
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   build-push-docker-image-job:
