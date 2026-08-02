@@ -40,8 +40,7 @@ old_locale=$(sed -n "s/^lc_monetary = '\([^']*\)'.*/\1/p" "$PGDATA/postgresql.co
 [ -z "$old_locale" ] || [ "$old_locale" = "$PG_LOCALE" ] \
   || die "PG_LOCALE is '$PG_LOCALE' but the cluster was built with '$old_locale'"
 
-# pg_upgrade copies neither pg_wal nor log, and log accumulates pgBadger reports without bound.
-# The margin covers the new cluster's initdb footprint and the WAL its schema restore generates.
+# pg_upgrade copies neither pg_wal nor log; the margin covers the new cluster's own footprint.
 used=$(du -sk --exclude=pg_wal --exclude=log "$PGDATA" | cut -f1)
 free=$(df -Pk "$(dirname "$PGDATA")" | awk 'NR==2 {print $4}')
 [ "$free" -gt $((used * 12 / 10)) ] || die "copy needs ${used}kB plus margin, volume has ${free}kB free"
@@ -57,16 +56,13 @@ trap 'rm -rf "$NEW"' ERR
 
 $NEW_BIN/initdb -D "$NEW" --locale="$PG_LOCALE" --encoding="$PG_ENCODING" -U "$POSTGRES_USER"
 
-# errexit exempts the left of &&, so joining these would skip the trap and fall through to the
-# renames with an empty cluster.
+# errexit exempts the left of &&, so joining these would skip the trap and reach the renames.
 upgrade=("$NEW_BIN/pg_upgrade" --old-bindir="$OLD_BIN" --new-bindir="$NEW_BIN"
          --old-datadir="$PGDATA" --new-datadir="$NEW" --username="$POSTGRES_USER")
 "${upgrade[@]}" --check
 "${upgrade[@]}"
 
-# initdb writes a narrower pg_hba than the image entrypoint does, and the entrypoint only writes
-# one for a data directory it created, so an upgraded cluster would silently stop accepting
-# anything but loopback.
+# initdb writes a narrower pg_hba, and the entrypoint only writes one for a directory it made.
 cp "$PGDATA/pg_hba.conf" "$PGDATA/pg_ident.conf" "$NEW/"
 
 trap - ERR

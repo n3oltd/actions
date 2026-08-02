@@ -8,8 +8,7 @@ AUTH_FILE="${PG_CONFIG_DIR}/userlist.txt"
 
 mkdir -p "$PG_CONFIG_DIR"
 
-# No credential is needed here: postgres shares the pod's network namespace and pg_hba grants
-# trust on 127.0.0.1.
+# No credential needed: postgres shares the pod's netns and pg_hba grants trust on 127.0.0.1.
 until pg_isready -h "${HOST}" -p "${PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
   echo "Waiting for Postgres before reading the SCRAM verifier..."
   sleep 2
@@ -18,8 +17,7 @@ done
 VERIFIER=$(psql -h "${HOST}" -p "${PORT}" -U "${POSTGRES_USER}" -d postgres -tAc \
   "SELECT rolpassword FROM pg_authid WHERE rolname = current_user")
 
-# Naming the scheme rather than showing the value: an md5 secret is md5(password||username), so
-# any prefix of it confirms a candidate in an offline attack.
+# Any prefix of an md5 secret confirms a candidate offline, so name the scheme, not the value.
 if [[ "$VERIFIER" != SCRAM-SHA-256\$* ]]; then
   case "$VERIFIER" in
     md5*) scheme="an md5" ;;
@@ -30,8 +28,7 @@ if [[ "$VERIFIER" != SCRAM-SHA-256\$* ]]; then
   exit 1
 fi
 
-# Only the admin console reads this; application logins go through auth_query. A verifier cannot
-# be replayed into a login, so nothing password-equivalent lands on disk.
+# Only the admin console reads this, and a verifier cannot be replayed into a login.
 umask 077
 printf '"%s" "%s"\n' "${POSTGRES_USER}" "${VERIFIER}" > "$AUTH_FILE"
 
