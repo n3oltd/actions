@@ -8,7 +8,7 @@ FROM debian:trixie-slim AS base
 ########################
 FROM base AS final
 
-# PGDG rather than Debian's own, whose pgbouncer predates max_prepared_statements.
+# PGDG rather than Debian's own, which lags upstream pgbouncer releases.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget ca-certificates \
  && echo "deb http://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
@@ -19,16 +19,16 @@ RUN apt-get update \
 
 WORKDIR /etc/pgbouncer
 
-RUN wget -P /usr/local/bin https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
-RUN chmod +x /usr/local/bin/pgbouncer-entrypoint.sh
+# COPY, not a RUN that fetches: a RUN's cache key is its command string, which never changes, so
+# a warm builder reuses the layer and ships whatever the entrypoint was when it was first built.
+COPY --chmod=0755 pgbouncer-entrypoint.sh /usr/local/bin/pgbouncer-entrypoint.sh
 
-RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
-RUN mkdir -p /var/log/pgbouncer
-
-RUN mkdir -p /var/run/pgbouncer && chown -R postgres:postgres /var/run/pgbouncer /etc/pgbouncer
+RUN touch /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt \
+ && mkdir -p /var/log/pgbouncer /var/run/pgbouncer \
+ && chown -R postgres:postgres /var/run/pgbouncer /etc/pgbouncer
 
 USER postgres
 
 ENTRYPOINT ["/usr/local/bin/pgbouncer-entrypoint.sh"]
 CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
-EXPOSE 5432
+EXPOSE 6432
