@@ -58,6 +58,12 @@ on:
         required: false
         default: wait
 
+      channel:
+        description: "release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production."
+        type: string
+        required: false
+        default: ''
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -116,12 +122,22 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: fetch dockerfile
+      - name: resolve dockerfile
         if: steps.check-existing.outputs.exists != 'true'
         shell: bash
+        env:
+          DOCKERFILE: ${{ inputs.dockerfile }}
         run: |
-          curl -fsSL -o "${{ inputs.dockerfile }}" \
-            "https://raw.githubusercontent.com/n3oltd/actions/main/docker/${{ inputs.dockerfile }}"
+          set -euo pipefail
+
+          # A repository committing its own Dockerfile keeps it under change
+          # detection; a bare name still resolves to the shared one here.
+          if [ -f "$DOCKERFILE" ]; then
+            echo "Using the Dockerfile committed at $DOCKERFILE"
+          else
+            curl -fsSL -o "$DOCKERFILE" \
+              "https://raw.githubusercontent.com/n3oltd/actions/main/docker/$DOCKERFILE"
+          fi
 
       - id: metadata
         name: metadata
@@ -129,9 +145,11 @@ jobs:
         run: |
           ACR_REPOSITORY=n3oltd.azurecr.io/${{ inputs.container-repository }}
           NOW=$(date -u +'%Y.%-m.%-d')
-          VERSION="$NOW.${{ github.run_number }}"
+          CHANNEL="${{ inputs.channel }}"
+          PREFIX="${CHANNEL:+${CHANNEL}-}"
+          VERSION="${PREFIX}${NOW}.${{ github.run_number }}"
           VERSIONTAG="${ACR_REPOSITORY}:${VERSION}"
-          LATESTTAG="${ACR_REPOSITORY}:latest"
+          LATESTTAG="${ACR_REPOSITORY}:${CHANNEL:-latest}"
           CREATED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version-tag=$VERSIONTAG" >> $GITHUB_OUTPUT
