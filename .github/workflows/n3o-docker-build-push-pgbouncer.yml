@@ -24,11 +24,13 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: fetch dockerfile
+      - name: fetch dockerfile and entrypoint
         shell: bash
         run: |
           curl -fsSL -o pgbouncer \
             https://raw.githubusercontent.com/n3oltd/actions/main/docker/pgbouncer
+          curl -fsSL -o pgbouncer-entrypoint.sh \
+            https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
 
       - id: meta-pgbouncer
         name: prepare pgbouncer

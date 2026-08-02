@@ -24,11 +24,13 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: fetch dockerfile
+      - name: fetch dockerfile and entrypoint
         shell: bash
         run: |
           curl -fsSL -o postgres \
             https://raw.githubusercontent.com/n3oltd/actions/main/docker/postgres
+          curl -fsSL -o postgres-entrypoint.sh \
+            https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/postgres-entrypoint.sh
 
       - id: meta-postgres
         name: prepare postgres
