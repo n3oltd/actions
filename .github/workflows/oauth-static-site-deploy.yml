@@ -46,10 +46,10 @@ on:
         required: true
 
       registry-username:
-        required: false
+        required: true
 
       registry-password:
-        required: false
+        required: true
 
 jobs:
   deploy:

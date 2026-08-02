@@ -27,13 +27,11 @@ inputs:
     description: Azure service principal credentials
     required: true
   registry-username:
-    description: ACR username. Omit only where the app already carries the credentials as settings.
-    required: false
-    default: ''
+    description: ACR username
+    required: true
   registry-password:
     description: ACR password
-    required: false
-    default: ''
+    required: true
 
 runs:
   using: 'composite'
@@ -57,19 +55,14 @@ runs:
       run: |
         set -euo pipefail
 
-        # A newly created app has no credentials of its own, and without them
-        # every step here still succeeds while the platform cannot pull.
-        credentials=()
-        if [ -n "$REGISTRY_USERNAME" ]; then
-          credentials=(--docker-registry-server-user "$REGISTRY_USERNAME"
-                       --docker-registry-server-password "$REGISTRY_PASSWORD")
-        fi
-
+        # Without these a newly created app runs every step here green and then
+        # cannot pull.
         az webapp config container set \
           --name "$SITE" --resource-group "$GROUP" \
           --docker-custom-image-name "$IMAGE" \
           --docker-registry-server-url https://n3oltd.azurecr.io \
-          "${credentials[@]}" \
+          --docker-registry-server-user "$REGISTRY_USERNAME" \
+          --docker-registry-server-password "$REGISTRY_PASSWORD" \
           --output none
 
         # shellcheck disable=SC2086 — EXTRA_SETTINGS is a caller-supplied argument list.
