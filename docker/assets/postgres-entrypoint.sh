@@ -68,7 +68,7 @@ chmod 600 /etc/pgbackrest/pgbackrest.conf
 
 # Unit of tcp_keepalives_idle is seconds and idle_session_timeout is milliseconds
 exec docker-entrypoint.sh postgres \
-          -c archive_mode=on \
+          -c archive_mode="${POSTGRES_ARCHIVE_MODE:-on}" \
           -c archive_command="pgbackrest --stanza=n3o archive-push %p" \
           -c wal_level=replica \
           -c max_wal_senders=3 \
