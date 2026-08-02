@@ -9,7 +9,8 @@ FROM postgres:17 AS base
 FROM base AS final
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends pgbackrest pgbadger procps \
+ # pgBackRest verifies the Azure Blob endpoint certificate.
+ && apt-get install -y --no-install-recommends ca-certificates pgbackrest pgbadger procps \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
