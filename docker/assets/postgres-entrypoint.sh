@@ -29,6 +29,9 @@ sed -i "/log_lock_waits/d" /var/lib/postgresql/data/postgres/postgresql.conf
   
 } >> /var/lib/postgresql/data/postgres/postgresql.conf
 
+# These three delete the ssl settings written immediately above, because /ssl/d matches them
+# too. Every tenant therefore runs with ssl off. Removing them turns TLS on across every live
+# database at once, so it needs its own change rather than a quiet fix here.
 sed -i "/ssl/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/ssl_cert_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/ssl_key_file/d" /var/lib/postgresql/data/postgres/postgresql.conf
