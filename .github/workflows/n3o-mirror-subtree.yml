@@ -1,6 +1,6 @@
 # Reusable workflow that mirrors one subtree of a monorepo to an external client repo,
 # preserving history. A monorepo enables it with a thin per-client caller on push to main
-# (path-filtered to that client's subtree) — see n3oltd/sites/.github/workflows/mirror-*.yml.
+# (path-filtered to that client's subtree) — one caller per client.
 #
 # It splits the subtree out with full history (`git subtree split --prefix=<path>`) and
 # force-pushes the resulting commit to the client repo over SSH, using a per-client deploy
@@ -12,11 +12,11 @@ on:
   workflow_call:
     inputs:
       subtree-path:
-        description: 'Monorepo path of the subtree to mirror (e.g. src/site-mh)'
+        description: 'Monorepo path of the subtree to mirror'
         required: true
         type: string
       target-repo-url:
-        description: 'SSH URL of the client repo (e.g. ssh://git@github.com/muslimhands/website.git)'
+        description: 'SSH URL of the client repo'
         required: true
         type: string
       target-branch:
