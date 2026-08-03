@@ -1,4 +1,6 @@
-﻿########################
+﻿ARG RUNTIME=base
+
+########################
 ### base
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
@@ -18,8 +20,8 @@ ARG CONFIGURATION
 
 WORKDIR /src
 
-ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED true
-ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS {\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"n3oltd\", \"password\":\"${PAT}\"}]}
+ENV NUGET_CREDENTIALPROVIDER_SESSIONTOKENCACHE_ENABLED=true
+ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS={\"endpointCredentials\": [{\"endpoint\":\"${FEED_URL}\", \"username\":\"n3oltd\", \"password\":\"${PAT}\"}]}
 ENV PROJECT=${PROJECT}
 ENV DLL=.dll
 
@@ -42,9 +44,9 @@ ARG PROJECT
 RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app
 
 ########################
-### final
+### runtime-base
 ########################
-FROM base AS final
+FROM base AS runtime-base
 
 ARG PROJECT
 
@@ -66,7 +68,7 @@ RUN apt-get --yes install zip unzip curl
 RUN apt-get --yes install libgdiplus
 
 WORKDIR /app
-ENV ASPNETCORE_URLS http://*:80
+ENV ASPNETCORE_URLS=http://*:80
 COPY --from=publish /app .
 ENV DLL="${PROJECT}.dll"
 RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
@@ -83,3 +85,49 @@ RUN hash -r
 ENTRYPOINT ["./entrypoint.sh"]
 
 EXPOSE 80
+
+########################
+### runtime-ffmpeg
+########################
+FROM runtime-base AS runtime-ffmpeg
+
+RUN apt-get --yes install ffmpeg
+
+########################
+### runtime-prince
+########################
+FROM runtime-base AS runtime-prince
+
+ARG PRINCE_LICENSE_ID
+ARG PRINCE_LICENSE_NAME
+ARG PRINCE_LICENSE_VENDOR
+ARG PRINCE_PRODUCT
+ARG PRINCE_VERSION
+ARG PRINCE_END_USER
+ARG PRINCE_DATE
+ARG PRINCE_SIGNATURE
+ARG PRINCE_OPTION_ID
+
+RUN echo "yes" | apt install ttf-mscorefonts-installer --assume-yes
+RUN apt-get install --assume-yes wget ghostscript gdebi fontconfig
+
+ENV PRINCE=prince_16.2-1_ubuntu24.04_amd64
+ENV PRINCE_DEB=$PRINCE.deb
+RUN wget https://www.princexml.com/download/$PRINCE_DEB && gdebi -n $PRINCE_DEB && rm -r $PRINCE_DEB
+
+RUN mkdir -p /usr/local/lib/prince/license
+RUN echo "<license id=\"${PRINCE_LICENSE_ID}\">" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <name>${PRINCE_LICENSE_NAME}</name>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <vendor>${PRINCE_LICENSE_VENDOR}</vendor>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <product>${PRINCE_PRODUCT}</product>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <version>${PRINCE_VERSION}</version>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <end-user>${PRINCE_END_USER}</end-user>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <date>${PRINCE_DATE}</date>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <signature>${PRINCE_SIGNATURE}</signature>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "    <option id=\"upgrades\">${PRINCE_OPTION_ID}</option>" >> /usr/local/lib/prince/license/license.dat
+RUN echo "</license>" >> /usr/local/lib/prince/license/license.dat
+
+########################
+### final
+########################
+FROM runtime-${RUNTIME} AS final
