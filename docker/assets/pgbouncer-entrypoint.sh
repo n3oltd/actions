@@ -56,6 +56,7 @@ server_idle_timeout = ${POSTGRES_IDLE_SESSION_TIMEOUT}
 server_fast_close = 1
 client_idle_timeout = 300
 idle_transaction_timeout = 300
+query_timeout = 2100
 ignore_startup_parameters = extra_float_digits
 stats_period = 0
 verbose = 0
