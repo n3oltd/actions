@@ -15,43 +15,32 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-                            
-      - id: buildx
-        uses: docker/setup-buildx-action@v4
 
-      - name: acr login
-        uses: docker/login-action@v4
+      - id: acr
+        name: acr login
+        uses: n3oltd/actions/.github/actions/n3o-acr-login@main
         with:
-          registry: n3oltd.azurecr.io
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
       - name: fetch dockerfile and entrypoint
-        shell: bash
-        run: |
-          curl -fsSL -o pgbouncer \
-            https://raw.githubusercontent.com/n3oltd/actions/main/docker/pgbouncer
-          curl -fsSL -o pgbouncer-entrypoint.sh \
-            https://raw.githubusercontent.com/n3oltd/actions/main/docker/assets/pgbouncer-entrypoint.sh
+        uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
+        with:
+          dockerfile: pgbouncer
+          assets: pgbouncer-entrypoint.sh
 
-      - id: meta-pgbouncer
+      - id: meta
         name: prepare pgbouncer
-        run: |
-          DOCKER_IMAGE_NAME=n3o-pgbouncer
-          DOCKER_IMAGE=n3oltd.azurecr.io/$DOCKER_IMAGE_NAME
-          NOW=$(date -u +'%Y.%-m.%-d')
-          VERSION="$NOW.${{ github.run_number }}"       
-          VERSIONTAG="${DOCKER_IMAGE}:${VERSION}"
-          LATESTTAG="${DOCKER_IMAGE}:latest"
-          echo "versiontag=$VERSIONTAG" >> $GITHUB_OUTPUT
-          echo "latesttag=$LATESTTAG" >> $GITHUB_OUTPUT
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: n3o-pgbouncer
 
       - name: build and push pgbouncer
         uses: docker/build-push-action@v7
         with:
-          builder: ${{ steps.buildx.outputs.name }}
+          builder: ${{ steps.acr.outputs.builder }}
           context: .
           target: final
           file: pgbouncer
           push: true
-          tags: ${{ steps.meta-pgbouncer.outputs.versiontag }} , ${{ steps.meta-pgbouncer.outputs.latesttag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
