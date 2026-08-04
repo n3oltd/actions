@@ -6,8 +6,12 @@ description: >-
 
 inputs:
   dockerfile:
-    description: Catalogue Dockerfile name, written to this path in the workspace.
+    description: Catalogue Dockerfile name.
     required: true
+  path:
+    description: Where to write it. Defaults to the catalogue name, which collides when the calling repository has a directory of that name.
+    required: false
+    default: ''
   assets:
     description: Newline-separated docker/assets names to fetch alongside it, each written to the workspace root.
     required: false
@@ -24,16 +28,21 @@ runs:
     - shell: bash
       env:
         DOCKERFILE: ${{ inputs.dockerfile }}
+        DEST: ${{ inputs.path }}
         ASSETS: ${{ inputs.assets }}
         PREFER_LOCAL: ${{ inputs.prefer-local }}
       run: |
         set -euo pipefail
         catalogue=https://raw.githubusercontent.com/n3oltd/actions/main/docker
 
-        if [ "$PREFER_LOCAL" = "true" ] && [ -f "$DOCKERFILE" ]; then
-          echo "Using the Dockerfile committed at $DOCKERFILE"
+        dest=${DEST:-$DOCKERFILE}
+
+        if [ "$PREFER_LOCAL" = "true" ] && [ -f "$dest" ]; then
+          echo "Using the Dockerfile committed at $dest"
         else
-          curl -fsSL -o "$DOCKERFILE" "$catalogue/$DOCKERFILE"
+          # A directory of the same name makes curl exit with a write error that names nothing.
+          [ -d "$dest" ] && { echo "$dest is a directory; pass a distinct path"; exit 1; }
+          curl -fsSL -o "$dest" "$catalogue/$DOCKERFILE"
         fi
 
         while IFS= read -r asset; do
