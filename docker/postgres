@@ -10,7 +10,8 @@ FROM base AS final
 
 RUN apt-get update \
  # pgBackRest verifies the Azure Blob endpoint certificate.
- && apt-get install -y --no-install-recommends ca-certificates pgbackrest pgbadger procps \
+ # postgresql-N-repack is pinned to the major version and must be bumped alongside the base.
+ && apt-get install -y --no-install-recommends ca-certificates pgbackrest pgbadger procps postgresql-18-repack \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
