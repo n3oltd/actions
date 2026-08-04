@@ -1,0 +1,57 @@
+name: n3o image tags
+description: >-
+  The one place the N3O container image version scheme lives. Computes a calver
+  version from the date and the run number, the tags a build pushes, and the
+  build timestamp for the OCI labels.
+
+inputs:
+  repository:
+    description: Registry repository the image is pushed to, without the registry host.
+    required: true
+  registry:
+    description: Container registry the image is pushed to.
+    required: false
+    default: n3oltd.azurecr.io
+  channel:
+    description: Release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production.
+    required: false
+    default: ''
+
+outputs:
+  version:
+    description: The calver version, channel-prefixed when a channel is set.
+    value: ${{ steps.tags.outputs.version }}
+  version-tag:
+    description: Fully qualified tag for this version.
+    value: ${{ steps.tags.outputs.version-tag }}
+  latest-tag:
+    description: Fully qualified moving tag for the channel.
+    value: ${{ steps.tags.outputs.latest-tag }}
+  sha-tag:
+    description: Fully qualified commit tag, which is what a deploy pins.
+    value: ${{ steps.tags.outputs.sha-tag }}
+  created:
+    description: RFC 3339 build timestamp for org.opencontainers.image.created.
+    value: ${{ steps.tags.outputs.created }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: tags
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.registry }}/${{ inputs.repository }}
+        CHANNEL: ${{ inputs.channel }}
+        RUN_NUMBER: ${{ github.run_number }}
+        SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+        NOW=$(date -u +'%Y.%-m.%-d')
+        VERSION="${CHANNEL:+${CHANNEL}-}${NOW}.${RUN_NUMBER}"
+        {
+          echo "version=$VERSION"
+          echo "version-tag=${IMAGE}:${VERSION}"
+          echo "latest-tag=${IMAGE}:${CHANNEL:-latest}"
+          echo "sha-tag=${IMAGE}:sha-${SHA}"
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        } >> "$GITHUB_OUTPUT"

@@ -1,0 +1,43 @@
+name: n3o dockerfile fetch
+description: >-
+  The one place the shared Dockerfile catalogue is addressed. Fetches a
+  Dockerfile from this repository's docker/ directory, along with any companion
+  assets it copies.
+
+inputs:
+  dockerfile:
+    description: Catalogue Dockerfile name, written to this path in the workspace.
+    required: true
+  assets:
+    description: Newline-separated docker/assets names to fetch alongside it, each written to the workspace root.
+    required: false
+    default: ''
+  prefer-local:
+    description: Use a Dockerfile already committed at this path instead of fetching. A repository committing its own keeps it under change detection; a bare name still resolves to the shared one.
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    # Fetched over HTTP: the calling workflow checks out its own repository, not this one.
+    - shell: bash
+      env:
+        DOCKERFILE: ${{ inputs.dockerfile }}
+        ASSETS: ${{ inputs.assets }}
+        PREFER_LOCAL: ${{ inputs.prefer-local }}
+      run: |
+        set -euo pipefail
+        catalogue=https://raw.githubusercontent.com/n3oltd/actions/main/docker
+
+        if [ "$PREFER_LOCAL" = "true" ] && [ -f "$DOCKERFILE" ]; then
+          echo "Using the Dockerfile committed at $DOCKERFILE"
+        else
+          curl -fsSL -o "$DOCKERFILE" "$catalogue/$DOCKERFILE"
+        fi
+
+        while IFS= read -r asset; do
+          if [ -n "$asset" ]; then
+            curl -fsSL -o "$asset" "$catalogue/assets/$asset"
+          fi
+        done <<< "$ASSETS"
