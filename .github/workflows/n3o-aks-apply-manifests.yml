@@ -1,4 +1,3 @@
-# Applies plain manifests to an AKS cluster and waits for the workloads to settle.
 name: Apply manifests to AKS
 
 on:
@@ -49,8 +48,8 @@ jobs:
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           resource-group: ${{ inputs.resource-group }}
 
-      # Secrets are held outside the repository, so a cluster that has never had them applied
-      # would take the workload into CrashLoopBackOff rather than fail here.
+      # Secrets are held outside the repository; without this a cluster missing them reaches
+      # CrashLoopBackOff instead of failing here.
       - name: Check the secrets exist
         if: inputs.require-secrets != ''
         env:
