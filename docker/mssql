@@ -1,0 +1,16 @@
+########################
+### base
+########################
+FROM mcr.microsoft.com/mssql/server:2025-latest AS base
+
+########################
+### final
+########################
+FROM base AS final
+
+# sqlcmd and bcp ship in the base image but not on PATH.
+ENV PATH="/opt/mssql-tools18/bin:${PATH}"
+
+USER mssql
+
+EXPOSE 1433
