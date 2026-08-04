@@ -1,0 +1,96 @@
+# Applies plain manifests to an AKS cluster and waits for the workloads to settle.
+name: Apply manifests to AKS
+
+on:
+  workflow_call:
+    inputs:
+      resource-group:
+        description: AKS resource group, which is also the data region (e.g. eu1)
+        type: string
+        required: true
+      namespace:
+        description: namespace everything is applied to and waited on
+        type: string
+        default: default
+      manifests:
+        description: newline-separated manifest paths, applied in the order given
+        type: string
+        required: true
+      statefulsets:
+        description: newline-separated StatefulSet names to wait on
+        type: string
+        default: ''
+      require-secrets:
+        description: newline-separated Secret names that must already exist
+        type: string
+        default: ''
+      verify:
+        description: shell run against the cluster once the rollout completes
+        type: string
+        default: ''
+      timeout:
+        description: how long to wait for each StatefulSet
+        type: string
+        default: 900s
+
+jobs:
+  apply:
+    name: Apply manifests to AKS
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install and configure kubectl with AKS
+        uses: n3oltd/actions/.github/actions/n3o-kubectl-setup@main
+        with:
+          access-token: ${{ github.token }}
+          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: ${{ inputs.resource-group }}
+
+      # Secrets are held outside the repository, so a cluster that has never had them applied
+      # would take the workload into CrashLoopBackOff rather than fail here.
+      - name: Check the secrets exist
+        if: inputs.require-secrets != ''
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+          REQUIRE_SECRETS: ${{ inputs.require-secrets }}
+        run: |
+          while read -r s; do
+            [ -n "$s" ] || continue
+            kubectl get secret "$s" -n "$NAMESPACE" >/dev/null
+          done <<< "$REQUIRE_SECRETS"
+
+      - name: Apply
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+          MANIFESTS: ${{ inputs.manifests }}
+        run: |
+          args=()
+          while read -r m; do
+            [ -n "$m" ] || continue
+            [ -f "$m" ] || { echo "::error::no such manifest: $m"; exit 1; }
+            args+=(-f "$m")
+          done <<< "$MANIFESTS"
+          kubectl apply -n "$NAMESPACE" "${args[@]}"
+
+      - name: Wait for the rollout
+        if: inputs.statefulsets != ''
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+          STATEFULSETS: ${{ inputs.statefulsets }}
+          TIMEOUT: ${{ inputs.timeout }}
+        run: |
+          while read -r s; do
+            [ -n "$s" ] || continue
+            kubectl rollout status "statefulset/$s" -n "$NAMESPACE" --timeout="$TIMEOUT"
+          done <<< "$STATEFULSETS"
+
+      # A manifest that applies cleanly can still leave a server on settings it silently ignored.
+      - name: Verify
+        if: inputs.verify != ''
+        env:
+          NAMESPACE: ${{ inputs.namespace }}
+          VERIFY: ${{ inputs.verify }}
+        run: bash -euo pipefail -c "$VERIFY"
