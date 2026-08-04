@@ -27,6 +27,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
         with:
           dockerfile: postgres
+          path: Dockerfile.postgres
           assets: postgres-entrypoint.sh
 
       - id: meta
@@ -41,6 +42,6 @@ jobs:
           builder: ${{ steps.acr.outputs.builder }}
           context: .
           target: final
-          file: postgres
+          file: Dockerfile.postgres
           push: true
           tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
