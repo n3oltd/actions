@@ -9,6 +9,7 @@ sed -i "/archive_mode/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/archive_command/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/wal_level/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/max_wal_senders/d" /var/lib/postgresql/data/postgres/postgresql.conf
+sed -i "/max_replication_slots/d" /var/lib/postgresql/data/postgres/postgresql.conf
 
 sed -i "/logging_collector/d" /var/lib/postgresql/data/postgres/postgresql.conf
 sed -i "/log_directory/d" /var/lib/postgresql/data/postgres/postgresql.conf
@@ -70,8 +71,9 @@ chmod 600 /etc/pgbackrest/pgbackrest.conf
 exec docker-entrypoint.sh postgres \
           -c archive_mode="${POSTGRES_ARCHIVE_MODE:-on}" \
           -c archive_command="pgbackrest --stanza=n3o archive-push %p" \
-          -c wal_level=replica \
-          -c max_wal_senders=3 \
+          -c wal_level="${POSTGRES_WAL_LEVEL:-replica}" \
+          -c max_wal_senders="${POSTGRES_MAX_WAL_SENDERS:-3}" \
+          -c max_replication_slots="${POSTGRES_MAX_REPLICATION_SLOTS:-10}" \
           -c logging_collector=on \
           -c log_directory="log" \
           -c log_filename="postgresql-%Y-%m-%d.log" \
