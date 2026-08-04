@@ -10,3 +10,9 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+    # Actions are pinned to their major tag, which the publisher floats to the
+    # newest patch — only a new major needs a pull request.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-patch"]
