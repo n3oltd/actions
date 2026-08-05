@@ -69,11 +69,9 @@ ARG PORT=8080
 ENV APP_BASE_PATH=${BASE_PATH}
 ENV APP_ENV_PREFIX=${ENV_PREFIX}
 COPY --from=build /repo/${OUTPUT_DIR} /srv${BASE_PATH}
-# Config arrives here rather than at the compiler, so the artifact tested in one
-# environment is the one promoted to the next. Rendered from a template each
-# start, so a restart re-reads the settings rather than keeping the last values.
-# APP_BASE_HREF substitutes the __APP_BASE__ token per deployment, so one image
-# serves under different public paths.
+# Config arrives here rather than at the compiler, so the artifact tested in one environment
+# is the one promoted to the next, and a restart re-reads it. APP_BASE_HREF substitutes
+# __APP_BASE__, so one image serves under different public paths.
 RUN mv /srv${BASE_PATH}index.html /srv${BASE_PATH}index.html.tmpl
 COPY <<'ENTRY' /usr/local/bin/inject-app-env
 #!/bin/sh
