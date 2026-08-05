@@ -16,7 +16,7 @@ inputs:
     required: false
     default: ''
   app-settings:
-    description: additional app settings, space separated KEY=VALUE pairs
+    description: additional app settings, one KEY=VALUE per line
     required: false
     default: ''
   website-port:
@@ -65,10 +65,16 @@ runs:
           --docker-registry-server-password "$REGISTRY_PASSWORD" \
           --output none
 
-        # shellcheck disable=SC2086 — EXTRA_SETTINGS is a caller-supplied argument list.
+        # One pair per line, never split on whitespace: a value may contain spaces.
+        SETTINGS=(WEBSITES_PORT="$WEBSITE_PORT")
+
+        while IFS= read -r setting; do
+          [ -n "$setting" ] && SETTINGS+=("$setting")
+        done <<< "$EXTRA_SETTINGS"
+
         az webapp config appsettings set \
           --name "$SITE" --resource-group "$GROUP" \
-          --settings WEBSITES_PORT="$WEBSITE_PORT" $EXTRA_SETTINGS \
+          --settings "${SETTINGS[@]}" \
           --output none
 
         az webapp restart --name "$SITE" --resource-group "$GROUP" --output none

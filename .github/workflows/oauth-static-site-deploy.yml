@@ -67,15 +67,15 @@ jobs:
           azure-credentials: ${{ secrets.azure-credentials }}
           registry-username: ${{ secrets.registry-username }}
           registry-password: ${{ secrets.registry-password }}
-          app-settings: >-
-            OAUTH2_PROXY_CLIENT_ID="${{ inputs.client-id }}"
-            OAUTH2_PROXY_CLIENT_SECRET="${{ secrets.client-secret }}"
-            OAUTH2_PROXY_COOKIE_SECRET="${{ secrets.cookie-secret }}"
-            OAUTH2_PROXY_FOOTER="Copyright © N3O Ltd"
-            OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO="https://n3oltd.blob.core.windows.net/public-assets/logos/logo.svg"
-            OAUTH2_PROXY_EMAIL_DOMAINS="${{ inputs.email-domains }}"
-            OAUTH2_PROXY_PROVIDER="azure"
-            OAUTH2_PROXY_AZURE_TENANT_ID="${{ inputs.tenant-id }}"
-            OAUTH2_PROXY_OIDC_ISSUER_URL="https://login.microsoftonline.com/${{ inputs.tenant-id }}/v2.0"
-            OAUTH2_PROXY_REVERSE_PROXY="1"
-            OAUTH2_PROXY_REAL_CLIENT_IP_HEADER="X-Forwarded-For"
+          app-settings: |
+            OAUTH2_PROXY_CLIENT_ID=${{ inputs.client-id }}
+            OAUTH2_PROXY_CLIENT_SECRET=${{ secrets.client-secret }}
+            OAUTH2_PROXY_COOKIE_SECRET=${{ secrets.cookie-secret }}
+            OAUTH2_PROXY_FOOTER=Copyright © N3O Ltd
+            OAUTH2_PROXY_CUSTOM_SIGN_IN_LOGO=https://n3oltd.blob.core.windows.net/public-assets/logos/logo.svg
+            OAUTH2_PROXY_EMAIL_DOMAINS=${{ inputs.email-domains }}
+            OAUTH2_PROXY_PROVIDER=azure
+            OAUTH2_PROXY_AZURE_TENANT_ID=${{ inputs.tenant-id }}
+            OAUTH2_PROXY_OIDC_ISSUER_URL=https://login.microsoftonline.com/${{ inputs.tenant-id }}/v2.0
+            OAUTH2_PROXY_REVERSE_PROXY=1
+            OAUTH2_PROXY_REAL_CLIENT_IP_HEADER=X-Forwarded-For
