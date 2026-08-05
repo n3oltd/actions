@@ -1,0 +1,156 @@
+# n3o-node — a Node-built web deployable.
+#
+# Build-args:
+#   RUNTIME          static (Caddy), node (a server) or oauth (oauth2-proxy over static)
+#   PACKAGE          workspace package, or the directory to build in outside a workspace
+#   BUILD_SCRIPT     package script to run (default: build)
+#   OUTPUT_DIR       context-relative built output — static and oauth
+#   START_ENTRY      entry the server runs — node
+#   PORT             port the runtime listens on (default 8080)
+#   BASE_PATH        public path the static site is served under
+#   ENV_PREFIX       env vars with this prefix reach the browser as window.__APP_ENV__
+
+ARG RUNTIME=static
+
+FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS oauth2proxy
+
+########################
+### build
+########################
+FROM node:24-slim AS build
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV CI=true
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN corepack enable
+WORKDIR /repo
+COPY . .
+ARG PACKAGE
+ARG BUILD_SCRIPT=build
+
+# A package with its own lockfile is built where it sits; anything else is a member of the
+# workspace at the context root. Which tool installs it follows from the lockfile, so no
+# caller has to state something the repository already says.
+COPY <<'INSTALL' /usr/local/bin/install-deps
+#!/bin/sh
+set -eu
+export GH_PAT="$(cat /run/secrets/github_token)"
+if [ -f "${PACKAGE}/package-lock.json" ]; then
+  cd "${PACKAGE}" && exec npm ci
+fi
+if [ -f "${PACKAGE}/pnpm-lock.yaml" ]; then
+  cd "${PACKAGE}" && exec pnpm install --frozen-lockfile
+fi
+cp .npmrc .npmrc.bak 2>/dev/null || touch .npmrc.bak
+printf "\n//npm.pkg.github.com/:_authToken=%s\n" "$GH_PAT" >> .npmrc
+pnpm install --frozen-lockfile --filter "${PACKAGE}..."
+mv .npmrc.bak .npmrc
+INSTALL
+RUN chmod +x /usr/local/bin/install-deps
+
+COPY <<'RUNBUILD' /usr/local/bin/run-build
+#!/bin/sh
+set -eu
+if [ -f "${PACKAGE}/package-lock.json" ]; then cd "${PACKAGE}" && exec npm run "${BUILD_SCRIPT}"; fi
+if [ -f "${PACKAGE}/pnpm-lock.yaml" ]; then cd "${PACKAGE}" && exec pnpm run "${BUILD_SCRIPT}"; fi
+exec pnpm --filter "${PACKAGE}" run "${BUILD_SCRIPT}"
+RUNBUILD
+RUN chmod +x /usr/local/bin/run-build
+
+ENV PACKAGE=${PACKAGE} BUILD_SCRIPT=${BUILD_SCRIPT}
+RUN --mount=type=secret,id=github_token,required=true install-deps
+RUN run-build
+
+########################
+### sourcemaps
+### requires the build to emit them
+########################
+FROM scratch AS sourcemaps
+ARG OUTPUT_DIR
+COPY --from=build /repo/${OUTPUT_DIR}/ /
+
+########################
+### runtimes
+########################
+FROM caddy:alpine AS runtime-static
+RUN apk add --no-cache jq
+ARG OUTPUT_DIR
+ARG BASE_PATH=/
+ARG ENV_PREFIX=VITE_
+ARG PORT=8080
+ENV APP_BASE_PATH=${BASE_PATH}
+ENV APP_ENV_PREFIX=${ENV_PREFIX}
+COPY --from=build /repo/${OUTPUT_DIR} /srv${BASE_PATH}
+# Config arrives here rather than at the compiler, so the artifact tested in one environment
+# is the one promoted to the next, and a restart re-reads it. APP_BASE_HREF substitutes
+# __APP_BASE__, so one image serves under different public paths.
+RUN mv /srv${BASE_PATH}index.html /srv${BASE_PATH}index.html.tmpl
+COPY <<'ENTRY' /usr/local/bin/inject-app-env
+#!/bin/sh
+set -eu
+dir="/srv${APP_BASE_PATH}"
+base_href="${APP_BASE_HREF:-${APP_BASE_PATH}}"
+cfg=$(jq -n 'env | with_entries(select(.key | startswith(env.APP_ENV_PREFIX)))')
+jq -Rs --argjson cfg "$cfg" --arg baseHref "$base_href" -r \
+  'sub("<script id=\"__app_env_script__\"></script>";
+       "<script id=\"__app_env_script__\">window.__APP_ENV__=" + ($cfg | tojson) + "</script>")
+   | gsub("__APP_BASE__"; $baseHref)' \
+  < "${dir}index.html.tmpl" > "${dir}index.html"
+exec "$@"
+ENTRY
+RUN chmod +x /usr/local/bin/inject-app-env
+ENTRYPOINT ["/usr/local/bin/inject-app-env"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+COPY <<CADDY /etc/caddy/Caddyfile
+{
+	auto_https off
+}
+:${PORT} {
+	encode zstd gzip
+	root * /srv
+
+	# A miss here is a miss: falling back serves HTML where a script was asked
+	# for, and the browser executes it.
+	handle ${BASE_PATH}assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		header Cache-Control "no-store"
+		try_files {path} ${BASE_PATH}index.html
+		file_server
+	}
+}
+CADDY
+EXPOSE ${PORT}
+
+FROM build AS prune
+ARG PACKAGE
+RUN cd "${PACKAGE}" && npm prune --omit=dev
+
+FROM node:24-slim AS runtime-node
+ARG PORT=8080
+ENV NODE_ENV=production PORT=${PORT}
+WORKDIR /app
+ARG PACKAGE
+ARG START_ENTRY
+COPY --from=prune --chown=node:node /repo/${PACKAGE} ./
+ENV START_ENTRY=${START_ENTRY}
+EXPOSE ${PORT}
+USER node
+CMD ["sh", "-c", "exec node ${START_ENTRY}"]
+
+FROM oauth2proxy AS runtime-oauth
+ARG PORT=8080
+ENV OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:${PORT}
+ENV OAUTH2_PROXY_UPSTREAMS=file:///var/www/#/
+ARG OUTPUT_DIR
+COPY --from=build /repo/${OUTPUT_DIR} /var/www
+EXPOSE ${PORT}
+
+########################
+### final
+########################
+FROM runtime-${RUNTIME} AS final
