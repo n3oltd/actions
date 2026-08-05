@@ -8,12 +8,8 @@
 ########################
 FROM caddy:builder AS builder
 
-# libdns/azure authenticates with a client secret or over IMDS, and has no path for the
-# federated token an AKS workload identity supplies, so a fleet running as one cannot answer
-# a DNS-01 challenge (libdns/azure#11). Patch the credential in and build against the result;
-# delete this stage's clone and the --with replacement once upstream carries it. The grep
-# asserts the anchor still exists, so an upstream reshuffle fails the build rather than
-# silently producing an unpatched binary.
+# libdns/azure offers only client-secret and IMDS credentials, so a fleet authenticating as a
+# workload identity cannot answer a DNS-01 challenge unmodified.
 ARG LIBDNS_AZURE_VERSION=v0.5.0
 
 RUN set -eu; \
