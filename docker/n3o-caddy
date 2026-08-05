@@ -48,7 +48,10 @@ COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 COPY ${FLEET}/Caddyfile ${FLEET}/routes.*.caddy /etc/config/
 
 # The environments come from the routes the fleet ships, so one added later is still checked.
+# DNS provider modules reject a malformed credential when the config is provisioned, which
+# validation does, so each secret a routes file reads needs a syntactically valid stand-in here.
 RUN set -eu; \
+    export CLOUDFLARE_API_TOKEN=validate_only_placeholder_0000000000; \
     for routes in /etc/config/routes.*.caddy; do \
       environment=${routes#/etc/config/routes.}; \
       environment=${environment%.caddy}; \
