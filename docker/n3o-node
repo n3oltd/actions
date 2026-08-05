@@ -2,8 +2,7 @@
 #
 # Build-args:
 #   RUNTIME          static (Caddy), node (a server) or oauth (oauth2-proxy over static)
-#   PACKAGE          workspace package, or the directory to build in for npm/yarn
-#   PACKAGE_MANAGER  pnpm (workspace-filtered) | npm | yarn (both build inside PACKAGE)
+#   PACKAGE          workspace package, or the directory to build in outside a workspace
 #   BUILD_SCRIPT     package script to run (default: build)
 #   OUTPUT_DIR       context-relative built output — static and oauth
 #   START_ENTRY      entry the server runs — node
@@ -12,7 +11,6 @@
 #   ENV_PREFIX       env vars with this prefix reach the browser as window.__APP_ENV__
 
 ARG RUNTIME=static
-ARG PACKAGE_MANAGER=pnpm
 
 FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS oauth2proxy
 
@@ -30,24 +28,39 @@ WORKDIR /repo
 COPY . .
 ARG PACKAGE
 ARG BUILD_SCRIPT=build
-ARG PACKAGE_MANAGER
-RUN --mount=type=secret,id=github_token,required=true sh -eu -c '\
-  if [ "${PACKAGE_MANAGER}" = "npm" ]; then \
-    cd "${PACKAGE}" && GH_PAT="$(cat /run/secrets/github_token)" npm ci; \
-  elif [ "${PACKAGE_MANAGER}" = "yarn" ]; then \
-    cd "${PACKAGE}" && GH_PAT="$(cat /run/secrets/github_token)" yarn install --frozen-lockfile; \
-  else \
-    touch .npmrc && cp .npmrc .npmrc.bak && \
-    printf "\n//npm.pkg.github.com/:_authToken=%s\n" "$(cat /run/secrets/github_token)" >> .npmrc && \
-    pnpm install --frozen-lockfile --filter "${PACKAGE}..." && \
-    mv .npmrc.bak .npmrc; \
-  fi'
-RUN sh -eu -c '\
-  if [ "${PACKAGE_MANAGER}" = "npm" ] || [ "${PACKAGE_MANAGER}" = "yarn" ]; then \
-    cd "${PACKAGE}" && "${PACKAGE_MANAGER}" run "${BUILD_SCRIPT}"; \
-  else \
-    pnpm --filter "${PACKAGE}" run "${BUILD_SCRIPT}"; \
-  fi'
+
+# A package with its own lockfile is built where it sits; anything else is a member of the
+# workspace at the context root. Which tool installs it follows from the lockfile, so no
+# caller has to state something the repository already says.
+COPY <<'INSTALL' /usr/local/bin/install-deps
+#!/bin/sh
+set -eu
+export GH_PAT="$(cat /run/secrets/github_token)"
+if [ -f "${PACKAGE}/package-lock.json" ]; then
+  cd "${PACKAGE}" && exec npm ci
+fi
+if [ -f "${PACKAGE}/pnpm-lock.yaml" ]; then
+  cd "${PACKAGE}" && exec pnpm install --frozen-lockfile
+fi
+cp .npmrc .npmrc.bak 2>/dev/null || touch .npmrc.bak
+printf "\n//npm.pkg.github.com/:_authToken=%s\n" "$GH_PAT" >> .npmrc
+pnpm install --frozen-lockfile --filter "${PACKAGE}..."
+mv .npmrc.bak .npmrc
+INSTALL
+RUN chmod +x /usr/local/bin/install-deps
+
+COPY <<'RUNBUILD' /usr/local/bin/run-build
+#!/bin/sh
+set -eu
+if [ -f "${PACKAGE}/package-lock.json" ]; then cd "${PACKAGE}" && exec npm run "${BUILD_SCRIPT}"; fi
+if [ -f "${PACKAGE}/pnpm-lock.yaml" ]; then cd "${PACKAGE}" && exec pnpm run "${BUILD_SCRIPT}"; fi
+exec pnpm --filter "${PACKAGE}" run "${BUILD_SCRIPT}"
+RUNBUILD
+RUN chmod +x /usr/local/bin/run-build
+
+ENV PACKAGE=${PACKAGE} BUILD_SCRIPT=${BUILD_SCRIPT}
+RUN --mount=type=secret,id=github_token,required=true install-deps
+RUN run-build
 
 ########################
 ### sourcemaps
