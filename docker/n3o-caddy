@@ -8,7 +8,33 @@
 ########################
 FROM caddy:builder AS builder
 
-RUN xcaddy build --with github.com/ueffel/caddy-brotli --with github.com/caddy-dns/azure --with github.com/caddy-dns/cloudflare
+# libdns/azure authenticates with a client secret or over IMDS, and has no path for the
+# federated token an AKS workload identity supplies, so a fleet running as one cannot answer
+# a DNS-01 challenge (libdns/azure#11). Patch the credential in and build against the result;
+# delete this stage's clone and the --with replacement once upstream carries it. The grep
+# asserts the anchor still exists, so an upstream reshuffle fails the build rather than
+# silently producing an unpatched binary.
+ARG LIBDNS_AZURE_VERSION=v0.5.0
+
+RUN set -eu; \
+    git clone --quiet --depth 1 --branch ${LIBDNS_AZURE_VERSION} https://github.com/libdns/azure /src/libdns-azure; \
+    cd /src/libdns-azure; \
+    test "$(grep -c 'azidentity.NewManagedIdentityCredential(nil)' client.go)" = "1"; \
+    awk '/azidentity.NewManagedIdentityCredential\(nil\)/ && !done { \
+            print "\t\t\tif wiCred, wiErr := azidentity.NewWorkloadIdentityCredential(nil); wiErr == nil {"; \
+            print "\t\t\t\tcredentials = append(credentials, wiCred)"; \
+            print "\t\t\t}"; \
+            print ""; \
+            done = 1 \
+         } { print }' client.go > client.go.patched; \
+    mv client.go.patched client.go; \
+    grep -q 'NewWorkloadIdentityCredential' client.go
+
+RUN xcaddy build \
+      --with github.com/ueffel/caddy-brotli \
+      --with github.com/caddy-dns/azure \
+      --with github.com/caddy-dns/cloudflare \
+      --with github.com/libdns/azure=/src/libdns-azure
 
 ########################
 ### final
