@@ -8,7 +8,7 @@
 ########################
 FROM caddy:builder AS builder
 
-RUN xcaddy build --with github.com/ueffel/caddy-brotli
+RUN xcaddy build --with github.com/ueffel/caddy-brotli --with github.com/caddy-dns/azure
 
 ########################
 ### final
