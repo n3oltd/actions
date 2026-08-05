@@ -1,0 +1,38 @@
+# n3o-caddy — a Caddy routing fleet.
+#
+# Build-args:
+#   FLEET  context-relative directory holding the fleet's Caddyfile and its routes.*.caddy
+
+########################
+### caddy with brotli, which the default build omits
+########################
+FROM caddy:builder AS builder
+
+RUN xcaddy build --with github.com/ueffel/caddy-brotli
+
+########################
+### final
+########################
+FROM caddy:latest AS final
+
+ARG FLEET
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
+COPY ${FLEET}/Caddyfile ${FLEET}/routes.*.caddy /etc/config/
+
+# Validates the environments the fleet actually ships, so one it gains later cannot go
+# unchecked, and an invalid config fails the build before anything is pushed.
+RUN set -eu; \
+    for routes in /etc/config/routes.*.caddy; do \
+      environment=${routes#/etc/config/routes.}; \
+      environment=${environment%.caddy}; \
+      echo "validating ${environment}"; \
+      CADDY_ENVIRONMENT=${environment} caddy validate --config /etc/config/Caddyfile --adapter caddyfile; \
+    done
+
+# The base already exposes 80, 443 and 2019 and carries /data for the cert store; a fleet
+# behind App Service's TLS listens here instead.
+EXPOSE 8080
+
+CMD ["caddy", "run", "--config", "/etc/config/Caddyfile", "--adapter", "caddyfile"]
