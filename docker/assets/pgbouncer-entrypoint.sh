@@ -52,8 +52,6 @@ max_db_connections = ${MAX_CONNECTIONS}
 max_user_connections = ${MAX_CONNECTIONS}
 max_prepared_statements = 100
 server_reset_query = DISCARD ALL
-# transaction pooling skips the reset query by default, so session state (e.g. a migration's
-# SET search_path) leaks onto the next tenant sharing the connection; always is the fix.
 server_reset_query_always = 1
 server_idle_timeout = ${POSTGRES_IDLE_SESSION_TIMEOUT}
 server_fast_close = 1
