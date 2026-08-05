@@ -21,8 +21,7 @@ COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
 COPY ${FLEET}/Caddyfile ${FLEET}/routes.*.caddy /etc/config/
 
-# Validates the environments the fleet actually ships, so one it gains later cannot go
-# unchecked, and an invalid config fails the build before anything is pushed.
+# The environments come from the routes the fleet ships, so one added later is still checked.
 RUN set -eu; \
     for routes in /etc/config/routes.*.caddy; do \
       environment=${routes#/etc/config/routes.}; \
@@ -31,8 +30,7 @@ RUN set -eu; \
       CADDY_ENVIRONMENT=${environment} caddy validate --config /etc/config/Caddyfile --adapter caddyfile; \
     done
 
-# The base already exposes 80, 443 and 2019 and carries /data for the cert store; a fleet
-# behind App Service's TLS listens here instead.
+# The base exposes 80, 443 and 2019 and carries /data; a fleet behind App Service listens here.
 EXPOSE 8080
 
 CMD ["caddy", "run", "--config", "/etc/config/Caddyfile", "--adapter", "caddyfile"]
