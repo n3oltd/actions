@@ -1,7 +1,5 @@
-# n3o-caddy — a Caddy routing fleet.
-#
-# Build-args:
-#   FLEET  context-relative directory holding the fleet's Caddyfile and its routes.*.caddy
+# n3o-caddy — the estate's Caddy. Every routing fleet runs this one image; what a fleet serves
+# is mounted at /etc/caddy/routes and never built in, so nothing here knows which fleet it is.
 
 ########################
 ### caddy with brotli, which the default build omits
@@ -41,23 +39,19 @@ RUN xcaddy build \
 ########################
 FROM caddy:latest AS final
 
-ARG FLEET
-
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
-COPY ${FLEET}/Caddyfile ${FLEET}/routes.*.caddy /etc/config/
+COPY caddy-Caddyfile /etc/config/Caddyfile
 
-# The environments come from the routes the fleet ships, so one added later is still checked.
-# DNS provider modules reject a malformed credential when the config is provisioned, which
-# validation does, so each secret a routes file reads needs a syntactically valid stand-in here.
+# A routes file naming a module the binary lacks fails at run time, on a fleet, with the config
+# already deployed; this is the last point at which that is a build failure instead.
 RUN set -eu; \
-    export CLOUDFLARE_API_TOKEN=validate_only_placeholder_0000000000; \
-    for routes in /etc/config/routes.*.caddy; do \
-      environment=${routes#/etc/config/routes.}; \
-      environment=${environment%.caddy}; \
-      echo "validating ${environment}"; \
-      CADDY_ENVIRONMENT=${environment} caddy validate --config /etc/config/Caddyfile --adapter caddyfile; \
-    done
+    mkdir -p /etc/caddy/routes; \
+    modules=$(caddy list-modules); \
+    for module in http.encoders.br dns.providers.azure dns.providers.cloudflare; do \
+      echo "$modules" | grep -qx "$module"; \
+    done; \
+    caddy validate --config /etc/config/Caddyfile --adapter caddyfile
 
 # The base exposes 80, 443 and 2019 and carries /data; a fleet behind App Service listens here.
 EXPOSE 8080
