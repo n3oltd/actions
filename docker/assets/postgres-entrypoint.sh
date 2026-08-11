@@ -80,7 +80,7 @@ exec docker-entrypoint.sh postgres \
           -c log_rotation_age=1d \
           -c log_rotation_size=0 \
           -c log_line_prefix="%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h " \
-          -c log_min_duration_statement=0 \
+          -c log_min_duration_statement="${POSTGRES_LOG_MIN_DURATION_STATEMENT:-0}" \
           -c log_checkpoints=on \
           -c log_connections=on \
           -c log_disconnections=on \
