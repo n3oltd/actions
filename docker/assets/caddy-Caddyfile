@@ -1,0 +1,10 @@
+# A fleet's routing is mounted over this directory; an import glob matching nothing is valid
+# Caddy that serves nothing, so the mount is what a cutover must be verified against.
+# A cluster fleet obtains its own certificates and a fleet behind App Service must not, which
+# is the only thing CADDY_GLOBAL_OPTIONS carries today.
+{
+	email mail@n3o.ltd
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+import /etc/caddy/routes/*.caddy
