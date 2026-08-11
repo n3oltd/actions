@@ -76,9 +76,9 @@ exec docker-entrypoint.sh postgres \
           -c max_replication_slots="${POSTGRES_MAX_REPLICATION_SLOTS:-10}" \
           -c logging_collector=on \
           -c log_directory="log" \
-          -c log_filename="postgresql-%Y-%m-%d.log" \
+          -c log_filename="postgresql-%Y-%m-%d_%H%M%S.log" \
           -c log_rotation_age=1d \
-          -c log_rotation_size=0 \
+          -c log_rotation_size="${POSTGRES_LOG_ROTATION_SIZE:-0}" \
           -c log_line_prefix="%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h " \
           -c log_min_duration_statement="${POSTGRES_LOG_MIN_DURATION_STATEMENT:-0}" \
           -c log_checkpoints=on \
