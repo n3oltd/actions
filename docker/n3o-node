@@ -1,7 +1,7 @@
 # n3o-node — a Node-built web deployable.
 #
 # Build-args:
-#   RUNTIME          static (Caddy), node (a server) or oauth (oauth2-proxy over static)
+#   RUNTIME          static (Caddy), node (a server), next (Next standalone) or oauth (oauth2-proxy over static)
 #   PACKAGE          workspace package, or the directory to build in outside a workspace
 #   BUILD_SCRIPT     package script to run (default: build)
 #   OUTPUT_DIR       context-relative built output — static and oauth
@@ -141,6 +141,20 @@ ENV START_ENTRY=${START_ENTRY}
 EXPOSE ${PORT}
 USER node
 CMD ["sh", "-c", "exec node ${START_ENTRY}"]
+
+# Standalone output carries its own pruned node_modules, so the runtime copies it
+# alone; static assets sit beside the server at the path the build wrote them to.
+FROM node:24-slim AS runtime-next
+ARG PORT=8080
+ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
+WORKDIR /app
+ARG PACKAGE
+COPY --from=build --chown=node:node /repo/${PACKAGE}/.next/standalone ./
+COPY --from=build --chown=node:node /repo/${PACKAGE}/.next/static ./${PACKAGE}/.next/static
+ENV PACKAGE=${PACKAGE}
+EXPOSE ${PORT}
+USER node
+CMD ["sh", "-c", "exec node ${PACKAGE}/server.js"]
 
 FROM oauth2proxy AS runtime-oauth
 ARG PORT=8080
