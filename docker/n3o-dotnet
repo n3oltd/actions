@@ -1,4 +1,4 @@
-﻿ARG RUNTIME=base
+﻿ARG VARIANT=base
 
 ########################
 ### base
@@ -44,9 +44,9 @@ ARG PROJECT
 RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app
 
 ########################
-### runtime-base
+### variant-base
 ########################
-FROM base AS runtime-base
+FROM base AS variant-base
 
 ARG PROJECT
 
@@ -87,16 +87,16 @@ ENTRYPOINT ["./entrypoint.sh"]
 EXPOSE 80
 
 ########################
-### runtime-ffmpeg
+### variant-ffmpeg
 ########################
-FROM runtime-base AS runtime-ffmpeg
+FROM variant-base AS variant-ffmpeg
 
 RUN apt-get --yes install ffmpeg
 
 ########################
-### runtime-prince
+### variant-prince
 ########################
-FROM runtime-base AS runtime-prince
+FROM variant-base AS variant-prince
 
 ARG PRINCE_LICENSE_ID
 ARG PRINCE_LICENSE_NAME
@@ -130,4 +130,4 @@ RUN echo "</license>" >> /usr/local/lib/prince/license/license.dat
 ########################
 ### final
 ########################
-FROM runtime-${RUNTIME} AS final
+FROM variant-${VARIANT} AS final

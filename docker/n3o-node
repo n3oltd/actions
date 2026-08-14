@@ -1,16 +1,16 @@
 # n3o-node — a Node-built web deployable.
 #
 # Build-args:
-#   RUNTIME          static (Caddy), node (a server), next (Next standalone) or oauth (oauth2-proxy over static)
+#   VARIANT          static (Caddy), node (a server), next (Next standalone) or oauth (oauth2-proxy over static)
 #   PACKAGE          workspace package, or the directory to build in outside a workspace
 #   BUILD_SCRIPT     package script to run (default: build)
 #   OUTPUT_DIR       context-relative built output — static and oauth
 #   START_ENTRY      entry the server runs — node
-#   PORT             port the runtime listens on (default 8080)
+#   PORT             port the final image listens on (default 8080)
 #   BASE_PATH        public path the static site is served under
 #   ENV_PREFIX       env vars with this prefix reach the browser as window.__APP_ENV__
 
-ARG RUNTIME=static
+ARG VARIANT=static
 
 FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS oauth2proxy
 
@@ -71,9 +71,9 @@ ARG OUTPUT_DIR
 COPY --from=build /repo/${OUTPUT_DIR}/ /
 
 ########################
-### runtimes
+### variants
 ########################
-FROM caddy:alpine AS runtime-static
+FROM caddy:alpine AS variant-static
 RUN apk add --no-cache jq
 ARG OUTPUT_DIR
 ARG BASE_PATH=/
@@ -130,7 +130,7 @@ FROM build AS prune
 ARG PACKAGE
 RUN cd "${PACKAGE}" && npm prune --omit=dev
 
-FROM node:24-slim AS runtime-node
+FROM node:24-slim AS variant-node
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT}
 WORKDIR /app
@@ -142,9 +142,9 @@ EXPOSE ${PORT}
 USER node
 CMD ["sh", "-c", "exec node ${START_ENTRY}"]
 
-# Standalone output carries its own pruned node_modules, so the runtime copies it
+# Standalone output carries its own pruned node_modules, so the variant copies it
 # alone; static assets sit beside the server at the path the build wrote them to.
-FROM node:24-slim AS runtime-next
+FROM node:24-slim AS variant-next
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
 WORKDIR /app
@@ -156,7 +156,7 @@ EXPOSE ${PORT}
 USER node
 CMD ["sh", "-c", "exec node ${PACKAGE}/server.js"]
 
-FROM oauth2proxy AS runtime-oauth
+FROM oauth2proxy AS variant-oauth
 ARG PORT=8080
 ENV OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:${PORT}
 ENV OAUTH2_PROXY_UPSTREAMS=file:///var/www/#/
@@ -167,4 +167,4 @@ EXPOSE ${PORT}
 ########################
 ### final
 ########################
-FROM runtime-${RUNTIME} AS final
+FROM variant-${VARIANT} AS final
