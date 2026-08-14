@@ -4,7 +4,7 @@
 #   VARIANT          static (Caddy), node (a server), next (Next standalone) or oauth (oauth2-proxy over static)
 #   PACKAGE          workspace package, or the directory to build in outside a workspace
 #   BUILD_SCRIPT     package script to run (default: build)
-#   OUTPUT_DIR       context-relative built output — static and oauth
+#   OUTPUT_DIR       context-relative built output — static and oauth; the .next directory for next
 #   START_ENTRY      entry the server runs — node
 #   PORT             port the final image listens on (default 8080)
 #   BASE_PATH        public path the static site is served under
@@ -144,17 +144,18 @@ CMD ["sh", "-c", "exec node ${START_ENTRY}"]
 
 # Standalone output carries its own pruned node_modules, so the variant copies it
 # alone; static assets sit beside the server at the path the build wrote them to.
+# PACKAGE names a workspace package, not a path, so everything derives from OUTPUT_DIR.
 FROM node:24-slim AS variant-next
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
 WORKDIR /app
-ARG PACKAGE
-COPY --from=build --chown=node:node /repo/${PACKAGE}/.next/standalone ./
-COPY --from=build --chown=node:node /repo/${PACKAGE}/.next/static ./${PACKAGE}/.next/static
-ENV PACKAGE=${PACKAGE}
+ARG OUTPUT_DIR
+COPY --from=build --chown=node:node /repo/${OUTPUT_DIR}/standalone ./
+COPY --from=build --chown=node:node /repo/${OUTPUT_DIR}/static ./${OUTPUT_DIR}/static
+ENV OUTPUT_DIR=${OUTPUT_DIR}
 EXPOSE ${PORT}
 USER node
-CMD ["sh", "-c", "exec node ${PACKAGE}/server.js"]
+CMD ["sh", "-c", "exec node ${OUTPUT_DIR%/.next}/server.js"]
 
 FROM oauth2proxy AS variant-oauth
 ARG PORT=8080
