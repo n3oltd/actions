@@ -23,10 +23,16 @@ inputs:
   cache-dependency-path:
     description: Lockfile path(s) the cache key derives from.
     required: false
+  pnpm:
+    description: Set "true" to enable pnpm via corepack before Node setup.
+    required: false
 
 runs:
   using: "composite"
   steps:
+    - if: inputs.pnpm == 'true'
+      shell: bash
+      run: corepack enable
     - uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
