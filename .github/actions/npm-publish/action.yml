@@ -72,8 +72,6 @@ runs:
             # An already-published version means a rerun after a partial publish, or a committed
             # version that already shipped: done, not an error.
             if npm view "$name@$effective" version > /dev/null 2>&1; then
-              # On the committed-version path a skip is also the forgot-to-bump outcome,
-              # so it surfaces in the run summary rather than only deep in the log.
               if [ "${{ inputs.use-package-version }}" = "true" ]; then
                 echo "::notice::skip (already published): $name@$effective"
               else
