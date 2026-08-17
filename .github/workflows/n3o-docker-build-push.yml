@@ -141,6 +141,8 @@ jobs:
             echo "args<<EOF"
             echo "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
             echo "PAT=${{ env.GH_PAT }}"
+            echo "BUILD_VERSION=${{ steps.metadata.outputs.version }}"
+            echo "COMMIT_SHA=${{ github.sha }}"
             if [[ -n "${{ inputs.sentry-project }}" ]]; then
               echo "REACT_APP_SENTRY_RELEASE=${{ steps.metadata.outputs.version }}"
               echo "VITE_SENTRY_RELEASE=${{ steps.metadata.outputs.version }}"
