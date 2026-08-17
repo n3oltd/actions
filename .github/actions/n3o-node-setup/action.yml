@@ -30,9 +30,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # corepack symlinks beside the PATH node by default; the self-hosted image's is root-owned.
     - if: inputs.pnpm == 'true'
       shell: bash
-      run: corepack enable
+      run: |
+        mkdir -p "$RUNNER_TEMP/corepack"
+        corepack enable --install-directory "$RUNNER_TEMP/corepack" pnpm
+        echo "$RUNNER_TEMP/corepack" >> "$GITHUB_PATH"
     - uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
