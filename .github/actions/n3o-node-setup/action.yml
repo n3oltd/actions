@@ -30,7 +30,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # corepack, not a native pnpm install; the self-hosted image lacks libatomic.so.1.
     - if: inputs.pnpm == 'true'
       shell: bash
       run: corepack enable
