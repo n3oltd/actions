@@ -1,4 +1,4 @@
-﻿ARG VARIANT=base
+ARG VARIANT=base
 
 ########################
 ### base
@@ -17,6 +17,8 @@ ARG PAT
 ARG PROJECT
 ARG PROJECT_PATH
 ARG CONFIGURATION
+ARG BUILD_VERSION=0.0.0
+ARG COMMIT_SHA=unknown
 
 WORKDIR /src
 
@@ -25,6 +27,10 @@ ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS="{\"endpointCredentials\": [{\"endpoint\":
 ENV PROJECT=${PROJECT}
 ENV DLL=.dll
 
+# A channel-prefixed calver is not a valid assembly version, so the stamp goes on
+# InformationalVersion. ENV because the publish stage does not inherit ARGs
+ENV INFORMATIONAL_VERSION="${BUILD_VERSION}+${COMMIT_SHA}"
+
 COPY . .
 WORKDIR "/src/${PROJECT_PATH}"
 
@@ -32,7 +38,7 @@ RUN apt-get update
 RUN dotnet nuget update source n3oltd -u n3oltd -p ${PAT} --store-password-in-clear-text
 # No -o here: -o overrides every project's OutputPath, breaking build-time codegen targets
 # that exec a sibling project's dll from its own bin/. The publish stage produces /app.
-RUN dotnet build -c "${CONFIGURATION}"
+RUN dotnet build -c "${CONFIGURATION}" -p:InformationalVersion="${INFORMATIONAL_VERSION}"
 
 ########################
 ### publish
@@ -41,7 +47,7 @@ FROM build AS publish
 
 ARG PROJECT
 
-RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app
+RUN dotnet publish "${PROJECT}.csproj" -c "${CONFIGURATION}" -o /app -p:InformationalVersion="${INFORMATIONAL_VERSION}"
 
 ########################
 ### variant-base
