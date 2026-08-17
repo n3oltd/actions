@@ -27,9 +27,8 @@ ENV VSS_NUGET_EXTERNAL_FEED_ENDPOINTS="{\"endpointCredentials\": [{\"endpoint\":
 ENV PROJECT=${PROJECT}
 ENV DLL=.dll
 
-# InformationalVersion rather than Version: a channel-prefixed calver such as beta-2026.8.17.42 is
-# not a valid assembly version, and this is the only stamp anything reads. ENV so the publish stage,
-# which does not inherit ARGs, sees the same values
+# A channel-prefixed calver is not a valid assembly version, so the stamp goes on
+# InformationalVersion. ENV because the publish stage does not inherit ARGs
 ENV INFORMATIONAL_VERSION="${BUILD_VERSION}+${COMMIT_SHA}"
 
 COPY . .
