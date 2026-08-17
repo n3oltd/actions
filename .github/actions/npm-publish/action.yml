@@ -16,6 +16,11 @@ inputs:
     required: false
     default: ''
 
+  use-package-version:
+    description: Publish each package at the version committed in its package.json instead of stamping a date-based one. Mutually exclusive with version-suffix.
+    required: false
+    default: 'false'
+
   before-sha:
     description: When set, only packages whose own folder changed since this SHA are published (requires fetch-depth 0)
     required: false
@@ -37,6 +42,10 @@ runs:
     - name: npm publish
       shell: bash
       run: |
+        if [ "${{ inputs.use-package-version }}" = "true" ] && [ "${{ inputs.version-suffix }}" != "" ]; then
+          echo "::error::use-package-version publishes the committed version and version-suffix stamps a new one; set one, not both."
+          exit 1
+        fi
         version=$(date -u +"%Y.%m.%d")-${{ github.run_number }}
         packageDirectories=$(echo '${{ inputs.package-directories }}' | jq -c -r '.[]')
         after="${{ inputs.after-sha }}"; [ -z "$after" ] && after=HEAD
@@ -48,16 +57,20 @@ runs:
             fi
           fi
           ( cd $packageDirectory;
-            if [ "${{ inputs.version-suffix }}" != "" ];then
-              npm version $version --preid=${{ inputs.version-suffix }}
-            else
-              npm version $version;
+            # A committed version belongs to the caller; stamping one would overwrite it.
+            if [ "${{ inputs.use-package-version }}" != "true" ]; then
+              if [ "${{ inputs.version-suffix }}" != "" ];then
+                npm version $version --preid=${{ inputs.version-suffix }}
+              else
+                npm version $version;
+              fi
             fi
             echo "//npm.pkg.github.com/:_authToken=${{ inputs.access-token }}" >> .npmrc;
             echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
             name=$(npm pkg get name | tr -d '"')
             effective=$(npm pkg get version | tr -d '"')
-            # An already-published version means a rerun after a partial publish: done, not an error.
+            # An already-published version means a rerun after a partial publish, or a committed
+            # version that already shipped: done, not an error.
             if npm view "$name@$effective" version > /dev/null 2>&1; then
               echo "skip (already published): $name@$effective"
             elif [ "${{ inputs.version-suffix }}" != "" ];then
