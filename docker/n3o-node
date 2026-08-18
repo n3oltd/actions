@@ -9,6 +9,8 @@
 #   PORT             port the final image listens on (default 8080)
 #   BASE_PATH        public path the static site is served under
 #   ENV_PREFIX       env vars with this prefix reach the browser as window.__APP_ENV__
+#   BUILD_VERSION    build number reported by releaseinfo/v1.0
+#   COMMIT_SHA       built commit reported by releaseinfo/v1.0
 
 ARG VARIANT=static
 
@@ -61,6 +63,12 @@ RUN chmod +x /usr/local/bin/run-build
 ENV PACKAGE=${PACKAGE} BUILD_SCRIPT=${BUILD_SCRIPT}
 RUN --mount=type=secret,id=github_token,required=true install-deps
 RUN run-build
+ARG OUTPUT_DIR
+ARG BUILD_VERSION
+ARG COMMIT_SHA
+RUN mkdir -p "${OUTPUT_DIR}/releaseinfo" && \
+    node -e "process.stdout.write(JSON.stringify({releaseVersion:null,buildVersion:process.env.BUILD_VERSION||null,commit:process.env.COMMIT_SHA||null}))" \
+    > "${OUTPUT_DIR}/releaseinfo/v1.0"
 
 ########################
 ### sourcemaps
@@ -81,6 +89,9 @@ ARG ENV_PREFIX=VITE_
 ARG PORT=8080
 ENV APP_BASE_PATH=${BASE_PATH}
 ENV APP_ENV_PREFIX=${ENV_PREFIX}
+ARG BUILD_VERSION
+ARG COMMIT_SHA
+ENV BUILD_VERSION=${BUILD_VERSION} COMMIT_SHA=${COMMIT_SHA}
 COPY --from=build /repo/${OUTPUT_DIR} /srv${BASE_PATH}
 # The build manifest is a version-pinned dependency inventory, never content to serve.
 RUN rm -rf /srv${BASE_PATH}.vite
@@ -99,6 +110,8 @@ jq -Rs --argjson cfg "$cfg" --arg baseHref "$base_href" -r \
        "<script id=\"__app_env_script__\">window.__APP_ENV__=" + ($cfg | tojson) + "</script>")
    | gsub("__APP_BASE__"; $baseHref)' \
   < "${dir}index.html.tmpl" > "${dir}index.html"
+mkdir -p "${dir}releaseinfo"
+jq -nc '{releaseVersion: env.RELEASE_VERSION, buildVersion: env.BUILD_VERSION, commit: env.COMMIT_SHA}' > "${dir}releaseinfo/v1.0"
 exec "$@"
 ENTRY
 RUN chmod +x /usr/local/bin/inject-app-env
@@ -119,6 +132,12 @@ COPY <<CADDY /etc/caddy/Caddyfile
 		file_server
 	}
 
+	handle ${BASE_PATH}releaseinfo/v1.0 {
+		header Content-Type application/json
+		header Cache-Control "no-store"
+		file_server
+	}
+
 	handle {
 		header Cache-Control "no-store"
 		try_files {path} ${BASE_PATH}index.html
@@ -135,6 +154,9 @@ RUN cd "${PACKAGE}" && npm prune --omit=dev
 FROM node:24-slim AS variant-node
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT}
+ARG BUILD_VERSION
+ARG COMMIT_SHA
+ENV BUILD_VERSION=${BUILD_VERSION} COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 ARG PACKAGE
 ARG START_ENTRY
@@ -150,6 +172,9 @@ CMD ["sh", "-c", "exec node ${START_ENTRY}"]
 FROM node:24-slim AS variant-next
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
+ARG BUILD_VERSION
+ARG COMMIT_SHA
+ENV BUILD_VERSION=${BUILD_VERSION} COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 ARG OUTPUT_DIR
 COPY --from=build --chown=node:node /repo/${OUTPUT_DIR}/standalone ./
