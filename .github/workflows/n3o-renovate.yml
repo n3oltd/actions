@@ -1,10 +1,6 @@
-# Runs Renovate over the calling repository. What it updates is that repository's own
-# renovate.json; this workflow only supplies the runner and the credentials.
-#
-# The npm host rule is why this exists as a shared workflow rather than a copy per repository:
-# a private registry needs a token in two places, once for Renovate's own metadata lookups and
-# again for the package manager it shells out to when it rebuilds a lockfile. Repositories with
-# no private scope are unaffected by it.
+# A private registry needs the token twice: once for Renovate's metadata lookups, and again for
+# the package manager it shells out to when rebuilding a lockfile. Dropping either host rule
+# gives a run that resolves versions and then cannot install them.
 name: n3o renovate
 
 on:
