@@ -16,7 +16,6 @@
   ],
   "packageRules": [
     {
-      "description": "Actions, as one pull request.",
       "matchManagers": [
         "github-actions"
       ],

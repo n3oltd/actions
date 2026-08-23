@@ -1,9 +1,8 @@
-# Runs Renovate on the self-hosted fleet (see /renovate.json for what it updates).
 name: Renovate
 
 on:
   schedule:
-    - cron: "0 7 * * *"   # daily, 07:00 UTC
+    - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       fast:
