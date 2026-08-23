@@ -1,0 +1,28 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      fast:
+        description: "Fast: run on a GitHub-hosted runner (immediate, billable) instead of the self-hosted fleet (queued, free)"
+        type: boolean
+        default: false
+      logLevel:
+        description: "Renovate log level"
+        type: choice
+        default: "info"
+        options:
+          - debug
+          - info
+          - warn
+
+jobs:
+  renovate:
+    uses: n3oltd/actions/.github/workflows/n3o-renovate.yml@main
+    with:
+      mode: ${{ github.event_name == 'workflow_dispatch' && inputs.fast && 'fast' || 'wait' }}
+      log-level: ${{ inputs.logLevel || 'info' }}
+    secrets:
+      token: ${{ secrets.GH_PAT }}

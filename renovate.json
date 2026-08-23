@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "github-actions"
+  ],
+  "dependencyDashboard": false,
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 0,
+  "commitMessageExtra": "{{#unless isGroup}}from {{displayFrom}} to {{displayTo}}{{/unless}}",
+  "rebaseWhen": "behind-base-branch",
+  "prBodyNotes": [
+    "<!-- no-work-issue: automated dependency update, nothing to link -->"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github actions"
+    },
+    {
+      "description": "Actions are pinned to their major tag, which the publisher floats to the newest patch, so only a new major needs deciding.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "enabled": false
+    }
+  ]
+}
