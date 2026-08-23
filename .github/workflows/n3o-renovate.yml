@@ -1,0 +1,51 @@
+# Runs Renovate over the calling repository. What it updates is that repository's own
+# renovate.json; this workflow only supplies the runner and the credentials.
+#
+# The npm host rule is why this exists as a shared workflow rather than a copy per repository:
+# a private registry needs a token in two places, once for Renovate's own metadata lookups and
+# again for the package manager it shells out to when it rebuilds a lockfile. Repositories with
+# no private scope are unaffected by it.
+name: n3o renovate
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
+        type: string
+        required: false
+        default: wait
+      log-level:
+        description: Renovate log level.
+        type: string
+        required: false
+        default: info
+    secrets:
+      token:
+        description: Classic PAT with repo and package read. App tokens are refused by the package registries.
+        required: true
+
+concurrency:
+  group: renovate-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode }}
+
+  renovate:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    steps:
+      - uses: renovatebot/github-action@v46.2.0
+        with:
+          token: ${{ secrets.token }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_HOST_RULES: >-
+            [{"matchHost":"npm.pkg.github.com","hostType":"npm","token":"${{ secrets.token }}"},
+             {"matchHost":"nuget.pkg.github.com","hostType":"nuget","token":"${{ secrets.token }}"}]
+          LOG_LEVEL: ${{ inputs.log-level }}
