@@ -2,11 +2,6 @@
 # Caddy that serves nothing, so the mount is what a cutover must be verified against.
 # A cluster fleet obtains its own certificates and a fleet behind App Service must not, which
 # is the only thing CADDY_GLOBAL_OPTIONS carries today.
-# Caddy discards a caller's X-Forwarded-* headers unless the immediate peer is named as a trusted
-# proxy, so a fleet fronted by a CDN must set CADDY_TRUSTED_PROXIES to that CDN's ranges or every
-# visitor reaches the origin as an edge address. The loopback default trusts nothing, which is what
-# Caddy already does when no list is given. Strict parsing reads the header right to left, which is
-# the order a CDN that appends to it writes.
 {
 	email mail@n3o.ltd
 	{$CADDY_GLOBAL_OPTIONS}
