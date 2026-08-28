@@ -1,7 +1,5 @@
-# Reusable workflow that runs an n3o CLI generate command and, when the result differs from
-# what is committed, opens a PR with it. The canonical shape for every "regenerate something
-# and propose the change" job; n3o-dotnet-generate-clients.yml is a caller that fixes the
-# command and paths for the client-bearing repos.
+# Reusable workflow that runs an n3o CLI generate command and opens a PR when the result
+# differs from what is committed.
 name: n3o dotnet generate
 
 on:
@@ -130,10 +128,8 @@ jobs:
         run: |
           read -ra pathspecs <<< "$PATHS"
 
-          # After checkout, `git add` skips freshly generated files via its stat fast-path; touch bumps
-          # mtimes so git restages them. Listing the untracked ones too captures brand-new files, which
-          # path-scoped `git add -A` then stages. `-c` so a file the generator dropped stays dropped
-          # rather than being recreated empty, which would commit as a truncation, not a deletion.
+          # `git add` skips freshly generated files via its stat fast-path, so touch bumps mtimes to
+          # restage them; `-c` leaves a dropped file dropped rather than recreating it empty.
           { git ls-files -z -- "${pathspecs[@]}"
             git ls-files -z --others --exclude-standard -- "${pathspecs[@]}"
           } | xargs -0 -r touch -c
@@ -144,8 +140,7 @@ jobs:
             exit 0
           fi
 
-          # Tagging the commit [ci fast] makes the downstream build it triggers run on a
-          # GitHub-hosted runner (immediate, billable) instead of queueing on the self-hosted fleet.
+          # [ci fast] moves the downstream build it triggers onto a GitHub-hosted runner.
           MSG="$TITLE"
           if [ "${{ inputs.fast }}" = "true" ]; then MSG="$MSG [ci fast]"; fi
 

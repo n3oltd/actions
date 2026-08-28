@@ -1,6 +1,4 @@
-# Reusable workflow that builds the solution, runs the n3o CLI to regenerate API clients, and
-# opens a PR with any changes. The client-bearing repos call this; the machinery it is a
-# preset of lives in n3o-dotnet-generate.yml.
+# Reusable workflow that regenerates a repo's API clients and opens a PR with any changes.
 name: dotnet generate clients
 
 on:
