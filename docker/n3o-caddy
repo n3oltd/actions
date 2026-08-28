@@ -4,7 +4,7 @@
 ########################
 ### caddy with brotli, which the default build omits
 ########################
-FROM caddy:builder AS builder
+FROM caddy:2.11.4-builder AS builder
 
 # libdns/azure authenticates with a client secret or over IMDS, and has no path for the
 # federated token an AKS workload identity supplies, so a fleet running as one cannot answer
@@ -29,15 +29,15 @@ RUN set -eu; \
     grep -q 'NewWorkloadIdentityCredential' client.go
 
 RUN xcaddy build \
-      --with github.com/ueffel/caddy-brotli \
-      --with github.com/caddy-dns/azure \
-      --with github.com/caddy-dns/cloudflare \
+      --with github.com/ueffel/caddy-brotli@v1.6.0 \
+      --with github.com/caddy-dns/azure@v0.6.0 \
+      --with github.com/caddy-dns/cloudflare@v0.2.4 \
       --with github.com/libdns/azure=/src/libdns-azure
 
 ########################
 ### final
 ########################
-FROM caddy:latest AS final
+FROM caddy:2.11.4 AS final
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 

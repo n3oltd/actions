@@ -19,7 +19,7 @@ FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.3 AS oauth2proxy
 ########################
 ### build
 ########################
-FROM node:24-slim AS build
+FROM node:24.20.0-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV CI=true
@@ -81,7 +81,7 @@ COPY --from=build /repo/${OUTPUT_DIR}/ /
 ########################
 ### variants
 ########################
-FROM caddy:alpine AS variant-static
+FROM caddy:2.11.4-alpine AS variant-static
 RUN apk add --no-cache jq
 ARG OUTPUT_DIR
 ARG BASE_PATH=/
@@ -151,7 +151,7 @@ FROM build AS prune
 ARG PACKAGE
 RUN cd "${PACKAGE}" && npm prune --omit=dev
 
-FROM node:24-slim AS variant-node
+FROM node:24.20.0-slim AS variant-node
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT}
 ARG BUILD_VERSION
@@ -169,7 +169,7 @@ CMD ["sh", "-c", "exec node ${START_ENTRY}"]
 # Standalone output carries its own pruned node_modules, so the variant copies it
 # alone; static assets sit beside the server at the path the build wrote them to.
 # PACKAGE names a workspace package, not a path, so everything derives from OUTPUT_DIR.
-FROM node:24-slim AS variant-next
+FROM node:24.20.0-slim AS variant-next
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
 ARG BUILD_VERSION

@@ -4,7 +4,8 @@
     "config:recommended"
   ],
   "enabledManagers": [
-    "github-actions"
+    "github-actions",
+    "dockerfile"
   ],
   "dependencyDashboard": false,
   "prConcurrentLimit": 10,
@@ -14,6 +15,12 @@
   "prBodyNotes": [
     "<!-- no-work-issue: automated dependency update, nothing to link -->"
   ],
+  "dockerfile": {
+    "description": "The images in docker/ are Dockerfiles named without the name or extension the default patterns look for.",
+    "managerFilePatterns": [
+      "docker/*"
+    ]
+  },
   "packageRules": [
     {
       "matchManagers": [
@@ -32,6 +39,56 @@
         "digest"
       ],
       "enabled": false
+    },
+    {
+      "description": "One PR per base image: neutralise the grouping config:recommended inherits, so a fleet-wide image bump is reviewed on its own.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "groupName": null
+    },
+    {
+      "description": "Debian publishes dated snapshots, which the docker versioning cannot read at all; parsing the date makes a newer snapshot of the same release an upgrade, and leaves a new release alone.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "debian"
+      ],
+      "versioning": "regex:^(?<compatibility>[a-z]+)-(?<major>\\d{4})(?<minor>\\d{2})(?<patch>\\d{2})-slim$"
+    },
+    {
+      "description": "SQL Server carries its cumulative update in the tag, which the docker versioning reads as part of the name, so nothing after CU8 would ever be offered; parsing the CU restores that, holding the Ubuntu base steady.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "mcr.microsoft.com/mssql/server"
+      ],
+      "versioning": "regex:^(?<major>\\d+)-CU(?<minor>\\d+)-(?<compatibility>ubuntu-[\\d.]+)$"
+    },
+    {
+      "description": "n3o-caddy's final stage copies the builder stage's binary over the base image, so the two references must move in one PR; bumped separately, a half-merged pair ships a Caddy built against one version running on another. Grouped across the repo, which also keeps the estate on one Caddy.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "caddy"
+      ],
+      "groupName": "caddy"
+    },
+    {
+      "description": "Umbraco 13 targets net8.0, and .NET does not roll forward a major by default, so a newer runtime base here is wrong by construction rather than merely undesirable: the image would build clean and fail at container start. Scoped to this file, because n3o-dotnet shares the package and should keep being offered new majors. Moving to Umbraco 17 replaces this Dockerfile rather than bumping it.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/umbraco13"
+      ],
+      "matchPackageNames": [
+        "mcr.microsoft.com/dotnet/aspnet"
+      ],
+      "allowedVersions": "/^8\\./"
     }
   ]
 }
