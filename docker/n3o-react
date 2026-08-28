@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM node:14-bullseye-slim AS base
+FROM node:14.21.3-bullseye-slim AS base
 
 WORKDIR /app
 
@@ -45,7 +45,7 @@ COPY --from=builder /app/build/static/js/ /
 ########################
 ### final
 ########################
-FROM node:latest AS final
+FROM node:26.8.1 AS final
 
 WORKDIR /app
 
