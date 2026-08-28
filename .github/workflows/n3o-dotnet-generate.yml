@@ -1,0 +1,155 @@
+# Reusable workflow that runs an n3o CLI generate command and, when the result differs from
+# what is committed, opens a PR with it. The canonical shape for every "regenerate something
+# and propose the change" job; n3o-dotnet-generate-clients.yml is a caller that fixes the
+# command and paths for the client-bearing repos.
+name: n3o dotnet generate
+
+on:
+  workflow_call:
+    inputs:
+      command:
+        description: n3o CLI command to run, without the `n3o` prefix (e.g. `clients generate`)
+        type: string
+        required: true
+
+      paths:
+        description: space-separated git pathspecs holding the generated output to stage
+        type: string
+        required: true
+
+      branch-prefix:
+        description: prefix of the branch the PR is opened from; the run id is appended
+        type: string
+        required: true
+
+      pr-title:
+        description: PR title, and the commit message on its branch
+        type: string
+        required: true
+
+      pr-body:
+        description: PR body
+        type: string
+        required: true
+
+      working-directory:
+        description: directory (relative to the repo root) to run the build/commands in
+        type: string
+        default: src
+
+      build:
+        description: build the solution before generating, then rebuild after to prove the generated code compiles
+        type: boolean
+        default: false
+
+      node-version:
+        description: Node version the generate command needs. Empty skips the Node setup.
+        type: string
+        default: '24'
+
+      fast:
+        description: 'Fast: run on a GitHub-hosted runner (immediate, billable) instead of the self-hosted fleet (queued, free)'
+        type: boolean
+        default: false
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.fast && 'fast' || 'wait' }}
+
+  generate:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    concurrency:
+      group: ${{ inputs.branch-prefix }}-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+
+    steps:
+      - name: app token
+        id: app-token
+        uses: n3oltd/actions/.github/actions/n3o-app-token@main
+        with:
+          app-id: ${{ secrets.N3O_APP_ID }}
+          private-key: ${{ secrets.N3O_APP_PRIVATE_KEY }}
+
+      - name: checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: setup node
+        if: inputs.node-version != ''
+        uses: n3oltd/actions/.github/actions/n3o-node-setup@main
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: setup dotnet + n3o cli
+        uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          azure-client-id: ${{ env.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ env.AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ env.AZURE_TENANT_ID }}
+
+      - name: dotnet build
+        if: inputs.build
+        uses: n3oltd/actions/.github/actions/dotnet-restore-build@main
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          build-configuration: Debug
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: generate
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          COMMAND: ${{ inputs.command }}
+        run: |
+          read -ra args <<< "$COMMAND"
+          n3o "${args[@]}"
+
+      - name: verify build
+        if: inputs.build
+        working-directory: ${{ inputs.working-directory }}
+        run: dotnet build --nologo
+
+      - name: configure git identity
+        uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+
+      - name: open PR if anything changed
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PATHS: ${{ inputs.paths }}
+          TITLE: ${{ inputs.pr-title }}
+          BODY: ${{ inputs.pr-body }}
+          BRANCH: ${{ inputs.branch-prefix }}-${{ github.run_id }}
+        run: |
+          read -ra pathspecs <<< "$PATHS"
+
+          # After checkout, `git add` skips freshly generated files via its stat fast-path; touch bumps
+          # mtimes so git restages them. Listing the untracked ones too captures brand-new files, which
+          # path-scoped `git add -A` then stages. `-c` so a file the generator dropped stays dropped
+          # rather than being recreated empty, which would commit as a truncation, not a deletion.
+          { git ls-files -z -- "${pathspecs[@]}"
+            git ls-files -z --others --exclude-standard -- "${pathspecs[@]}"
+          } | xargs -0 -r touch -c
+          git add -A -- "${pathspecs[@]}"
+
+          if git diff --cached --quiet -- "${pathspecs[@]}"; then
+            echo 'Nothing generated differs from what is committed.'
+            exit 0
+          fi
+
+          # Tagging the commit [ci fast] makes the downstream build it triggers run on a
+          # GitHub-hosted runner (immediate, billable) instead of queueing on the self-hosted fleet.
+          MSG="$TITLE"
+          if [ "${{ inputs.fast }}" = "true" ]; then MSG="$MSG [ci fast]"; fi
+
+          git switch -c "$BRANCH"
+          git commit -m "$MSG"
+          git push -u origin "$BRANCH"
+          gh pr create --title "$TITLE" --body "$BODY" --head "$BRANCH"
