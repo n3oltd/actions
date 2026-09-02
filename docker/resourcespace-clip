@@ -27,17 +27,22 @@ RUN pip install --no-cache-dir \
 
 COPY resourcespace-clip-service.py /opt/clip/clip_service.py
 
-# Bake the weights and the SentencePiece tokenizer, both of which live in
-# timm/ViT-B-16-SigLIP2. Unbaked, open_clip fetches 1.5 GB on every container
-# start. The model is read out of the service rather than repeated here, so the
-# two cannot drift into baking one model and loading another.
-RUN python -c "import re, open_clip; src = open('/opt/clip/clip_service.py').read(); name = re.search(r'^MODEL_NAME = \"(.+)\"$', src, re.M).group(1); tag = re.search(r'^MODEL_PRETRAINED = \"(.+)\"$', src, re.M).group(1); print('Baking', name, tag); open_clip.create_model_and_transforms(name, pretrained=tag); open_clip.get_tokenizer(name)"
+# Bake the weights and the SentencePiece tokenizer. Unbaked, open_clip fetches
+# 1.5 GB on every container start.
+COPY resourcespace-clip-bake.py /tmp/bake.py
+RUN python /tmp/bake.py && rm -f /tmp/bake.py
 
 # Nothing reaches Hugging Face at runtime. A start that would have downloaded now
 # fails where it can be seen, rather than quietly pulling weights over a charity's
 # network on every replica start.
 ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1
+
+# Load the model and tokenizer once with that in force, so the build is what
+# proves the bake was complete. Without this the first evidence of a missing file
+# is a container that will not start, discovered wherever it was deployed --
+# which is how the tokenizer's config.json was missed the first time.
+RUN python -c "import re, open_clip; src = open('/opt/clip/clip_service.py').read(); name = re.search(r'^MODEL_NAME = \"(.+)\"$', src, re.M).group(1); tag = re.search(r'^MODEL_PRETRAINED = \"(.+)\"$', src, re.M).group(1); open_clip.create_model_and_transforms(name, pretrained=tag); open_clip.get_tokenizer(name); print('offline load ok')"
 
 RUN useradd --system --uid 10001 --create-home clip \
  && chown -R clip:clip /opt/clip /opt/huggingface

@@ -46,6 +46,7 @@ jobs:
           assets: |
             resourcespace-clip-service.py
             resourcespace-clip-requirements.txt
+            resourcespace-clip-bake.py
 
       - id: meta
         name: prepare resourcespace

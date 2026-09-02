@@ -93,11 +93,12 @@
       "allowedVersions": "/^8\\./"
     },
     {
-      "description": "The release listing yields directory names, so the trailing slash has to come off before the version can be compared.",
+      "description": "The release listing yields directory names, so the trailing slash has to come off before the version can be compared. Raised above the default priority because prConcurrentLimit silently withholds new pull requests once ten are open, and with the dependency dashboard off there would be nothing anywhere saying a ResourceSpace release was waiting behind them.",
       "matchDatasources": [
         "custom.resourcespace"
       ],
-      "extractVersion": "^(?<version>\\d+\\.\\d+)/$"
+      "extractVersion": "^(?<version>\\d+\\.\\d+)/$",
+      "prPriority": 10
     },
     {
       "description": "ResourceSpace 11.0 is validated against the PHP that Ubuntu 24.04 ships, and a newer Ubuntu brings a newer PHP. Offering 26.04 here would produce an image that builds and then fails on a PHP the release has never been tested against. Scoped to this file so n3o-caddy and the rest keep being offered new majors.",
