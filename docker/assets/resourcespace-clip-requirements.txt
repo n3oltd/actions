@@ -1,0 +1,18 @@
+# Dependencies for the ResourceSpace CLIP service (docker/resourcespace-clip).
+# torch resolves from PyTorch's CPU index, set in the Dockerfile; the rest fall
+# through to PyPI.
+torch==2.13.0
+open_clip_torch==3.3.0
+timm==1.0.29
+# SigLIP2 tokenises with a Hugging Face tokenizer, which open_clip constructs but
+# does not depend on. Without this, the model loads and the first text query fails.
+transformers==5.16.1
+faiss-cpu==1.15.0
+fastapi==0.141.1
+uvicorn==0.52.4
+python-multipart==0.0.32
+mysql-connector-python==26.7.0
+pillow==12.3.0
+numpy==2.5.2
+requests==2.34.2
+sentencepiece==0.2.2

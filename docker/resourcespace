@@ -1,0 +1,101 @@
+########################
+### base
+########################
+# ResourceSpace 11.0 targets the PHP that Ubuntu 24.04 ships. A newer Ubuntu
+# brings a newer PHP, which this release has not been validated against, so
+# renovate.json holds this tag at 24.x and moving it is a decision rather than an
+# upgrade.
+FROM ubuntu:24.04 AS base
+
+########################
+### final
+########################
+FROM base AS final
+
+LABEL org.opencontainers.image.title="ResourceSpace"
+LABEL org.opencontainers.image.description="ResourceSpace digital asset management, configured at container start from the environment."
+
+ENV DEBIAN_FRONTEND="noninteractive"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    antiword \
+    apache2 \
+    # Subversion verifies the release server's certificate, and nothing else here
+    # pulls a trust store in without recommended packages.
+    ca-certificates \
+    ffmpeg \
+    ghostscript \
+    imagemagick \
+    libapache2-mod-php \
+    libimage-exiftool-perl \
+    libopencv-dev \
+    php \
+    php-apcu \
+    php-curl \
+    php-gd \
+    php-intl \
+    php-mbstring \
+    php-mysqlnd \
+    php-zip \
+    poppler-utils \
+    python3 \
+    python3-opencv \
+    subversion \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# The PHP directory is derived rather than written as 8.3, so a base image that
+# moves to a newer PHP fails on something meaningful rather than on a path.
+RUN PHP_SERIES="$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')" \
+ && INI="/etc/php/${PHP_SERIES}/apache2/php.ini" \
+ && test -f "$INI" \
+ # A DAM ingests video. Upstream's 100M is a limit for photographs.
+ && sed -i -e "s/^upload_max_filesize\s*=.*/upload_max_filesize = 4G/" "$INI" \
+ && sed -i -e "s/^post_max_size\s*=.*/post_max_size = 4G/" "$INI" \
+ && sed -i -e "s/^max_execution_time\s*=.*/max_execution_time = 300/" "$INI" \
+ && sed -i -e "s/^memory_limit\s*=.*/memory_limit = 1G/" "$INI" \
+ && grep -q '^upload_max_filesize = 4G' "$INI"
+
+# libapache2-mod-php forces the prefork MPM, where each worker is a whole PHP
+# interpreter entitled to memory_limit. Upstream's MaxRequestWorkers of 150
+# against a 1G limit describes no bound this container could honour; 24 is a
+# number the platform can actually schedule, and requests queue past it instead
+# of the container being killed.
+RUN sed -i -e "s/^\(\s*\)MaxRequestWorkers.*/\1MaxRequestWorkers       24/" \
+           -e "s/^\(\s*\)MaxSpareServers.*/\1MaxSpareServers         8/" \
+           -e "s/^\(\s*\)StartServers.*/\1StartServers            4/" \
+           /etc/apache2/mods-available/mpm_prefork.conf \
+ && grep -q 'MaxRequestWorkers       24' /etc/apache2/mods-available/mpm_prefork.conf
+
+RUN printf '<Directory /var/www/>\n\tOptions FollowSymLinks\n</Directory>\n' \
+      >> /etc/apache2/sites-enabled/000-default.conf
+
+WORKDIR /var/www/html
+
+# ResourceSpace is released over Subversion rather than as tags or images, so
+# Renovate watches the release directory listing itself; see the customManagers
+# entry in renovate.json. Bumping this is what a new ResourceSpace looks like.
+ARG RESOURCESPACE_RELEASE=https://svn.resourcespace.com/svn/rs/releases/11.0
+
+RUN rm -f index.html \
+ && svn co -q "$RESOURCESPACE_RELEASE" . \
+ && mkdir -p /var/www/filestore /var/www/scratch \
+ && chown -R www-data:www-data /var/www/filestore /var/www/scratch \
+ && chmod -R 777 include/
+
+# N3O's changes to the bundled CLIP plugin, applied against the release checked
+# out above. Each is asserted, so a release that has moved one of these lines
+# fails the build here rather than shipping a plugin that writes 512-dimension
+# vectors for a service that reads 768.
+COPY --chmod=0755 resourcespace-fork.sh /tmp/resourcespace-fork.sh
+RUN /tmp/resourcespace-fork.sh /var/www/html && rm -f /tmp/resourcespace-fork.sh
+
+COPY --chmod=0644 resourcespace-render-config.php /usr/local/bin/resourcespace-render-config.php
+COPY --chmod=0755 resourcespace-entrypoint.sh /usr/local/bin/resourcespace-entrypoint.sh
+
+# Scheduled work is a separate Container Apps Job running this same image with
+# its command overridden to batch/cron.php, so the web container does not also
+# carry a scheduler it would run on every replica.
+EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/resourcespace-entrypoint.sh"]

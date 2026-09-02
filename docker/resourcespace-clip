@@ -1,0 +1,49 @@
+########################
+### base
+########################
+# open_clip_torch and timm publish no 3.13 classifier, so this tag must not move
+# past 3.12 until they do.
+FROM python:3.12-slim AS base
+
+########################
+### final
+########################
+FROM base AS final
+
+ENV PYTHONUNBUFFERED=1 \
+    HF_HOME=/opt/huggingface
+
+WORKDIR /opt/clip
+
+COPY resourcespace-clip-requirements.txt /opt/clip/requirements.txt
+
+# PyTorch's CPU index is primary and PyPI is the fallback, so torch resolves to the
+# CPU build and everything else to its normal home. The default PyPI torch bundles
+# CUDA, which adds gigabytes to an image whose service pins itself to the CPU.
+RUN pip install --no-cache-dir \
+      --index-url https://download.pytorch.org/whl/cpu \
+      --extra-index-url https://pypi.org/simple \
+      -r /opt/clip/requirements.txt
+
+COPY resourcespace-clip-service.py /opt/clip/clip_service.py
+
+# Bake the weights and the SentencePiece tokenizer, both of which live in
+# timm/ViT-B-16-SigLIP2. Unbaked, open_clip fetches 1.5 GB on every container
+# start. The model is read out of the service rather than repeated here, so the
+# two cannot drift into baking one model and loading another.
+RUN python -c "import re, open_clip; src = open('/opt/clip/clip_service.py').read(); name = re.search(r'^MODEL_NAME = \"(.+)\"$', src, re.M).group(1); tag = re.search(r'^MODEL_PRETRAINED = \"(.+)\"$', src, re.M).group(1); print('Baking', name, tag); open_clip.create_model_and_transforms(name, pretrained=tag); open_clip.get_tokenizer(name)"
+
+# Nothing reaches Hugging Face at runtime. A start that would have downloaded now
+# fails where it can be seen, rather than quietly pulling weights over a charity's
+# network on every replica start.
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
+
+RUN useradd --system --uid 10001 --create-home clip \
+ && chown -R clip:clip /opt/clip /opt/huggingface
+
+USER clip
+
+EXPOSE 8000
+
+CMD ["python", "/opt/clip/clip_service.py"]
