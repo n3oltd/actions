@@ -19,6 +19,47 @@ for dir in /var/www/filestore /var/www/scratch; do
   chown www-data:www-data "$dir" 2>/dev/null || true
 done
 
+php -r '
+    $primary = getenv("RS_BRAND_PRIMARY");
+    if ($primary === false || $primary === "") { exit(0); }
+
+    $mix = function (string $hex, string $with, float $ratio): string {
+        [$r, $g, $b] = sscanf($hex, "#%2x%2x%2x");
+        [$R, $G, $B] = sscanf($with, "#%2x%2x%2x");
+        return sprintf("#%02x%02x%02x",
+            (int) round($r + ($R - $r) * $ratio),
+            (int) round($g + ($G - $g) * $ratio),
+            (int) round($b + ($B - $b) * $ratio));
+    };
+    file_put_contents("/var/www/html/plugins/n3o_branding/css/style.css", sprintf(
+        ".mode-n3o {\n" .
+        "    --colour-brand-primary-default: %s;\n" .
+        "    --colour-brand-primary-hover: %s;\n" .
+        "    --colour-brand-primary-dark: %s;\n" .
+        "    --colour-brand-primary-darkest: %s;\n" .
+        "    --colour-brand-primary-light: %s;\n" .
+        "    --colour-brand-primary-lightest: %s;\n" .
+        "}\n",
+        $primary,
+        $mix($primary, "#ffffff", 0.10),
+        $mix($primary, "#000000", 0.35),
+        $mix($primary, "#000000", 0.65),
+        $mix($primary, "#ffffff", 0.85),
+        $mix($primary, "#ffffff", 0.93)));
+
+    foreach (["RS_BRAND_LOGO" => "logo.svg", "RS_BRAND_FAVICON" => "favicon.svg"] as $var => $name) {
+        $encoded = getenv($var);
+        if ($encoded === false || $encoded === "") { continue; }
+        $bytes = base64_decode($encoded, true);
+        if ($bytes === false) {
+            fwrite(STDERR, "entrypoint: {$var} is not valid base64\n");
+            exit(1);
+        }
+        file_put_contents("/var/www/html/gfx/brand/{$name}", $bytes);
+    }
+    echo "entrypoint: branding rendered\n";
+' || exit 1
+
 # Bounded, so an unreachable database fails the container rather than hanging a
 # revision indefinitely.
 echo "entrypoint: waiting for the database"
