@@ -12,11 +12,11 @@ on:
   workflow_call:
     inputs:
       subtree-path:
-        description: 'Monorepo path of the subtree to mirror (e.g. src/site-mh)'
+        description: 'Monorepo path of the subtree to mirror (e.g. src/site-example)'
         required: true
         type: string
       target-repo-url:
-        description: 'SSH URL of the client repo (e.g. ssh://git@github.com/muslimhands/website.git)'
+        description: 'SSH URL of the client repo (e.g. ssh://git@github.com/example-client/website.git)'
         required: true
         type: string
       target-branch:
