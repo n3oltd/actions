@@ -23,13 +23,16 @@ done
 # revision indefinitely.
 echo "entrypoint: waiting for the database"
 for attempt in $(seq 1 60); do
-  # Over TLS, which the server requires and refuses the connection without.
+  # Over verified TLS on the same trust store the application uses, so a broken
+  # trust store fails here rather than surfacing later as a working probe in
+  # front of an application that cannot connect.
   if php -r '
       $c = mysqli_init();
       mysqli_options($c, MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+      mysqli_ssl_set($c, NULL, NULL, NULL, "/etc/ssl/certs", NULL);
       $ok = @mysqli_real_connect($c, getenv("RS_DB_HOST"), getenv("RS_DB_USER"),
                                  getenv("RS_DB_PASSWORD"), getenv("RS_DB_NAME"),
-                                 3306, NULL, MYSQLI_CLIENT_SSL);
+                                 3306, NULL, 0);
       exit($ok ? 0 : 1);
   '; then
     echo "entrypoint: database reachable after ${attempt} attempt(s)"
@@ -45,7 +48,6 @@ done
 # Activated on every start, so the plugin set is a property of the image rather
 # than of whoever last used the admin screens. google_vision is absent because
 # clip does the same work against a local model, keeping assets in the tenant.
-# Failure is not fatal: on a fresh instance the schema does not exist yet.
 PLUGINS="clip simplesaml whisper csv_upload themes"
 if [ "${RS_ENABLE_OPENAI_GPT:-false}" = "true" ]; then
   PLUGINS="$PLUGINS openai_gpt"
@@ -63,7 +65,22 @@ RS_PLUGINS="$PLUGINS" php -r '
         activate_plugin($plugin);
         echo "entrypoint: plugin {$plugin} activated\n";
     }
-' || echo "entrypoint: plugin activation skipped (database not yet installed)" >&2
+' || {
+    # Activation cannot succeed before the schema exists, so an uninstalled
+    # instance is the one case where failure is expected. Asking the database
+    # which case this is keeps a real failure from passing as a fresh start.
+    if php -r '
+        $c = mysqli_init();
+        mysqli_ssl_set($c, NULL, NULL, NULL, "/etc/ssl/certs", NULL);
+        @mysqli_real_connect($c, getenv("RS_DB_HOST"), getenv("RS_DB_USER"),
+                             getenv("RS_DB_PASSWORD"), getenv("RS_DB_NAME"), 3306, NULL, 0);
+        exit(@mysqli_query($c, "SELECT 1 FROM resource LIMIT 1") !== false ? 0 : 1);
+    '; then
+      echo "entrypoint: plugin activation failed on an installed instance" >&2
+      exit 1
+    fi
+    echo "entrypoint: plugins await installation" >&2
+  }
 
 # Foreground, so Apache is the process the platform watches. Scheduled work runs
 # as a separate job, which keeps one scheduler however many replicas there are.

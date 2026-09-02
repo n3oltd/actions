@@ -48,8 +48,11 @@ setting('mysql_username', env_required('RS_DB_USER'));
 setting('mysql_password', env_required('RS_DB_PASSWORD'));
 setting('mysql_db', env_required('RS_DB_NAME'));
 
-// The server presents a public CA the mysqlnd trust store already carries.
-setting('mysql_force_ssl', true);
+// The server requires TLS. mysqli_ssl_set() is a no-op unless it is given a
+// trust store, so without the CA path the connection goes out in plaintext and
+// is refused — the verify flag governs only whether the certificate is checked.
+setting('use_mysqli_ssl', true);
+setting('mysqli_ssl_ca_path', '/etc/ssl/certs');
 
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));
