@@ -1,17 +1,27 @@
 # Builds and pushes the N3O SQL Server Docker image to ACR with date and
-# latest tags, fetching the Dockerfile from the actions repo. Takes no
-# inputs.
+# latest tags, fetching the Dockerfile from the actions repo. Runs on the
+# self-hosted fleet unless the caller asks for fast.
 name: 'docker-build-push-mssql'
 
 on:
   workflow_call:
+    inputs:
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
+        type: string
+        required: false
+        default: wait
   workflow_dispatch:
 
 jobs:
-  build-push-docker-image-job:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode || 'wait' }}
 
-    # GitHub-hosted: the self-hosted runner group excludes public repositories.
-    runs-on: ubuntu-latest
+  build-push-docker-image-job:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v7
