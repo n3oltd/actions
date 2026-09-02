@@ -78,9 +78,8 @@ setting('smtp_auth', true);
 setting('smtp_username', env_required('RS_SMTP_USERNAME'));
 setting('smtp_password', env_required('RS_SMTP_PASSWORD'));
 
-$email = env_required('RS_EMAIL_FROM');
-setting('email_from', $email);
-setting('email_notify', $email);
+setting('email_from', env_required('RS_EMAIL_FROM'));
+setting('email_notify', env_required('RS_EMAIL_NOTIFY'));
 
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));
