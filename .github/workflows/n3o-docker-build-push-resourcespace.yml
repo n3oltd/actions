@@ -47,6 +47,7 @@ jobs:
             resourcespace-entrypoint.sh
             resourcespace-fork.sh
             resourcespace-render-config.php
+            resourcespace-branding.yaml
 
       - id: meta
         name: prepare resourcespace
