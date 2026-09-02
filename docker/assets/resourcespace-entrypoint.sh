@@ -21,6 +21,36 @@ done
 
 # Bounded, so an unreachable database fails the container rather than hanging a
 # revision indefinitely.
+php -r '
+    $primary = getenv("RS_BRAND_PRIMARY");
+    if ($primary === false || $primary === "") { exit(0); }
+    $mix = function (string $hex, string $with, float $ratio): string {
+        [$r, $g, $b] = sscanf($hex, "#%2x%2x%2x");
+        [$R, $G, $B] = sscanf($with, "#%2x%2x%2x");
+        return sprintf("#%02x%02x%02x",
+            (int) round($r + ($R - $r) * $ratio),
+            (int) round($g + ($G - $g) * $ratio),
+            (int) round($b + ($B - $b) * $ratio));
+    };
+    $css = sprintf(
+        ".mode-n3o {\n" .
+        "    --colour-brand-primary-default: %s;\n" .
+        "    --colour-brand-primary-hover: %s;\n" .
+        "    --colour-brand-primary-dark: %s;\n" .
+        "    --colour-brand-primary-darkest: %s;\n" .
+        "    --colour-brand-primary-light: %s;\n" .
+        "    --colour-brand-primary-lightest: %s;\n" .
+        "}\n",
+        $primary,
+        $mix($primary, "#ffffff", 0.10),
+        $mix($primary, "#000000", 0.35),
+        $mix($primary, "#000000", 0.65),
+        $mix($primary, "#ffffff", 0.85),
+        $mix($primary, "#ffffff", 0.93));
+    file_put_contents("/var/www/html/plugins/n3o_branding/css/style.css", $css);
+    echo "entrypoint: branding rendered\n";
+' || exit 1
+
 echo "entrypoint: waiting for the database"
 for attempt in $(seq 1 60); do
   # Verified TLS on the trust store the application uses, so the probe cannot

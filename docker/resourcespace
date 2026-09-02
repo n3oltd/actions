@@ -95,6 +95,11 @@ RUN rm -f index.html \
 COPY --chmod=0755 resourcespace-fork.sh /tmp/resourcespace-fork.sh
 RUN /tmp/resourcespace-fork.sh /var/www/html && rm -f /tmp/resourcespace-fork.sh
 
+COPY --chmod=0644 resourcespace-branding.yaml /var/www/html/plugins/n3o_branding/n3o_branding.yaml
+COPY --chmod=0644 branding/ /var/www/html/gfx/brand/
+RUN mkdir -p /var/www/html/plugins/n3o_branding/css \
+ && chown -R www-data:www-data /var/www/html/plugins/n3o_branding
+
 COPY --chmod=0644 resourcespace-render-config.php /usr/local/bin/resourcespace-render-config.php
 COPY --chmod=0755 resourcespace-entrypoint.sh /usr/local/bin/resourcespace-entrypoint.sh
 

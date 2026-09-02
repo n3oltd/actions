@@ -1,0 +1,9 @@
+name: n3o_branding
+title: N3O Branding
+author: N3O
+version: 1.0
+desc: Applies the client's colours through the mode the header renders
+icon: palette
+icon-colour: royalblue
+category: Misc
+disable_group_select: 1
