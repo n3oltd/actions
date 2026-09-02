@@ -9,7 +9,7 @@
     "custom.regex",
     "pip_requirements"
   ],
-  "dependencyDashboard": false,
+  "dependencyDashboard": true,
   "prConcurrentLimit": 10,
   "prHourlyLimit": 0,
   "commitMessageExtra": "{{#unless isGroup}}from {{displayFrom}} to {{displayTo}}{{/unless}}",
