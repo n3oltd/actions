@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     ghostscript \
     imagemagick \
+    inkscape \
     libapache2-mod-php \
     libimage-exiftool-perl \
     libopencv-dev \
@@ -34,9 +35,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php-apcu \
     php-curl \
     php-gd \
+    php-imap \
     php-intl \
+    php-json \
+    php-ldap \
     php-mbstring \
     php-mysqlnd \
+    php-xml \
     php-zip \
     poppler-utils \
     python3 \
@@ -69,6 +74,9 @@ RUN sed -i -e "s/^\(\s*\)MaxRequestWorkers.*/\1MaxRequestWorkers       24/" \
 
 RUN printf '<Directory /var/www/>\n\tOptions FollowSymLinks\n</Directory>\n' \
       >> /etc/apache2/sites-enabled/000-default.conf
+
+RUN sed -i -e "s|^ErrorLog .*|ErrorLog /dev/stderr|" /etc/apache2/apache2.conf \
+ && grep -q '^ErrorLog /dev/stderr' /etc/apache2/apache2.conf
 
 WORKDIR /var/www/html
 

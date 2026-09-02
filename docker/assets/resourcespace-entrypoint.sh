@@ -80,6 +80,17 @@ RS_PLUGINS="$PLUGINS" php -r '
     echo "entrypoint: plugins await installation" >&2
   }
 
+php -r '
+    $required = ["mysqli", "curl", "dom", "gd", "intl", "mbstring", "xml",
+                 "zip", "ldap", "imap", "json", "apcu"];
+    $missing = array_values(array_filter($required, fn($e) => !extension_loaded($e)));
+    if ($missing !== []) {
+        fwrite(STDERR, "entrypoint: missing php extensions: " . implode(" ", $missing) . "\n");
+        exit(1);
+    }
+    echo "entrypoint: php extensions present\n";
+' || exit 1
+
 # An unresolved tool is silent: previews and metadata simply never appear.
 php -r '
     include_once "/var/www/html/include/boot.php";
@@ -91,6 +102,9 @@ php -r '
     }
     if (!file_exists($GLOBALS["mysql_bin_path"] . "/mysqldump")) {
         $missing[] = "mysqldump";
+    }
+    if (trim((string) shell_exec("command -v inkscape")) === "") {
+        $missing[] = "inkscape";
     }
     if ($missing !== []) {
         fwrite(STDERR, "entrypoint: unresolved: " . implode(" ", $missing) . "\n");
