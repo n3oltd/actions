@@ -79,12 +79,15 @@ function GlobalHookHandleuserref($userref): void
     }
 
     $held = ps_query(
-        'SELECT u.search_filter_o_id AS ref, f.name AS name
+        'SELECT u.origin AS origin, u.search_filter_o_id AS ref, f.name AS name
            FROM user u LEFT JOIN filter f ON f.ref = u.search_filter_o_id
           WHERE u.ref = ?',
         ['i', $userref]
     );
-    if ($held === []) {
+    // Being authenticated to the provider says nothing about which user this
+    // request is: with standard login open, a local session and a provider
+    // session coexist, and the offices belong to the latter.
+    if ($held === [] || $held[0]['origin'] !== 'simplesaml') {
         return;
     }
     $heldname = (string) $held[0]['name'];
