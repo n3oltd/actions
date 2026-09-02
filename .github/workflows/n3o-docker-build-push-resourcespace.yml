@@ -19,14 +19,9 @@ jobs:
     with:
       mode: ${{ inputs.mode || 'wait' }}
 
-  # A job per image, so each gets a runner and a Docker storage of its own. The two
-  # do not fit in one: the application image carries libopencv-dev and ffmpeg, the
-  # CLIP image carries PyTorch and a 1.5 GB model, and a fleet runner's daemon
-  # storage is a 30 GiB emptyDir that the pod is evicted for exceeding -- which
-  # presents as the job ending mid-step with no log and no error.
-  #
-  # They still share a version, because the tag comes from the run rather than the
-  # job, so a mismatched pair cannot be produced or deployed.
+  # A job per image: a fleet runner's Docker storage is a 30 GiB emptyDir, and the
+  # two exceed it together. The version comes from the run, so they still cannot
+  # be built as a mismatched pair.
   application:
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
