@@ -162,3 +162,18 @@ if ($metadata_url === '') {
         setting('simplesaml_sp_private_key', $sp_key);
     }
 }
+
+$scoping_json = env_optional('RS_SCOPING_JSON');
+if ($scoping_json !== '') {
+    $scoping = json_decode($scoping_json, true);
+    if (!is_array($scoping)) {
+        fwrite(STDERR, "config: RS_SCOPING_JSON is not valid JSON\n");
+        exit(1);
+    }
+    if (isset($scoping['field'], $scoping['shared'], $scoping['offices'])) {
+        setting('n3o_scoping', $scoping);
+        // Held outside the web root, and required rather than emitted, so the
+        // rendered config stays a file of settings.
+        echo "require_once '/usr/local/lib/resourcespace-scoping.php';\n";
+    }
+}

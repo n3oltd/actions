@@ -48,6 +48,8 @@ jobs:
             resourcespace-fork.sh
             resourcespace-render-config.php
             resourcespace-branding.yaml
+            resourcespace-hook-field-options.php
+            resourcespace-scoping.php
 
       - id: meta
         name: prepare resourcespace

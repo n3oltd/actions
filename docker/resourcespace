@@ -103,6 +103,10 @@ RUN mkdir -p /var/www/html/plugins/n3o_branding/css /var/www/html/gfx/brand \
  && chown -R www-data:www-data /var/www/html/plugins/n3o_branding /var/www/html/gfx/brand \
  && test -x /var/www/html/plugins/n3o_branding
 
+COPY --chmod=0644 resourcespace-hook-field-options.php /var/www/html/hooks/field-options.php
+RUN chmod 0755 /var/www/html/hooks && test -x /var/www/html/hooks
+
+COPY --chmod=0644 resourcespace-scoping.php /usr/local/lib/resourcespace-scoping.php
 COPY --chmod=0644 resourcespace-render-config.php /usr/local/bin/resourcespace-render-config.php
 COPY --chmod=0755 resourcespace-entrypoint.sh /usr/local/bin/resourcespace-entrypoint.sh
 
