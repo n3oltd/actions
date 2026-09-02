@@ -1,0 +1,9 @@
+name: n3o_branding
+title: N3O Branding
+author: N3O
+version: 1.0
+desc: Renders the deployment's palette into the mode the header names
+icon: palette
+icon-colour: royalblue
+category: Misc
+disable_group_select: 1

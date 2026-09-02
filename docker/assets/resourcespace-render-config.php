@@ -44,6 +44,18 @@ echo "// Edits here are lost on the next restart; change the app definition inst
 setting('baseurl', rtrim(env_required('RS_BASE_URL'), '/'));
 setting('applicationname', env_required('RS_APPLICATION_NAME'));
 
+if (env_optional('RS_BRAND_PRIMARY') !== '') {
+    setting('colour_theme', 'n3o');
+    setting('plugins', ['n3o_branding']);
+    if (env_optional('RS_BRAND_LOGO') !== '') {
+        setting('linkedheaderimgsrc', '/gfx/brand/logo.svg');
+        setting('linkedheaderimgsrc_dark', '/gfx/brand/logo.svg');
+    }
+    if (env_optional('RS_BRAND_FAVICON') !== '') {
+        setting('header_favicon', 'gfx/brand/favicon.svg');
+    }
+}
+
 setting('mysql_server', env_required('RS_DB_HOST'));
 setting('mysql_username', env_required('RS_DB_USER'));
 setting('mysql_password', env_required('RS_DB_PASSWORD'));
