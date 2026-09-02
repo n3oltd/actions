@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Changes to the bundled CLIP plugin, applied at build time. Every required patch
+# Changes to the bundled plugins, applied at build time. Every required patch
 # asserts its text is present exactly once, so a release that has edited one of
 # these lines fails the build here rather than producing an image whose plugin is
 # unforked -- which starts, serves, and writes vectors the service cannot read.
@@ -9,6 +9,7 @@ set -euo pipefail
 
 RS_ROOT="${1:?usage: resourcespace-fork.sh <resourcespace root>}"
 CLIP="$RS_ROOT/plugins/clip"
+SIMPLESAML="$RS_ROOT/plugins/simplesaml"
 
 # sed is avoided: these strings carry regex metacharacters and PHP sigils, and a
 # sed that silently matches nothing is the failure being guarded against.
@@ -79,5 +80,20 @@ replace "$CLIP/include/clip_functions.php" \
 replace "$CLIP/include/clip_functions.php" \
   'to obtain a 512-float vector' \
   'to obtain a 768-float vector' optional
+
+# Upstream defaults the service provider onto SimpleSAMLphp 1.x's www route so an
+# existing deployment need not re-exchange metadata with its provider, and says
+# plainly that the web server must then alias www to public. Nothing here does,
+# so the asserted entity ID names a path that 404s while the assertion consumer
+# service answers under public. A first deployment has no metadata to preserve.
+if [ -d "$SIMPLESAML/lib/www" ]; then
+  echo "fork: simplesaml now ships lib/www; revisit \$simplesaml_use_www" >&2
+  exit 1
+fi
+test -d "$SIMPLESAML/lib/public"
+
+replace "$SIMPLESAML/config/config.php" \
+  '$simplesaml_use_www = true;' \
+  '$simplesaml_use_www = false;'
 
 echo "fork: complete"
