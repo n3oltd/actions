@@ -5,7 +5,9 @@
   ],
   "enabledManagers": [
     "github-actions",
-    "dockerfile"
+    "dockerfile",
+    "custom.regex",
+    "pip_requirements"
   ],
   "dependencyDashboard": false,
   "prConcurrentLimit": 10,
@@ -89,6 +91,53 @@
         "mcr.microsoft.com/dotnet/aspnet"
       ],
       "allowedVersions": "/^8\\./"
+    },
+    {
+      "description": "The release listing yields directory names, so the trailing slash has to come off before the version can be compared.",
+      "matchDatasources": [
+        "custom.resourcespace"
+      ],
+      "extractVersion": "^(?<version>\\d+\\.\\d+)/$"
+    },
+    {
+      "description": "ResourceSpace 11.0 is validated against the PHP that Ubuntu 24.04 ships, and a newer Ubuntu brings a newer PHP. Offering 26.04 here would produce an image that builds and then fails on a PHP the release has never been tested against. Scoped to this file so n3o-caddy and the rest keep being offered new majors.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/resourcespace"
+      ],
+      "matchPackageNames": [
+        "ubuntu"
+      ],
+      "allowedVersions": "/^24\\./"
+    }
+  ],
+  "pip_requirements": {
+    "description": "The CLIP service's dependencies are a Dockerfile asset rather than a project at the repository root.",
+    "managerFilePatterns": [
+      "docker/assets/resourcespace-clip-requirements.txt"
+    ]
+  },
+  "customDatasources": {
+    "resourcespace": {
+      "defaultRegistryUrlTemplate": "https://svn.resourcespace.com/svn/rs/releases/",
+      "format": "html"
+    }
+  },
+  "customManagers": [
+    {
+      "description": "The ResourceSpace release is a Subversion URL in docker/resourcespace, which no packaged manager reads.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "docker/resourcespace"
+      ],
+      "matchStrings": [
+        "svn\\.resourcespace\\.com/svn/rs/releases/(?<currentValue>\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "resourcespace",
+      "datasourceTemplate": "custom.resourcespace",
+      "versioningTemplate": "docker"
     }
   ]
 }
