@@ -89,7 +89,6 @@ php -r '
               "unoconv"] as $utility) {
         if (get_utility_path($utility) === false) { $missing[] = $utility; }
     }
-    // Reached by path rather than through get_utility_path().
     if (!file_exists($GLOBALS["mysql_bin_path"] . "/mysqldump")) {
         $missing[] = "mysqldump";
     }

@@ -53,9 +53,7 @@ setting('mysql_db', env_required('RS_DB_NAME'));
 setting('use_mysqli_ssl', true);
 setting('mysqli_ssl_ca_path', '/etc/ssl/certs');
 
-// get_utility_path() returns false for any tool whose path option is unset, and
-// config.default.php declares none of them. Without these ResourceSpace makes no
-// previews, reads no metadata and transcodes nothing.
+// config.default.php declares none of these, and an unset path resolves to false.
 setting('imagemagick_path', '/usr/bin');
 setting('ghostscript_path', '/usr/bin');
 setting('ghostscript_executable', 'gs');
@@ -66,8 +64,6 @@ setting('python_path', '/usr/bin');
 setting('php_path', '/usr/bin');
 setting('unoconv_path', '/usr/bin');
 
-// Both ship disabled. Collections are how a DAM hands over a set of assets, and
-// php-zip supplies the archiver; tar takes over above $collection_download_tar_size.
 setting('collection_download', true);
 setting('use_zip_extension', true);
 

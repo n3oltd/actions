@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libapache2-mod-php \
     libimage-exiftool-perl \
     libopencv-dev \
-    # unoconv drives these to preview the office formats in $unoconv_extensions.
+    # What unoconv drives to preview office formats.
     libreoffice-calc \
     libreoffice-impress \
     libreoffice-writer \
