@@ -53,6 +53,20 @@ setting('mysql_db', env_required('RS_DB_NAME'));
 setting('use_mysqli_ssl', true);
 setting('mysqli_ssl_ca_path', '/etc/ssl/certs');
 
+// config.default.php declares none of these, and an unset path resolves to false.
+setting('imagemagick_path', '/usr/bin');
+setting('ghostscript_path', '/usr/bin');
+setting('ghostscript_executable', 'gs');
+setting('ffmpeg_path', '/usr/bin');
+setting('exiftool_path', '/usr/bin');
+setting('pdftotext_path', '/usr/bin');
+setting('python_path', '/usr/bin');
+setting('php_path', '/usr/bin');
+setting('unoconv_path', '/usr/bin');
+
+setting('collection_download', true);
+setting('use_zip_extension', true);
+
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));
 
