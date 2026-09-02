@@ -42,6 +42,7 @@ echo "// Generated at container start by resourcespace-render-config.php.\n";
 echo "// Edits here are lost on the next restart; change the app definition instead.\n\n";
 
 setting('baseurl', rtrim(env_required('RS_BASE_URL'), '/'));
+setting('applicationname', env_required('RS_APPLICATION_NAME'));
 
 setting('mysql_server', env_required('RS_DB_HOST'));
 setting('mysql_username', env_required('RS_DB_USER'));
@@ -66,6 +67,20 @@ setting('unoconv_path', '/usr/bin');
 
 setting('collection_download', true);
 setting('use_zip_extension', true);
+
+// Without both of these ResourceSpace calls mail(), and there is no MTA here.
+setting('use_smtp', true);
+setting('use_phpmailer', true);
+setting('smtp_secure', 'tls');
+setting('smtp_host', env_required('RS_SMTP_HOST'));
+setting('smtp_port', (int) env_required('RS_SMTP_PORT'));
+setting('smtp_auth', true);
+setting('smtp_username', env_required('RS_SMTP_USERNAME'));
+setting('smtp_password', env_required('RS_SMTP_PASSWORD'));
+
+$email = env_required('RS_EMAIL_FROM');
+setting('email_from', $email);
+setting('email_notify', $email);
 
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));

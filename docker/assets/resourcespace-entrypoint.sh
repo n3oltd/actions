@@ -99,6 +99,31 @@ php -r '
     echo "entrypoint: media tools resolved\n";
 ' || exit 1
 
+# Usergroup 3 and the hash form are what setup.php uses. Reset every start, so
+# the vault remains the only place the password is written down.
+php -r '
+    include_once "/var/www/html/include/boot.php";
+    $user = "n3o-support";
+    $installed = ps_value(
+        "SELECT COUNT(*) value FROM information_schema.tables
+          WHERE table_schema = DATABASE() AND table_name = ?", ["s", "user"], 0);
+    if (!$installed) {
+        echo "entrypoint: support account awaits installation\n";
+        exit(0);
+    }
+    $hash = rs_password_hash("RS{$user}" . getenv("RS_SUPPORT_PASSWORD"));
+    if (ps_value("SELECT COUNT(*) value FROM user WHERE username = ?", ["s", $user], 0) == 0) {
+        ps_query(
+            "INSERT INTO user (username, password, fullname, email, usergroup)
+             VALUES (?, ?, ?, ?, 3)",
+            ["s", $user, "s", $hash, "s", "N3O Support", "s", "support@n3o.cloud"]);
+        echo "entrypoint: {$user} created\n";
+    } else {
+        ps_query("UPDATE user SET password = ? WHERE username = ?", ["s", $hash, "s", $user]);
+        echo "entrypoint: {$user} password reset\n";
+    }
+' || exit 1
+
 # Foreground, so Apache is the process the platform watches. Scheduled work runs
 # as a separate job, which keeps one scheduler however many replicas there are.
 echo "entrypoint: starting apache"
