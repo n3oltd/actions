@@ -23,9 +23,8 @@ done
 # revision indefinitely.
 echo "entrypoint: waiting for the database"
 for attempt in $(seq 1 60); do
-  # Over verified TLS on the same trust store the application uses, so a broken
-  # trust store fails here rather than surfacing later as a working probe in
-  # front of an application that cannot connect.
+  # Verified TLS on the trust store the application uses, so the probe cannot
+  # pass where the application would fail.
   if php -r '
       $c = mysqli_init();
       mysqli_options($c, MYSQLI_OPT_CONNECT_TIMEOUT, 5);
@@ -46,8 +45,8 @@ for attempt in $(seq 1 60); do
 done
 
 # Activated on every start, so the plugin set is a property of the image rather
-# than of whoever last used the admin screens. google_vision is absent because
-# clip does the same work against a local model, keeping assets in the tenant.
+# than of whoever last used the admin screens. google_vision is absent: clip
+# does the same work locally.
 PLUGINS="clip simplesaml whisper csv_upload themes"
 if [ "${RS_ENABLE_OPENAI_GPT:-false}" = "true" ]; then
   PLUGINS="$PLUGINS openai_gpt"
@@ -66,9 +65,8 @@ RS_PLUGINS="$PLUGINS" php -r '
         echo "entrypoint: plugin {$plugin} activated\n";
     }
 ' || {
-    # Activation cannot succeed before the schema exists, so an uninstalled
-    # instance is the one case where failure is expected. Asking the database
-    # which case this is keeps a real failure from passing as a fresh start.
+    # Activation cannot succeed before the schema exists, which is the only
+    # case where failure is expected.
     if php -r '
         $c = mysqli_init();
         mysqli_ssl_set($c, NULL, NULL, NULL, "/etc/ssl/certs", NULL);
