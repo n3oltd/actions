@@ -62,6 +62,11 @@ setting('ghostscript_executable', 'gs');
 setting('ffmpeg_path', '/usr/bin');
 setting('exiftool_path', '/usr/bin');
 setting('pdftotext_path', '/usr/bin');
+setting('python_path', '/usr/bin');
+setting('php_path', '/usr/bin');
+
+// Collection download needs an archiver, and php-zip stands in for one.
+setting('use_zip_extension', true);
 
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));

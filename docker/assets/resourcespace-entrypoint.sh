@@ -84,8 +84,8 @@ RS_PLUGINS="$PLUGINS" php -r '
 php -r '
     include_once "/var/www/html/include/boot.php";
     $missing = [];
-    foreach (["im-convert", "im-identify", "ghostscript", "ffmpeg", "ffprobe",
-              "exiftool", "pdftotext"] as $utility) {
+    foreach (["im-convert", "im-identify", "im-mogrify", "ghostscript", "ffmpeg",
+              "ffprobe", "exiftool", "pdftotext", "python", "php"] as $utility) {
         if (get_utility_path($utility) === false) { $missing[] = $utility; }
     }
     if ($missing !== []) {
