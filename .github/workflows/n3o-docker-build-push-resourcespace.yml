@@ -19,9 +19,10 @@ jobs:
     with:
       mode: ${{ inputs.mode || 'wait' }}
 
-  # One job for both: the plugin in the application image writes the vectors the
-  # service in the CLIP image reads, so a rebuild must not leave them disagreeing.
-  build-push-docker-image-job:
+  # A job per image: a fleet runner's Docker storage is a 30 GiB emptyDir, and the
+  # two exceed it together. The version comes from the run, so they still cannot
+  # be built as a mismatched pair.
+  application:
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
 
@@ -35,9 +36,9 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # Explicit paths: the calling repository has a resourcespace directory for
+      # An explicit path: the calling repository has a resourcespace directory for
       # the bare catalogue name to collide with.
-      - name: fetch resourcespace dockerfile and assets
+      - name: fetch dockerfile and assets
         uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
         with:
           dockerfile: resourcespace
@@ -47,31 +48,18 @@ jobs:
             resourcespace-fork.sh
             resourcespace-render-config.php
 
-      - name: fetch clip dockerfile and assets
-        uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
-        with:
-          dockerfile: resourcespace-clip
-          path: Dockerfile.resourcespace-clip
-          assets: |
-            resourcespace-clip-service.py
-            resourcespace-clip-requirements.txt
-            resourcespace-clip-bake.py
-
       - id: meta
         name: prepare resourcespace
         uses: n3oltd/actions/.github/actions/n3o-image-tags@main
         with:
           repository: n3o-resourcespace
 
-      - id: meta-clip
-        name: prepare resourcespace-clip
-        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
-        with:
-          repository: n3o-resourcespace-clip
+      - name: disk before
+        run: df -h /
 
       # Stated rather than inherited: an arm64 build reaches production as an exec
       # format error at container start rather than as a failed build.
-      - name: build and push resourcespace
+      - name: build and push
         uses: docker/build-push-action@v7
         with:
           builder: ${{ steps.acr.outputs.builder }}
@@ -83,7 +71,44 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
 
-      - name: build and push resourcespace-clip
+      - name: disk after
+        if: always()
+        run: df -h /
+
+  clip:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: acr
+        name: acr login
+        uses: n3oltd/actions/.github/actions/n3o-acr-login@main
+        with:
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: fetch dockerfile and assets
+        uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
+        with:
+          dockerfile: resourcespace-clip
+          path: Dockerfile.resourcespace-clip
+          assets: |
+            resourcespace-clip-service.py
+            resourcespace-clip-requirements.txt
+            resourcespace-clip-bake.py
+
+      - id: meta
+        name: prepare resourcespace-clip
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: n3o-resourcespace-clip
+
+      - name: disk before
+        run: df -h /
+
+      - name: build and push
         uses: docker/build-push-action@v7
         with:
           builder: ${{ steps.acr.outputs.builder }}
@@ -93,4 +118,8 @@ jobs:
           platforms: linux/amd64
           pull: true
           push: true
-          tags: ${{ steps.meta-clip.outputs.version-tag }} , ${{ steps.meta-clip.outputs.latest-tag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
+
+      - name: disk after
+        if: always()
+        run: df -h /
