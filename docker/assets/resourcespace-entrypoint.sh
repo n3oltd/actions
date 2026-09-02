@@ -23,10 +23,14 @@ done
 # revision indefinitely.
 echo "entrypoint: waiting for the database"
 for attempt in $(seq 1 60); do
+  # Over TLS, which the server requires and refuses the connection without.
   if php -r '
-      $c = @mysqli_connect(getenv("RS_DB_HOST"), getenv("RS_DB_USER"),
-                           getenv("RS_DB_PASSWORD"), getenv("RS_DB_NAME"));
-      exit($c ? 0 : 1);
+      $c = mysqli_init();
+      mysqli_options($c, MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+      $ok = @mysqli_real_connect($c, getenv("RS_DB_HOST"), getenv("RS_DB_USER"),
+                                 getenv("RS_DB_PASSWORD"), getenv("RS_DB_NAME"),
+                                 3306, NULL, MYSQLI_CLIENT_SSL);
+      exit($ok ? 0 : 1);
   '; then
     echo "entrypoint: database reachable after ${attempt} attempt(s)"
     break
