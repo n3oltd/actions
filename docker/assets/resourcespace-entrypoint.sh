@@ -13,6 +13,18 @@ echo "entrypoint: rendering config.php"
 php /usr/local/bin/resourcespace-render-config.php > "$RS_HOME/include/config.php"
 php -l "$RS_HOME/include/config.php" > /dev/null
 
+# A scope configured but not reached is indistinguishable from no scope at all.
+if [ -n "${RS_SCOPING_JSON:-}" ]; then
+  php -r '
+      include "/var/www/html/include/config.php";
+      if (!function_exists("GlobalHookHandleuserref")) {
+          fwrite(STDERR, "entrypoint: scoping is configured but the hook was not reached\n");
+          exit(1);
+      }
+      echo "entrypoint: scoping hook installed\n";
+  ' || exit 1
+fi
+
 # Mounted, so they exist but may be owned by the mount rather than by Apache.
 for dir in /var/www/filestore /var/www/scratch; do
   mkdir -p "$dir"
