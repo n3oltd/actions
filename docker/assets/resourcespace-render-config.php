@@ -48,8 +48,10 @@ setting('mysql_username', env_required('RS_DB_USER'));
 setting('mysql_password', env_required('RS_DB_PASSWORD'));
 setting('mysql_db', env_required('RS_DB_NAME'));
 
-// The server presents a public CA the mysqlnd trust store already carries.
-setting('mysql_force_ssl', true);
+// The CA path is load-bearing: mysqli_ssl_set() is a no-op without a trust
+// store, and the server refuses plaintext.
+setting('use_mysqli_ssl', true);
+setting('mysqli_ssl_ca_path', '/etc/ssl/certs');
 
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));
@@ -67,9 +69,8 @@ setting('clip_service_url', env_required('RS_CLIP_SERVICE_URL'));
 setting('clip_keyword_field', (int) env_optional('RS_CLIP_KEYWORD_FIELD', '0'));
 setting('clip_title_field', (int) env_optional('RS_CLIP_TITLE_FIELD', '0'));
 
-// There is no second factor here, so a reachable login page is a password-only
-// route into the archive. With no identity provider configured it has to stay
-// reachable, or nobody can get in at all.
+// No second factor here, so a reachable login page is a password-only route
+// into the archive. Absent an identity provider it has to stay reachable.
 $metadata_url = env_optional('RS_SAML_METADATA_URL');
 $allow_standard_login = env_bool('RS_ALLOW_STANDARD_LOGIN', $metadata_url === '');
 
@@ -80,12 +81,11 @@ if ($metadata_url === '') {
     setting('simplesaml_login', true);
     setting('simplesaml_allow_standard_login', $allow_standard_login);
 
-    // Never prefer the local form, and never block the site outright.
     setting('simplesaml_prefer_standard_login', false);
     setting('simplesaml_site_block', false);
 
-    // Enabling this lets anyone whose provider asserts the break-glass account's
-    // email address adopt it, which is a direct path to administrator.
+    // Enabling this lets anyone whose provider asserts the N3O support
+    // account's email address adopt it, a direct path to administrator.
     setting('simplesaml_create_new_match_email', false);
     setting('simplesaml_allow_duplicate_email', false);
 
