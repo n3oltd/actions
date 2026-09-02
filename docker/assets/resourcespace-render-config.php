@@ -68,8 +68,7 @@ setting('unoconv_path', '/usr/bin');
 setting('collection_download', true);
 setting('use_zip_extension', true);
 
-// Mailgun, from one credential shared by every charity. Without use_phpmailer
-// ResourceSpace calls PHP mail(), and the image has no MTA behind it.
+// Without both of these ResourceSpace calls mail(), and there is no MTA here.
 setting('use_smtp', true);
 setting('use_phpmailer', true);
 setting('smtp_secure', 'tls');

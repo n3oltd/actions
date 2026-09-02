@@ -99,9 +99,8 @@ php -r '
     echo "entrypoint: media tools resolved\n";
 ' || exit 1
 
-# The installer is never run, so the account it would have created is seeded on
-# the same terms it uses: usergroup 3, and the password reset on every start so
-# the vault stays the one place it is written down.
+# Usergroup 3 and the hash form are what setup.php uses. Reset every start, so
+# the vault remains the only place the password is written down.
 php -r '
     include_once "/var/www/html/include/boot.php";
     $user = "n3o-support";
