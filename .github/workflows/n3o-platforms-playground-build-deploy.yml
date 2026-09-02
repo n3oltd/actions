@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       subscription-code:
-        description: platforms subscription code identifying the charity/tenant
+        description: platforms subscription code identifying the client/tenant
         type: string
         required: false
         default: ''
