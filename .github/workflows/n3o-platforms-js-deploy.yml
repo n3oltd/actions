@@ -1,4 +1,4 @@
-# Deploys the platforms-js package for a charity to its Azure blob storage container.
+# Deploys the platforms-js package for a client to its Azure blob storage container.
 # Installs the published @n3oltd/platforms-js-<subscription> package, swaps in the
 # environment config, and replaces the platforms-js/ blobs in the connect-<subscription> container.
 name: 'Deploy Platforms JS'
@@ -12,7 +12,7 @@ on:
         required: true
 
       subscription-code:
-        description: platforms subscription code identifying the charity/tenant
+        description: platforms subscription code identifying the client/tenant
         type: string
         required: true
 
