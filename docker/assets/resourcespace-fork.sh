@@ -81,11 +81,8 @@ replace "$CLIP/include/clip_functions.php" \
   'to obtain a 512-float vector' \
   'to obtain a 768-float vector' optional
 
-# Upstream defaults the service provider onto SimpleSAMLphp 1.x's www route so an
-# existing deployment need not re-exchange metadata with its provider, and says
-# plainly that the web server must then alias www to public. Nothing here does,
-# so the asserted entity ID names a path that 404s while the assertion consumer
-# service answers under public. A first deployment has no metadata to preserve.
+# True asserts an entity ID under a www route, which upstream states requires the
+# web server to alias it to public. Nothing here does.
 if [ -d "$SIMPLESAML/lib/www" ]; then
   echo "fork: simplesaml now ships lib/www; revisit \$simplesaml_use_www" >&2
   exit 1
