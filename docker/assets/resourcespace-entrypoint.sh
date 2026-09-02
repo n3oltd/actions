@@ -80,6 +80,21 @@ RS_PLUGINS="$PLUGINS" php -r '
     echo "entrypoint: plugins await installation" >&2
   }
 
+# An unresolved tool is silent: previews and metadata simply never appear.
+php -r '
+    include_once "/var/www/html/include/boot.php";
+    $missing = [];
+    foreach (["im-convert", "im-identify", "ghostscript", "ffmpeg", "ffprobe",
+              "exiftool", "pdftotext"] as $utility) {
+        if (get_utility_path($utility) === false) { $missing[] = $utility; }
+    }
+    if ($missing !== []) {
+        fwrite(STDERR, "entrypoint: unresolved: " . implode(" ", $missing) . "\n");
+        exit(1);
+    }
+    echo "entrypoint: media tools resolved\n";
+' || exit 1
+
 # Foreground, so Apache is the process the platform watches. Scheduled work runs
 # as a separate job, which keeps one scheduler however many replicas there are.
 echo "entrypoint: starting apache"

@@ -53,6 +53,16 @@ setting('mysql_db', env_required('RS_DB_NAME'));
 setting('use_mysqli_ssl', true);
 setting('mysqli_ssl_ca_path', '/etc/ssl/certs');
 
+// get_utility_path() returns false for any tool whose path option is unset, and
+// config.default.php declares none of them. Without these ResourceSpace makes no
+// previews, reads no metadata and transcodes nothing.
+setting('imagemagick_path', '/usr/bin');
+setting('ghostscript_path', '/usr/bin');
+setting('ghostscript_executable', 'gs');
+setting('ffmpeg_path', '/usr/bin');
+setting('exiftool_path', '/usr/bin');
+setting('pdftotext_path', '/usr/bin');
+
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));
 setting('api_scramble_key', env_required('RS_API_SCRAMBLE_KEY'));
 
