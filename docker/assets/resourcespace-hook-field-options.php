@@ -1,12 +1,4 @@
 <?php
-/**
- * Sets the options of a fixed-list metadata field from the system that owns the
- * vocabulary. Adds only: a value withdrawn upstream stops being offered while
- * resources already carrying it still render.
- *
- * POST with X-N3O-Signature: sha256=<hmac of the raw body, RS_HOOK_SECRET>
- *   {"field": "Partner", "values": ["...", "..."]}
- */
 
 header('Content-Type: application/json');
 
@@ -72,8 +64,7 @@ foreach ($payload['values'] as $value) {
         $existing++;
         continue;
     }
-    // An empty order_by is what asks set_node to place the option last; zero is
-    // taken as a position, leaving every option tied at the top of the list.
+    // Zero is a position; only an empty order_by asks set_node to append.
     if (set_node(null, $field['ref'], $value, null, '') === false) {
         $rejected[] = $value;
         continue;

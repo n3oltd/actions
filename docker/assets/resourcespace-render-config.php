@@ -172,8 +172,6 @@ if ($scoping_json !== '') {
     }
     if (isset($scoping['field'], $scoping['shared'], $scoping['offices'])) {
         setting('n3o_scoping', $scoping);
-        // Held outside the web root, and required rather than emitted, so the
-        // rendered config stays a file of settings.
         echo "require_once '/usr/local/lib/resourcespace-scoping.php';\n";
     }
 }

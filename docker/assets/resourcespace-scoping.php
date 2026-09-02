@@ -1,12 +1,7 @@
 <?php
-/**
- * Narrows a user's search to the offices their identity provider asserts, by
- * maintaining the per-user filter override ResourceSpace already honours.
- *
- * Included from include/config.php, which defines $n3o_scoping:
- *   ['field' => 'Funding office', 'shared' => 'All',
- *    'offices' => ['<asserted group>' => '<field option>', ...]]
- */
+
+// $n3o_scoping is defined by the config this file is required from, and holds
+// field, shared, and offices mapping an asserted group to a field option.
 
 function n3o_scoping_values(array $scoping): array
 {
@@ -84,9 +79,8 @@ function GlobalHookHandleuserref($userref): void
           WHERE u.ref = ?',
         ['i', $userref]
     );
-    // Being authenticated to the provider says nothing about which user this
-    // request is: with standard login open, a local session and a provider
-    // session coexist, and the offices belong to the latter.
+    // A provider session says nothing about which user this request is: with
+    // standard login open, a local session sits alongside one.
     if ($held === [] || $held[0]['origin'] !== 'simplesaml') {
         return;
     }
@@ -94,8 +88,7 @@ function GlobalHookHandleuserref($userref): void
 
     $values = n3o_scoping_values($n3o_scoping);
     if ($values === []) {
-        // Withdrawing the override returns them to their group's, which is the
-        // narrower of the two: leaving it would grant an office they have left.
+        // Leaving the override would keep granting an office they have left.
         if (str_starts_with($heldname, 'scope:')) {
             ps_query('UPDATE user SET search_filter_o_id = NULL WHERE ref = ?', ['i', $userref]);
         }
@@ -121,7 +114,6 @@ function GlobalHookHandleuserref($userref): void
 
     ps_query('UPDATE user SET search_filter_o_id = ? WHERE ref = ?', ['i', $filter, 'i', $userref]);
 
-    // setup_user() read the old value before this hook was reached, so without
-    // this the request that establishes the scope does not itself observe it.
+    // setup_user() read the old value before this hook was reached.
     $GLOBALS['usersearchfilter'] = $filter;
 }

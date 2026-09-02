@@ -13,8 +13,7 @@ echo "entrypoint: rendering config.php"
 php /usr/local/bin/resourcespace-render-config.php > "$RS_HOME/include/config.php"
 php -l "$RS_HOME/include/config.php" > /dev/null
 
-# A scope that is configured but not reached would be indistinguishable from one
-# that is not configured: everybody would simply see everything.
+# A scope configured but not reached is indistinguishable from no scope at all.
 if [ -n "${RS_SCOPING_JSON:-}" ]; then
   php -r '
       include "/var/www/html/include/config.php";
