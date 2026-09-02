@@ -7,10 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # One job builds both images. They share an embedding dimension -- the CLIP
-  # plugin in the application image writes vectors the service in the CLIP image
-  # reads back -- so a rebuild must not be able to leave a pair that disagrees
-  # about how wide a vector is.
+  # One job for both: the plugin in the application image writes the vectors the
+  # service in the CLIP image reads, so a rebuild must not leave them disagreeing.
   build-push-docker-image-job:
 
     # GitHub-hosted: the self-hosted runner group excludes public repositories.
@@ -26,8 +24,8 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # Both fetches name an explicit path: the calling repository has a
-      # resourcespace directory, which the bare catalogue name would collide with.
+      # Explicit paths: the calling repository has a resourcespace directory for
+      # the bare catalogue name to collide with.
       - name: fetch resourcespace dockerfile and assets
         uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
         with:
@@ -60,9 +58,8 @@ jobs:
         with:
           repository: n3o-resourcespace-clip
 
-      # Stated rather than inherited from the runner: these images are pulled by
-      # Container Apps, and an arm64 build reaches production as an exec format
-      # error at container start rather than as a failed build.
+      # Stated rather than inherited: an arm64 build reaches production as an exec
+      # format error at container start rather than as a failed build.
       - name: build and push resourcespace
         uses: docker/build-push-action@v7
         with:

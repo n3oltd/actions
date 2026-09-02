@@ -1,12 +1,7 @@
-# Forked from plugins/clip/scripts/clip_service.py in the ResourceSpace release
-# pinned by docker/resourcespace-clip. Diff against that file when taking a new
-# release. What this fork changes, and nothing else:
-#
-#   - SigLIP2 through open_clip, replacing OpenAI CLIP ViT-B/32
-#   - 768 dimensions rather than 512, as named constants
-#   - the database host comes from the environment; upstream hardcodes localhost
-#   - missing credentials exit; upstream prompts, which in a container hangs
-#   - the tag vocabulary parser reads its width from the dimension constant
+# Forked from plugins/clip/scripts/clip_service.py. Diff against the release
+# pinned by docker/resourcespace-clip when taking a new one. This fork differs in
+# five places and nowhere else: the model, the dimension constants, the database
+# host, the credential handling, and the tag vocabulary parser's width.
 #
 import argparse
 import getpass
@@ -29,11 +24,9 @@ import requests
 import hashlib, os, time
 import tempfile
 
-# ViT-B-16-SigLIP2 embeds to 768 dimensions where the stock ViT-B/32 embedded to
-# 512. vector_blob holds float32, so a stored vector is four bytes per dimension.
-# Changing the model means changing these two numbers and re-embedding everything;
-# the loader below skips blobs of the wrong size, so a half-migrated database
-# degrades to its re-indexed subset rather than returning wrong results.
+# vector_blob holds float32, so a stored vector is four bytes per dimension.
+# Changing the model means re-embedding everything; the loader skips blobs of the
+# wrong size, so a half-migrated database degrades to its re-indexed subset.
 MODEL_NAME = "ViT-B-16-SigLIP2"
 MODEL_PRETRAINED = "webli"
 EMBEDDING_DIM = 768
@@ -51,8 +44,8 @@ args = parser.parse_args()
 db_user = os.getenv("CLIP_DB_USER", args.dbuser)
 db_pass = os.getenv("CLIP_DB_PASS", args.dbpass)
 
-# Fail rather than prompt. Upstream falls back to input() and getpass(), which in
-# a container is an unreadable hang instead of a startup error.
+# Upstream falls back to input() and getpass(), which in a container is an
+# unreadable hang rather than a startup error.
 if not db_user or not db_pass:
     sys.exit("CLIP_DB_USER and CLIP_DB_PASS must both be set.")
 

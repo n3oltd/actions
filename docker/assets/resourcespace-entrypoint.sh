@@ -1,39 +1,26 @@
 #!/bin/bash
 #
-# Container start for ResourceSpace. Renders the configuration from the
-# environment, brings the plugin set to where it should be, and hands off to
-# Apache in the foreground.
-#
-# Everything here is idempotent: a container that restarts for any reason runs
-# all of it again, against a database that already exists.
+# Everything here is idempotent: a restart runs all of it again against a database
+# that already exists.
 
 set -euo pipefail
 
 RS_HOME=/var/www/html
 
-# ---------------------------------------------------------------------------
-# Configuration. Written on every start, so the app definition is the only place
-# a value is ever changed, and a running container cannot drift from it.
-# ---------------------------------------------------------------------------
+# Written on every start, so a running container cannot drift from the app
+# definition.
 echo "entrypoint: rendering config.php"
 php /usr/local/bin/resourcespace-render-config.php > "$RS_HOME/include/config.php"
 php -l "$RS_HOME/include/config.php" > /dev/null
 
-# ---------------------------------------------------------------------------
-# The filestore and scratch directories are mounted, so they exist but may be
-# owned by the mount rather than by Apache.
-# ---------------------------------------------------------------------------
+# Mounted, so they exist but may be owned by the mount rather than by Apache.
 for dir in /var/www/filestore /var/www/scratch; do
   mkdir -p "$dir"
   chown www-data:www-data "$dir" 2>/dev/null || true
 done
 
-# ---------------------------------------------------------------------------
-# Wait for the database. Azure Database for MySQL is a separate resource and may
-# still be accepting its first connections while this container starts. Bounded,
-# so a genuinely unreachable database fails the container rather than hanging a
+# Bounded, so an unreachable database fails the container rather than hanging a
 # revision indefinitely.
-# ---------------------------------------------------------------------------
 echo "entrypoint: waiting for the database"
 for attempt in $(seq 1 60); do
   if php -r '
@@ -51,18 +38,10 @@ for attempt in $(seq 1 60); do
   sleep 2
 done
 
-# ---------------------------------------------------------------------------
-# Plugins. Activated on every start and skipped where already active, so the set
-# is a property of the image rather than of whoever last used the admin screens.
-#
-# google_vision is deliberately absent: the clip plugin does the same job against
-# a local model, which keeps a charity's assets inside their own tenant and off a
-# per-image billing meter. openai_gpt is opt-in per charity and arrives as an
-# environment variable rather than being activated here by default.
-#
-# On a fresh instance the schema does not exist until ResourceSpace's own setup
-# has run, so failure here is reported and not fatal; the next start picks it up.
-# ---------------------------------------------------------------------------
+# Activated on every start, so the plugin set is a property of the image rather
+# than of whoever last used the admin screens. google_vision is absent because
+# clip does the same work against a local model, keeping assets in the tenant.
+# Failure is not fatal: on a fresh instance the schema does not exist yet.
 PLUGINS="clip simplesaml whisper csv_upload themes"
 if [ "${RS_ENABLE_OPENAI_GPT:-false}" = "true" ]; then
   PLUGINS="$PLUGINS openai_gpt"
@@ -82,12 +61,7 @@ RS_PLUGINS="$PLUGINS" php -r '
     }
 ' || echo "entrypoint: plugin activation skipped (database not yet installed)" >&2
 
-# ---------------------------------------------------------------------------
-# Apache, in the foreground, so it is the process the platform watches.
-#
-# Scheduled work is not started here. It runs as a separate Container Apps Job on
-# this same image with the command overridden, which keeps one scheduler for the
-# instance however many web replicas are running.
-# ---------------------------------------------------------------------------
+# Foreground, so Apache is the process the platform watches. Scheduled work runs
+# as a separate job, which keeps one scheduler however many replicas there are.
 echo "entrypoint: starting apache"
 exec apachectl -D FOREGROUND
