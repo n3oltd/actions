@@ -41,7 +41,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php-ldap \
     php-mbstring \
     php-mysqlnd \
-    # Also supplies dom, which upstream names separately.
     php-xml \
     php-zip \
     poppler-utils \
@@ -76,8 +75,6 @@ RUN sed -i -e "s/^\(\s*\)MaxRequestWorkers.*/\1MaxRequestWorkers       24/" \
 RUN printf '<Directory /var/www/>\n\tOptions FollowSymLinks\n</Directory>\n' \
       >> /etc/apache2/sites-enabled/000-default.conf
 
-# A PHP fatal truncates the page and says nothing a browser can show, so without
-# this the platform reports a healthy container serving a broken one.
 RUN sed -i -e "s|^ErrorLog .*|ErrorLog /dev/stderr|" /etc/apache2/apache2.conf \
  && grep -q '^ErrorLog /dev/stderr' /etc/apache2/apache2.conf
 
