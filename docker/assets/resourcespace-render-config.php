@@ -64,8 +64,11 @@ setting('exiftool_path', '/usr/bin');
 setting('pdftotext_path', '/usr/bin');
 setting('python_path', '/usr/bin');
 setting('php_path', '/usr/bin');
+setting('unoconv_path', '/usr/bin');
 
-// Collection download needs an archiver, and php-zip stands in for one.
+// Both ship disabled. Collections are how a DAM hands over a set of assets, and
+// php-zip supplies the archiver; tar takes over above $collection_download_tar_size.
+setting('collection_download', true);
 setting('use_zip_extension', true);
 
 setting('scramble_key', env_required('RS_SCRAMBLE_KEY'));

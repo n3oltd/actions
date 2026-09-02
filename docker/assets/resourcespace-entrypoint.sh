@@ -85,8 +85,13 @@ php -r '
     include_once "/var/www/html/include/boot.php";
     $missing = [];
     foreach (["im-convert", "im-identify", "im-mogrify", "ghostscript", "ffmpeg",
-              "ffprobe", "exiftool", "pdftotext", "python", "php"] as $utility) {
+              "ffprobe", "exiftool", "pdftotext", "python", "php",
+              "unoconv"] as $utility) {
         if (get_utility_path($utility) === false) { $missing[] = $utility; }
+    }
+    // Reached by path rather than through get_utility_path().
+    if (!file_exists($GLOBALS["mysql_bin_path"] . "/mysqldump")) {
+        $missing[] = "mysqldump";
     }
     if ($missing !== []) {
         fwrite(STDERR, "entrypoint: unresolved: " . implode(" ", $missing) . "\n");
