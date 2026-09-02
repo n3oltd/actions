@@ -1,18 +1,29 @@
 # Builds and pushes the two N3O ResourceSpace images to ACR with date and latest
-# tags, fetching the Dockerfiles from the actions repo. Takes no inputs.
+# tags, fetching the Dockerfiles from the actions repo. Runs on the self-hosted fleet
+# unless the caller asks for fast.
 name: 'docker-build-push-resourcespace'
 
 on:
   workflow_call:
+    inputs:
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
+        type: string
+        required: false
+        default: wait
   workflow_dispatch:
 
 jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode || 'wait' }}
+
   # One job for both: the plugin in the application image writes the vectors the
   # service in the CLIP image reads, so a rebuild must not leave them disagreeing.
   build-push-docker-image-job:
-
-    # GitHub-hosted: the self-hosted runner group excludes public repositories.
-    runs-on: ubuntu-latest
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v7
