@@ -193,15 +193,6 @@ if ($metadata_url === '') {
             $simplesaml['simplesaml_group_attribute'];
         $simplesaml['simplesaml_authorisation_claim_value'] = $entitlement;
     }
-
-    // Not declared by the plugin, so these survive here, and a private key is
-    // better left in a file rendered from the vault than written to the database.
-    $sp_cert = env_optional('RS_SAML_SP_CERT');
-    $sp_key  = env_optional('RS_SAML_SP_KEY');
-    if ($sp_cert !== '' && $sp_key !== '') {
-        setting('simplesaml_sp_certificate', $sp_cert);
-        setting('simplesaml_sp_private_key', $sp_key);
-    }
 }
 
 setting('n3o_plugin_config', ['simplesaml' => $simplesaml]);
