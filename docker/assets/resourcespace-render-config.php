@@ -109,52 +109,62 @@ setting('clip_service_url', env_required('RS_CLIP_SERVICE_URL'));
 setting('clip_keyword_field', (int) env_optional('RS_CLIP_KEYWORD_FIELD', '0'));
 setting('clip_title_field', (int) env_optional('RS_CLIP_TITLE_FIELD', '0'));
 
+// The plugin's own config/config.php is loaded after this file and copies its
+// variables to global scope, so anything it declares cannot be set from here.
+// These go to the plugins table instead, which include_plugin_config() applies
+// last, and the entrypoint writes from the array emitted below.
+//
 // No second factor here, so a reachable login page is a password-only route
 // into the archive. Absent an identity provider it has to stay reachable.
 $metadata_url = env_optional('RS_SAML_METADATA_URL');
 $allow_standard_login = env_bool('RS_ALLOW_STANDARD_LOGIN', $metadata_url === '');
 
 if ($metadata_url === '') {
-    setting('simplesaml_login', false);
-    setting('simplesaml_allow_standard_login', true);
+    $simplesaml = [
+        'simplesaml_login' => false,
+        'simplesaml_allow_standard_login' => true,
+    ];
 } else {
-    setting('simplesaml_login', true);
-    setting('simplesaml_allow_standard_login', $allow_standard_login);
-
-    setting('simplesaml_prefer_standard_login', false);
-    setting('simplesaml_site_block', false);
-
-    // Enabling this lets anyone whose provider asserts the N3O support
-    // account's email address adopt it, a direct path to administrator.
-    setting('simplesaml_create_new_match_email', false);
-    setting('simplesaml_allow_duplicate_email', false);
-
-    // Upstream defaults this false, which strands every user in the group they
-    // first landed in.
-    setting('simplesaml_update_group', true);
-
-    // 2 reads the provider's metadata from its published URL.
-    setting('simplesaml_rsconfig', 2);
-    setting('simplesaml_idp_metadata_url', $metadata_url);
-    setting('simplesaml_check_idp_cert_expiry', true);
-
-    setting('simplesaml_group_attribute', env_optional('RS_SAML_GROUP_ATTRIBUTE', 'groups'));
-    setting('simplesaml_fallback_group', env_required('RS_SAML_FALLBACK_GROUP'));
-
-    // JSON because the setting is an array of arrays, which no scalar
-    // environment variable expresses.
-    $group_map_json = env_optional('RS_SAML_GROUP_MAP', '{}');
-    $group_map = json_decode($group_map_json, true);
+    $group_map = json_decode(env_optional('RS_SAML_GROUP_MAP', '[]'), true);
     if (!is_array($group_map)) {
         fwrite(STDERR, "config: RS_SAML_GROUP_MAP is not valid JSON\n");
         exit(1);
     }
-    setting('simplesaml_groupmap', $group_map);
 
-    // Share links go to people with no account at the provider, so they have to
-    // survive the absent login page.
-    setting('simplesaml_allow_public_shares', true);
+    $simplesaml = [
+        'simplesaml_login' => true,
+        'simplesaml_allow_standard_login' => $allow_standard_login,
 
+        // Upstream defaults this true, which offers the login form instead of
+        // the provider and never starts single sign-on at all.
+        'simplesaml_prefer_standard_login' => false,
+        'simplesaml_site_block' => false,
+
+        // Enabling this lets anyone whose provider asserts the N3O support
+        // account's email address adopt it, a direct path to administrator.
+        'simplesaml_create_new_match_email' => false,
+        'simplesaml_allow_duplicate_email' => false,
+
+        // Upstream defaults this false, which strands every user in the group
+        // they first landed in.
+        'simplesaml_update_group' => true,
+
+        // 2 reads the provider's metadata from its published URL.
+        'simplesaml_rsconfig' => 2,
+        'simplesaml_metadata_url' => $metadata_url,
+        'simplesaml_check_idp_cert_expiry' => true,
+
+        'simplesaml_group_attribute' => env_optional('RS_SAML_GROUP_ATTRIBUTE', 'groups'),
+        'simplesaml_fallback_group' => (int) env_required('RS_SAML_FALLBACK_GROUP'),
+        'simplesaml_groupmap' => $group_map,
+
+        // Share links go to people with no account at the provider, so they
+        // have to survive the absent login page.
+        'simplesaml_allow_public_shares' => true,
+    ];
+
+    // Not declared by the plugin, so these survive here, and a private key is
+    // better left in a file rendered from the vault than written to the database.
     $sp_cert = env_optional('RS_SAML_SP_CERT');
     $sp_key  = env_optional('RS_SAML_SP_KEY');
     if ($sp_cert !== '' && $sp_key !== '') {
@@ -162,6 +172,8 @@ if ($metadata_url === '') {
         setting('simplesaml_sp_private_key', $sp_key);
     }
 }
+
+setting('n3o_plugin_config', ['simplesaml' => $simplesaml]);
 
 $scoping_json = env_optional('RS_SCOPING_JSON');
 if ($scoping_json !== '') {
