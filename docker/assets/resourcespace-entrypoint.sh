@@ -77,7 +77,8 @@ php -r '
         $mix($primary, "#ffffff", 0.85),
         $mix($primary, "#ffffff", 0.93)));
 
-    foreach (["RS_BRAND_LOGO" => "logo.svg", "RS_BRAND_FAVICON" => "favicon.svg"] as $var => $name) {
+    foreach (["RS_BRAND_LOGO" => "logo.svg", "RS_BRAND_LOGO_DARK" => "logo-dark.svg",
+              "RS_BRAND_FAVICON" => "favicon.svg"] as $var => $name) {
         $encoded = getenv($var);
         if ($encoded === false || $encoded === "") { continue; }
         $bytes = base64_decode($encoded, true);
