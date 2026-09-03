@@ -81,6 +81,14 @@ setting('python_path', '/usr/bin');
 setting('php_path', '/usr/bin');
 setting('unoconv_path', '/usr/bin');
 
+// No browser has played FLV since Flash was withdrawn, and upstream still
+// encodes the video proxy as one. These reach ffmpeg split on whitespace, so
+// none of them may contain a comma or a space.
+setting('ffmpeg_preview_extension', 'mp4');
+setting('ffmpeg_preview_options',
+    '-f mp4 -vcodec libx264 -preset medium -crf 23 -pix_fmt yuv420p '
+    . '-acodec aac -b:a 128k -ac 2 -movflags +faststart');
+
 setting('collection_download', true);
 setting('use_zip_extension', true);
 
