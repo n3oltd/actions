@@ -131,6 +131,12 @@ if ($metadata_url === '') {
         exit(1);
     }
 
+    $attributes = json_decode(env_optional('RS_SAML_ATTRIBUTES', '{}'), true);
+    if (!is_array($attributes)) {
+        fwrite(STDERR, "config: RS_SAML_ATTRIBUTES is not valid JSON\n");
+        exit(1);
+    }
+
     $simplesaml = [
         'simplesaml_login' => true,
         'simplesaml_allow_standard_login' => $allow_standard_login,
@@ -154,7 +160,13 @@ if ($metadata_url === '') {
         'simplesaml_metadata_url' => $metadata_url,
         'simplesaml_check_idp_cert_expiry' => true,
 
-        'simplesaml_group_attribute' => env_optional('RS_SAML_GROUP_ATTRIBUTE', 'groups'),
+        // A provider names its claims what it likes, and the plugin matches on
+        // the exact name: one that is wrong yields an account with no username,
+        // no address and no groups rather than an error.
+        'simplesaml_username_attribute' => $attributes['username'] ?? 'uid',
+        'simplesaml_fullname_attribute' => $attributes['fullname'] ?? 'cn',
+        'simplesaml_email_attribute' => $attributes['email'] ?? 'mail',
+        'simplesaml_group_attribute' => $attributes['groups'] ?? 'groups',
         'simplesaml_fallback_group' => (int) env_required('RS_SAML_FALLBACK_GROUP'),
         'simplesaml_groupmap' => $group_map,
 
