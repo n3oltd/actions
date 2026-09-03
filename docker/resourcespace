@@ -84,8 +84,17 @@ WORKDIR /var/www/html
 # new ResourceSpace looks like.
 ARG RESOURCESPACE_RELEASE=https://svn.resourcespace.com/svn/rs/releases/11.0
 
+# One Subversion server, reached once, is the whole supply of the application:
+# a refused connection has already failed a build with nothing else wrong.
 RUN rm -f index.html \
- && svn co -q "$RESOURCESPACE_RELEASE" . \
+ && checked_out=0 \
+ && for attempt in 1 2 3 4 5; do \
+      if svn co -q "$RESOURCESPACE_RELEASE" .; then checked_out=1; break; fi; \
+      echo "svn checkout attempt ${attempt} failed" >&2; \
+      rm -rf .svn; \
+      sleep $((attempt * 15)); \
+    done \
+ && [ "$checked_out" = 1 ] \
  && mkdir -p /var/www/filestore /var/www/scratch \
  && chown -R www-data:www-data /var/www/filestore /var/www/scratch \
  && chmod -R 777 include/
