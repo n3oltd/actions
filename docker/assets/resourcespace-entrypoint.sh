@@ -66,7 +66,10 @@ php -r '
         "    --colour-brand-primary-darkest: %s;\n" .
         "    --colour-brand-primary-light: %s;\n" .
         "    --colour-brand-primary-lightest: %s;\n" .
-        "}\n",
+        "}\n" .
+        // The credit on the login page is editable site text upstream, so
+        // removing it on a branded instance is a supported choice, not a patch.
+        "#login-footer {\n    display: none;\n}\n",
         $primary,
         $mix($primary, "#ffffff", 0.10),
         $mix($primary, "#000000", 0.35),
