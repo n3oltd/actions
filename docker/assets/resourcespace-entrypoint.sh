@@ -133,6 +133,32 @@ RS_PLUGINS="$PLUGINS" php -r '
     echo "entrypoint: plugins await installation" >&2
   }
 
+# A plugin's own config is loaded after include/config.php and wins, so settings
+# it declares reach it only through the plugins table.
+php -r '
+    include_once "/var/www/html/include/boot.php";
+    foreach ($GLOBALS["n3o_plugin_config"] ?? [] as $plugin => $config) {
+        if (!is_plugin_activated($plugin)) {
+            echo "entrypoint: {$plugin} not active, config not written\n";
+            continue;
+        }
+        set_plugin_config($plugin, $config);
+        echo "entrypoint: {$plugin} config written\n";
+    }
+' || {
+    if php -r '
+        $c = mysqli_init();
+        mysqli_ssl_set($c, NULL, NULL, NULL, "/etc/ssl/certs", NULL);
+        @mysqli_real_connect($c, getenv("RS_DB_HOST"), getenv("RS_DB_USER"),
+                             getenv("RS_DB_PASSWORD"), getenv("RS_DB_NAME"), 3306, NULL, 0);
+        exit(@mysqli_query($c, "SELECT 1 FROM plugins LIMIT 1") !== false ? 0 : 1);
+    '; then
+      echo "entrypoint: plugin config failed on an installed instance" >&2
+      exit 1
+    fi
+    echo "entrypoint: plugin config awaits installation" >&2
+  }
+
 php -r '
     $required = ["mysqli", "curl", "dom", "gd", "intl", "mbstring", "xml",
                  "zip", "ldap", "imap", "json", "apcu"];
