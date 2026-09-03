@@ -49,7 +49,11 @@ if (env_optional('RS_BRAND_PRIMARY') !== '') {
     setting('plugins', ['n3o_branding']);
     if (env_optional('RS_BRAND_LOGO') !== '') {
         setting('linkedheaderimgsrc', '/gfx/brand/logo.svg');
-        setting('linkedheaderimgsrc_dark', '/gfx/brand/logo.svg');
+        // A wordmark drawn for a dark header is unreadable on a light page, so
+        // the two are separate files and the same one only when there is one.
+        setting('linkedheaderimgsrc_dark', env_optional('RS_BRAND_LOGO_DARK') !== ''
+            ? '/gfx/brand/logo-dark.svg'
+            : '/gfx/brand/logo.svg');
     }
     if (env_optional('RS_BRAND_FAVICON') !== '') {
         setting('header_favicon', 'gfx/brand/favicon.svg');
@@ -79,6 +83,10 @@ setting('unoconv_path', '/usr/bin');
 
 setting('collection_download', true);
 setting('use_zip_extension', true);
+
+// Where a provider creates accounts, asking for one is a dead end for whoever
+// follows the link and a queue nobody is watching for whoever does not.
+setting('allow_account_request', env_optional('RS_SAML_METADATA_URL') === '');
 
 // Without both of these ResourceSpace calls mail(), and there is no MTA here.
 setting('use_smtp', true);
@@ -174,6 +182,17 @@ if ($metadata_url === '') {
         // have to survive the absent login page.
         'simplesaml_allow_public_shares' => true,
     ];
+
+    // Checked before a user is created, so somebody outside the entitlement
+    // gets no account rather than a restricted one. The provider's own
+    // assignment check cannot serve here: it does not traverse nested groups,
+    // and claims do.
+    $entitlement = env_optional('RS_SAML_ENTITLEMENT');
+    if ($entitlement !== '') {
+        $simplesaml['simplesaml_authorisation_claim_name'] =
+            $simplesaml['simplesaml_group_attribute'];
+        $simplesaml['simplesaml_authorisation_claim_value'] = $entitlement;
+    }
 
     // Not declared by the plugin, so these survive here, and a private key is
     // better left in a file rendered from the vault than written to the database.

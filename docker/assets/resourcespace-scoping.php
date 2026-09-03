@@ -74,8 +74,11 @@ function GlobalHookHandleuserref($userref): void
     }
 
     $held = ps_query(
-        'SELECT u.origin AS origin, u.search_filter_o_id AS ref, f.name AS name
-           FROM user u LEFT JOIN filter f ON f.ref = u.search_filter_o_id
+        'SELECT u.origin AS origin, u.search_filter_o_id AS ref, f.name AS name,
+                g.search_filter_id AS groupfilter
+           FROM user u
+           LEFT JOIN filter f ON f.ref = u.search_filter_o_id
+           LEFT JOIN usergroup g ON g.ref = u.usergroup
           WHERE u.ref = ?',
         ['i', $userref]
     );
@@ -85,6 +88,17 @@ function GlobalHookHandleuserref($userref): void
         return;
     }
     $heldname = (string) $held[0]['name'];
+
+    // An override outranks the group's filter, so scoping somebody whose group
+    // carries none would narrow a group meant to see everything. Only narrow
+    // those already narrowed.
+    if ((int) $held[0]['groupfilter'] < 1) {
+        if (str_starts_with($heldname, 'scope:')) {
+            ps_query('UPDATE user SET search_filter_o_id = NULL WHERE ref = ?', ['i', $userref]);
+            $GLOBALS['usersearchfilter'] = 0;
+        }
+        return;
+    }
 
     $values = n3o_scoping_values($n3o_scoping);
     if ($values === []) {

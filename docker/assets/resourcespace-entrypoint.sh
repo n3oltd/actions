@@ -25,6 +25,21 @@ if [ -n "${RS_SCOPING_JSON:-}" ]; then
   ' || exit 1
 fi
 
+# The platform terminates TLS at its ingress and forwards here over plain HTTP,
+# so the port the server sees is 80 and self-referential URLs it builds carry it.
+# SimpleSAMLphp composes the address it returns a user to that way, producing an
+# https URL on port 80, which no browser can reach. Naming the canonical port is
+# what removes it. The hostname is per-instance, so this cannot be baked.
+RS_HOST=$(php -r 'echo parse_url(getenv("RS_BASE_URL"), PHP_URL_HOST) ?: "";')
+[ -n "$RS_HOST" ] || { echo "entrypoint: RS_BASE_URL has no host" >&2; exit 1; }
+VHOST=/etc/apache2/sites-enabled/000-default.conf
+if ! grep -q UseCanonicalName "$VHOST"; then
+  sed -i "s|<VirtualHost \*:80>|<VirtualHost *:80>\n\tServerName ${RS_HOST}:443\n\tUseCanonicalName On|" "$VHOST"
+fi
+grep -q "ServerName ${RS_HOST}:443" "$VHOST" || {
+  echo "entrypoint: could not set the canonical server name" >&2; exit 1; }
+echo "entrypoint: canonical name ${RS_HOST}:443"
+
 # Mounted, so they exist but may be owned by the mount rather than by Apache.
 for dir in /var/www/filestore /var/www/scratch; do
   mkdir -p "$dir"
@@ -51,7 +66,10 @@ php -r '
         "    --colour-brand-primary-darkest: %s;\n" .
         "    --colour-brand-primary-light: %s;\n" .
         "    --colour-brand-primary-lightest: %s;\n" .
-        "}\n",
+        "}\n" .
+        // The credit on the login page is editable site text upstream, so
+        // removing it on a branded instance is a supported choice, not a patch.
+        "#login-footer {\n    display: none;\n}\n",
         $primary,
         $mix($primary, "#ffffff", 0.10),
         $mix($primary, "#000000", 0.35),
@@ -59,7 +77,8 @@ php -r '
         $mix($primary, "#ffffff", 0.85),
         $mix($primary, "#ffffff", 0.93)));
 
-    foreach (["RS_BRAND_LOGO" => "logo.svg", "RS_BRAND_FAVICON" => "favicon.svg"] as $var => $name) {
+    foreach (["RS_BRAND_LOGO" => "logo.svg", "RS_BRAND_LOGO_DARK" => "logo-dark.svg",
+              "RS_BRAND_FAVICON" => "favicon.svg"] as $var => $name) {
         $encoded = getenv($var);
         if ($encoded === false || $encoded === "") { continue; }
         $bytes = base64_decode($encoded, true);
