@@ -1,5 +1,5 @@
 # torch resolves from PyTorch's CPU index, set in the Dockerfile.
-torch==2.13.0
+torch==2.14.0
 open_clip_torch==3.3.0
 timm==1.0.29
 # open_clip constructs a Hugging Face tokenizer without depending on one.
