@@ -2,7 +2,7 @@
 ### base
 ########################
 # open_clip_torch and timm publish no 3.13 classifier.
-FROM python:3.12-slim AS base
+FROM python:3.14-slim AS base
 
 ########################
 ### final
