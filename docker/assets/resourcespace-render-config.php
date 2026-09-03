@@ -175,6 +175,17 @@ if ($metadata_url === '') {
         'simplesaml_allow_public_shares' => true,
     ];
 
+    // Checked before a user is created, so somebody outside the entitlement
+    // gets no account rather than a restricted one. The provider's own
+    // assignment check cannot serve here: it does not traverse nested groups,
+    // and claims do.
+    $entitlement = env_optional('RS_SAML_ENTITLEMENT');
+    if ($entitlement !== '') {
+        $simplesaml['simplesaml_authorisation_claim_name'] =
+            $simplesaml['simplesaml_group_attribute'];
+        $simplesaml['simplesaml_authorisation_claim_value'] = $entitlement;
+    }
+
     // Not declared by the plugin, so these survive here, and a private key is
     // better left in a file rendered from the vault than written to the database.
     $sp_cert = env_optional('RS_SAML_SP_CERT');

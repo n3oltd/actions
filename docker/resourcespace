@@ -78,6 +78,17 @@ RUN printf '<Directory /var/www/>\n\tOptions FollowSymLinks\n</Directory>\n' \
 RUN sed -i -e "s|^ErrorLog .*|ErrorLog /dev/stderr|" /etc/apache2/apache2.conf \
  && grep -q '^ErrorLog /dev/stderr' /etc/apache2/apache2.conf
 
+# TLS ends at the platform's ingress and the request arrives here over plain
+# HTTP, so anything reading $_SERVER['HTTPS'] concludes the connection is
+# insecure. SimpleSAMLphp then refuses to create a session at all -- "Setting
+# secure cookie on plain HTTP is not allowed" -- and single sign-on never
+# starts. Nothing reaches this container except through that ingress.
+RUN a2enmod setenvif > /dev/null \
+ && printf 'SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on\n' \
+      > /etc/apache2/conf-available/forwarded-proto.conf \
+ && a2enconf forwarded-proto > /dev/null \
+ && test -L /etc/apache2/conf-enabled/forwarded-proto.conf
+
 WORKDIR /var/www/html
 
 # Released over Subversion rather than as tags or images. Bumping this is what a
