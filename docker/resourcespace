@@ -98,6 +98,25 @@ RUN a2enmod setenvif > /dev/null \
  && a2enconf forwarded-proto > /dev/null \
  && test -L /etc/apache2/conf-enabled/forwarded-proto.conf
 
+# Both tables: `always` reaches only the error one.
+# private, not public: the response can carry a share key.
+RUN a2enmod headers > /dev/null \
+ && printf '%s\n' \
+      '<FilesMatch "\.php$">' \
+      '  <If "%{QUERY_STRING} =~ /css_reload_key=/">' \
+      '    Header unset Pragma' \
+      '    Header unset Expires' \
+      '    Header unset Cache-Control' \
+      '    Header always unset Pragma' \
+      '    Header always unset Expires' \
+      '    Header always unset Cache-Control' \
+      '    Header set Cache-Control "private, max-age=31536000, immutable"' \
+      '  </If>' \
+      '</FilesMatch>' \
+      > /etc/apache2/conf-available/generated-css.conf \
+ && a2enconf generated-css > /dev/null \
+ && test -L /etc/apache2/conf-enabled/generated-css.conf
+
 WORKDIR /var/www/html
 
 # Released over Subversion rather than as tags or images. Bumping this is what a
