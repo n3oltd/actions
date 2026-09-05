@@ -109,10 +109,12 @@ jobs:
         run: |
           cfg="${{ inputs.build-configuration }}"
           # -m:4 caps MSBuild parallelism to the pod's cpu limit so peak memory stays within the
-          # runner (16Gi) even on a full-solution build.
+          # runner (16Gi) even on a full-solution build. This job runs several builds in
+          # sequence, so -nodeReuse:true overrides the repo response file and keeps the pool
+          # warm across them.
           if [ "${{ steps.affected.outputs.scope }}" = "full" ]; then
-            dotnet build -c "$cfg" -m:4
+            dotnet build -c "$cfg" -m:4 -nodeReuse:true
           else
-            [ -f "$RUNNER_TEMP/affected.proj" ] && dotnet build "$RUNNER_TEMP/affected.proj" -c "$cfg" -m:4
-            while read -r c; do [ -n "$c" ] && dotnet build "$c" -c "$cfg" -m:4; done < "$RUNNER_TEMP/changed-csprojs.txt"
+            [ -f "$RUNNER_TEMP/affected.proj" ] && dotnet build "$RUNNER_TEMP/affected.proj" -c "$cfg" -m:4 -nodeReuse:true
+            while read -r c; do [ -n "$c" ] && dotnet build "$c" -c "$cfg" -m:4 -nodeReuse:true; done < "$RUNNER_TEMP/changed-csprojs.txt"
           fi

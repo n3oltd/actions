@@ -24,6 +24,7 @@ runs:
           build:
             - 'src/**'
             - 'Directory.Build.props'
+            - 'Directory.Build.rsp'
             - 'Directory.Packages.props'
             - 'global.json'
             - 'nuget.config'
