@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM node:14.21.3-bullseye-slim AS base
+FROM node:24.20.0-bullseye-slim AS base
 
 WORKDIR /app
 
