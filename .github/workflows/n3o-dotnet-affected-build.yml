@@ -108,10 +108,9 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           cfg="${{ inputs.build-configuration }}"
-          # -m:4 caps MSBuild parallelism to the pod's cpu limit so peak memory stays within the
-          # runner (16Gi) even on a full-solution build. This job runs several builds in
-          # sequence, so -nodeReuse:true overrides the repo response file and keeps the pool
-          # warm across them.
+          # Peak MSBuild memory scales with node count, so parallelism is capped rather than
+          # taken from the core count. These builds run in sequence, so node reuse is worth
+          # its memory and is re-enabled over a repo response file that declines it.
           if [ "${{ steps.affected.outputs.scope }}" = "full" ]; then
             dotnet build -c "$cfg" -m:4 -nodeReuse:true
           else
