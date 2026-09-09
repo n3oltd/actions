@@ -1,0 +1,83 @@
+# Reusable workflow that converts Engage content YAML to JSON, then publishes it and its image
+# assets to Azure blob storage. Use it to deploy updated Engage featured/getting-started content.
+name: Publish Engage Content
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build _publish tree
+        run: |
+          yml_to_json() {
+            local src="$1" dest="$2"
+            mkdir -p "$dest"
+            for yml in "$src"/*.yml; do
+              name=$(basename "$yml" .yml)
+              yq -o=json '.' "$yml" > "$dest/${name}.json"
+            done
+          }
+
+          copy_dir() {
+            local src="$1" dest="$2"
+            if [ -d "$src" ]; then
+              mkdir -p "$dest"
+              cp "$src"/* "$dest"/
+            fi
+          }
+
+          yml_to_json engage/featured-content _publish/featuredContent
+          yml_to_json engage/getting-started  _publish/gettingStarted
+
+          copy_dir engage/getting-started/images _publish/gettingStarted/images
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # releaseNotes/ shares this container and is written by the n3o CLI, so each prefix is
+      # replaced on its own rather than emptying the container
+      - name: Replace content in the engage container
+        run: |
+          for prefix in featuredContent gettingStarted; do
+            echo "::group::$prefix"
+            az storage blob delete-batch \
+              --account-name n3ocontent \
+              --auth-mode login \
+              --source engage \
+              --pattern "$prefix/*"
+
+            az storage blob upload-batch \
+              --account-name n3ocontent \
+              --auth-mode login \
+              --destination engage \
+              --destination-path "$prefix" \
+              --source "_publish/$prefix" \
+              --overwrite
+            echo "::endgroup::"
+          done
+
+      - name: Replace assets/ in karakoram container (all envs)
+        run: |
+          for account in eu1storageprod eu1storageqa; do
+            echo "::group::$account"
+            az storage blob delete-batch \
+              --account-name "$account" \
+              --auth-mode login \
+              --source karakoram \
+              --pattern 'assets/*'
+
+            az storage blob upload-batch \
+              --account-name "$account" \
+              --auth-mode login \
+              --destination karakoram \
+              --destination-path assets \
+              --source engage/image-assets \
+              --overwrite
+            echo "::endgroup::"
+          done
