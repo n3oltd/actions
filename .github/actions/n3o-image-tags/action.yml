@@ -16,6 +16,13 @@ inputs:
     description: Release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production.
     required: false
     default: ''
+  commit-sha:
+    description: >-
+      The commit the image is built from. A caller that checks out a branch rather than
+      github.sha must pass the SHA it actually resolved, since github.sha is the tip at dispatch
+      and the two differ once a build has queued.
+    required: false
+    default: ${{ github.sha }}
 
 outputs:
   version:
@@ -43,7 +50,7 @@ runs:
         IMAGE: ${{ inputs.registry }}/${{ inputs.repository }}
         CHANNEL: ${{ inputs.channel }}
         RUN_NUMBER: ${{ github.run_number }}
-        SHA: ${{ github.sha }}
+        SHA: ${{ inputs.commit-sha }}
       run: |
         set -euo pipefail
         NOW=$(date -u +'%Y.%-m.%-d')
