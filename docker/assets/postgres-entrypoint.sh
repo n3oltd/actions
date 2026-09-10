@@ -68,6 +68,8 @@ mkdir /etc/pgbackrest/backup-repo
   echo "spool-path=/var/spool/pgbackrest"
   echo "[global:archive-push]"
   echo "process-max=4"
+  echo "compress-type=zst"
+  echo "compress-level=3"
 } >> /etc/pgbackrest/pgbackrest.conf
 
 chmod 600 /etc/pgbackrest/pgbackrest.conf
