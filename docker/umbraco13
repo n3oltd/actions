@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM mcr.microsoft.com/dotnet/aspnet:8.0.30-noble AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0.31-noble AS base
 
 WORKDIR /app
 
