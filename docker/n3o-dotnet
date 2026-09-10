@@ -3,7 +3,7 @@ ARG VARIANT=base
 ########################
 ### base
 ########################
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.11-noble AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-noble AS base
 
 WORKDIR /app
 
