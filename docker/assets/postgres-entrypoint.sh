@@ -63,6 +63,13 @@ mkdir /etc/pgbackrest/backup-repo
   echo "process-max=2"
   echo "buffer-size=8MiB"
   echo "start-fast=y"
+  # A synchronous push uploads one segment per archive_command invocation, so a write burst
+  # outruns it and PostgreSQL stops recycling WAL. Async drains archive_status through the
+  # spool in parallel; process-max above is inert without it.
+  echo "archive-async=y"
+  echo "spool-path=/var/spool/pgbackrest"
+  echo "[global:archive-push]"
+  echo "process-max=4"
 } >> /etc/pgbackrest/pgbackrest.conf
 
 chmod 600 /etc/pgbackrest/pgbackrest.conf
