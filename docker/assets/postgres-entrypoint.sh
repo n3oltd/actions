@@ -63,6 +63,11 @@ mkdir /etc/pgbackrest/backup-repo
   echo "process-max=2"
   echo "buffer-size=8MiB"
   echo "start-fast=y"
+  # process-max is inert for archive-push outside async mode.
+  echo "archive-async=y"
+  echo "spool-path=/var/spool/pgbackrest"
+  echo "[global:archive-push]"
+  echo "process-max=4"
 } >> /etc/pgbackrest/pgbackrest.conf
 
 chmod 600 /etc/pgbackrest/pgbackrest.conf

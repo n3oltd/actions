@@ -16,8 +16,8 @@ RUN apt-get update \
 
 COPY --chmod=0755 postgres-entrypoint.sh /usr/local/bin/postgres-entrypoint.sh
 
-RUN mkdir -p /var/lib/postgresql /etc/pgbackrest \
- && chown -R postgres:postgres /var/lib/postgresql /etc/pgbackrest
+RUN mkdir -p /var/lib/postgresql /etc/pgbackrest /var/spool/pgbackrest \
+ && chown -R postgres:postgres /var/lib/postgresql /etc/pgbackrest /var/spool/pgbackrest
 
 USER postgres
 
