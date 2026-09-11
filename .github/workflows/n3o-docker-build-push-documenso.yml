@@ -1,0 +1,63 @@
+# Builds and pushes the N3O Documenso Docker image to ACR with date and latest
+# tags, fetching the Dockerfile from the actions repo. Runs on the self-hosted fleet
+# unless the caller asks for fast.
+name: 'docker-build-push-documenso'
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
+        type: string
+        required: false
+        default: wait
+  workflow_dispatch:
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode || 'wait' }}
+
+  build-push-docker-image-job:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: acr
+        name: acr login
+        uses: n3oltd/actions/.github/actions/n3o-acr-login@main
+        with:
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: fetch dockerfile
+        uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
+        with:
+          dockerfile: documenso
+
+      - id: meta
+        name: prepare documenso
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: n3o-documenso
+
+      # Stated rather than inherited: upstream publishes multi-arch, and an arm64
+      # build reaches the cluster as an exec format error at container start rather
+      # than as a failed build.
+      #
+      # pull: true because this image is a mirror -- without it a runner with a
+      # cached layer can republish an older upstream under a new date tag.
+      - name: build and push documenso
+        uses: docker/build-push-action@v7
+        with:
+          builder: ${{ steps.acr.outputs.builder }}
+          context: .
+          target: final
+          file: documenso
+          platforms: linux/amd64
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
