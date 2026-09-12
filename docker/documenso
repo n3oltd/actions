@@ -1,0 +1,14 @@
+########################
+### base
+########################
+# Mirrored unmodified. Documenso is AGPL-3.0: running the published artefact
+# satisfies the licence by pointing users at upstream, while modifying it and
+# serving it to donors would oblige us to publish our modified source under
+# section 13. Nothing may be added to this file beyond the stage split the
+# build workflow's `target: final` requires.
+FROM documenso/documenso:v2.18.0 AS base
+
+########################
+### final
+########################
+FROM base AS final
