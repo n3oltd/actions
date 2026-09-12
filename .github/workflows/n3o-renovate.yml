@@ -1,12 +1,6 @@
 # A private registry needs the token twice: once for Renovate's metadata lookups, and again for
 # the package manager it shells out to when rebuilding a lockfile. Dropping either host rule
 # gives a run that resolves versions and then cannot install them.
-#
-# The same trap has a quieter form for container registries. A repository pinning
-# n3oltd.azurecr.io images -- the kubernetes and dockerfile managers both -- gets 401 from ACR
-# without a docker host rule, and Renovate reports that as no update available rather than as a
-# failure. Pass acr-username and acr-password and it is authenticated; leave them out and the
-# rule is omitted entirely, which is the behaviour every repository had before.
 name: n3o renovate
 
 on:
@@ -28,8 +22,9 @@ on:
         required: true
       acr-username:
         description: >-
-          ACR pull credential. Optional, and only a repository pinning n3oltd.azurecr.io images needs
-          it: without it the registry answers 401 and Renovate reports no update rather than an error.
+          ACR pull credential, needed by a repository that pins n3oltd.azurecr.io images. Without it
+          the registry answers 401, which Renovate reports as no update available rather than as an
+          error.
         required: false
       acr-password:
         description: The password for acr-username. Required whenever acr-username is passed.
@@ -49,8 +44,7 @@ jobs:
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
     steps:
-      # Built here rather than inline below because the ACR rule is conditional, and an entry
-      # carrying an empty username makes Renovate skip the host it was meant to authenticate.
+      # An entry with an empty username makes Renovate skip that host, so the rule is omitted.
       - name: compose the host rules
         env:
           TOKEN: ${{ secrets.token }}
