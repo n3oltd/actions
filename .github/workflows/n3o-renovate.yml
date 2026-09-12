@@ -1,6 +1,3 @@
-# A private registry needs the token twice: once for Renovate's metadata lookups, and again for
-# the package manager it shells out to when rebuilding a lockfile. Dropping either host rule
-# gives a run that resolves versions and then cannot install them.
 name: n3o renovate
 
 on:
@@ -44,7 +41,7 @@ jobs:
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
     steps:
-      # An entry with an empty username makes Renovate skip that host, so the rule is omitted.
+      # Omit a rule rather than sending one with an empty credential.
       - name: compose the host rules
         env:
           TOKEN: ${{ secrets.token }}
