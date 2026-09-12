@@ -1,6 +1,12 @@
 # A private registry needs the token twice: once for Renovate's metadata lookups, and again for
 # the package manager it shells out to when rebuilding a lockfile. Dropping either host rule
 # gives a run that resolves versions and then cannot install them.
+#
+# The same trap has a quieter form for container registries. A repository pinning
+# n3oltd.azurecr.io images -- the kubernetes and dockerfile managers both -- gets 401 from ACR
+# without a docker host rule, and Renovate reports that as no update available rather than as a
+# failure. Pass acr-username and acr-password and it is authenticated; leave them out and the
+# rule is omitted entirely, which is the behaviour every repository had before.
 name: n3o renovate
 
 on:
@@ -20,6 +26,14 @@ on:
       token:
         description: Classic PAT with repo and package read. App tokens are refused by the package registries.
         required: true
+      acr-username:
+        description: >-
+          ACR pull credential. Optional, and only a repository pinning n3oltd.azurecr.io images needs
+          it: without it the registry answers 401 and Renovate reports no update rather than an error.
+        required: false
+      acr-password:
+        description: The password for acr-username. Required whenever acr-username is passed.
+        required: false
 
 concurrency:
   group: renovate-${{ github.repository }}
@@ -35,13 +49,39 @@ jobs:
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
     steps:
+      # Built here rather than inline below because the ACR rule is conditional, and an entry
+      # carrying an empty username makes Renovate skip the host it was meant to authenticate.
+      - name: compose the host rules
+        env:
+          TOKEN: ${{ secrets.token }}
+          ACR_USERNAME: ${{ secrets.acr-username }}
+          ACR_PASSWORD: ${{ secrets.acr-password }}
+        run: |
+          set -euo pipefail
+          if [ -n "${ACR_USERNAME:-}" ] && [ -z "${ACR_PASSWORD:-}" ]; then
+            echo "::error::acr-username was passed without acr-password"
+            exit 1
+          fi
+          rules=$(ACR_USERNAME="${ACR_USERNAME:-}" ACR_PASSWORD="${ACR_PASSWORD:-}" TOKEN="$TOKEN" python3 -c '
+          import json, os
+          t = os.environ["TOKEN"]
+          rules = [
+            {"matchHost": "npm.pkg.github.com",   "hostType": "npm",   "token": t},
+            {"matchHost": "nuget.pkg.github.com", "hostType": "nuget", "token": t},
+          ]
+          if os.environ["ACR_USERNAME"]:
+            rules.append({"matchHost": "n3oltd.azurecr.io", "hostType": "docker",
+                          "username": os.environ["ACR_USERNAME"],
+                          "password": os.environ["ACR_PASSWORD"]})
+          print(json.dumps(rules))')
+          echo "::add-mask::$rules"
+          echo "RENOVATE_HOST_RULES=$rules" >> "$GITHUB_ENV"
+          echo "host rules: github packages$([ -n "${ACR_USERNAME:-}" ] && echo ' + n3oltd.azurecr.io')"
+
       - uses: renovatebot/github-action@v46.2.0
         with:
           token: ${{ secrets.token }}
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_ONBOARDING: "false"
-          RENOVATE_HOST_RULES: >-
-            [{"matchHost":"npm.pkg.github.com","hostType":"npm","token":"${{ secrets.token }}"},
-             {"matchHost":"nuget.pkg.github.com","hostType":"nuget","token":"${{ secrets.token }}"}]
           LOG_LEVEL: ${{ inputs.log-level }}
