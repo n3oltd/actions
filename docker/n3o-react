@@ -10,10 +10,6 @@ WORKDIR /app
 ########################
 FROM base AS builder
 
-RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
 ARG REACT_APP_SENTRY_RELEASE
 
 ENV REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
