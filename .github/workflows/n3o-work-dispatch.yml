@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 jobs:
-  pr:
+  pr-status:
     if: >-
       github.event_name == 'pull_request' &&
       github.actor != 'dependabot[bot]' &&
@@ -98,7 +98,7 @@ jobs:
             n3o work mark-released --issue "$n" --env prod --internal-only
           done
 
-  guard-linked:
+  issue-linked:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
@@ -147,13 +147,13 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          n3o work guard-linked \
+          n3o work guard-work-issue \
             --pr-repo "$GITHUB_REPOSITORY" \
             --pr-number "${{ github.event.pull_request.number }}" \
             --title "$PR_TITLE" \
             --body "$PR_BODY"
 
-  push:
+  commit-status:
     if: >-
       github.event_name == 'push' &&
       github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
