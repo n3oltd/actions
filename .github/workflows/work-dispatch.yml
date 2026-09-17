@@ -10,6 +10,6 @@ on:
       - main
 
 jobs:
-  dispatch:
+  work:
     uses: ./.github/workflows/n3o-work-dispatch.yml
     secrets: inherit
