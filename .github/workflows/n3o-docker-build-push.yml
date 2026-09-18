@@ -53,7 +53,7 @@ on:
         default: false
 
       mode:
-        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable). A [ci fast] commit marker forces fast."
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
         type: string
         required: false
         default: wait
@@ -80,11 +80,6 @@ jobs:
   job1:
     name: ${{ inputs.container-repository }}
     needs: pick
-
-    # Default mode (wait) keeps these builds self-hosted only so they don't consume paid GitHub
-    # minutes; queueing when the fleet is busy is acceptable. Callers that need an urgent build
-    # (e.g. a manual QA release) pass mode=fast to fall back to a hosted runner when the fleet is
-    # saturated. The pick job resolves the actual runner.
     runs-on: ${{ needs.pick.outputs.runs-on }}
 
     steps:

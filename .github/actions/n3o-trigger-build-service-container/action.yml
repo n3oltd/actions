@@ -16,7 +16,7 @@ inputs:
     default: '0'
 
   mode:
-    description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable). A [ci fast] commit marker forces fast."
+    description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
     required: false
     default: wait
 

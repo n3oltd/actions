@@ -7,8 +7,7 @@
 #   fast           — GitHub-hosted. Bypasses the fleet entirely for an immediate start with no
 #                    queue. Billable, so it's an explicit opt-in for when a developer is blocked
 #                    and needs a build now (e.g. while the fleet is mid-burst).
-# A [ci fast] marker in the triggering commit's message forces fast — the pushed head commit, or
-# the PR's head commit — so every caller honours it without repeating the check.
+# A [ci fast] marker in the head commit's message forces fast, on a push or a pull request.
 # Public repos always get the hosted runner (the self-hosted runner group is private-repo only).
 name: n3o pick runner
 
@@ -71,7 +70,7 @@ jobs:
           if [ -n "$PR_HEAD_SHA" ]; then
             message="$(gh api "repos/$GITHUB_REPOSITORY/commits/$PR_HEAD_SHA" --jq .commit.message)"
           fi
-          if [[ "$message" == *"[ci fast]"* ]]; then
+          if [[ "${message,,}" == *"[ci fast]"* ]]; then
             echo "[ci fast] marker -> hosted (immediate, never queues)"
             choose "$FALLBACK"; exit 0
           fi

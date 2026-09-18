@@ -16,7 +16,7 @@ on:
         type: string
         default: Release
       mode:
-        description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable). A [ci fast] commit marker forces fast."
+        description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable)."
         type: string
         default: wait
     outputs:
