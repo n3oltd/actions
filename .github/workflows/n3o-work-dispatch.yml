@@ -57,7 +57,6 @@ jobs:
             $flags
 
       - name: dispatch rollout tracking
-        # Data fixes and migrations roll out to subscriptions; a public repository has neither.
         if: github.event.pull_request.merged == true && github.event.repository.private
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
