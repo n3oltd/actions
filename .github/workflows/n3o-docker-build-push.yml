@@ -74,8 +74,7 @@ jobs:
     name: ${{ inputs.container-repository }} (pick)
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
-      # Default wait (self-hosted, free); a [ci fast] commit marker opts a single build into hosted.
-      mode: ${{ contains(github.event.head_commit.message, '[ci fast]') && 'fast' || inputs.mode }}
+      mode: ${{ inputs.mode }}
     secrets: inherit
 
   job1:

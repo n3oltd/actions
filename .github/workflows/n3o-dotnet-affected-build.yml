@@ -28,7 +28,7 @@ jobs:
   pick:
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
-      mode: ${{ contains(github.event.head_commit.message, '[ci fast]') && 'fast' || inputs.mode }}
+      mode: ${{ inputs.mode }}
     secrets: inherit
 
   build:
