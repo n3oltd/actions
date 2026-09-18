@@ -7,6 +7,7 @@
 #   fast           — GitHub-hosted. Bypasses the fleet entirely for an immediate start with no
 #                    queue. Billable, so it's an explicit opt-in for when a developer is blocked
 #                    and needs a build now (e.g. while the fleet is mid-burst).
+# A [ci fast] marker in the head commit's message forces fast, on a push or a pull request.
 # Public repos always get the hosted runner (the self-hosted runner group is private-repo only).
 name: n3o pick runner
 
@@ -46,6 +47,9 @@ jobs:
           FALLBACK: ${{ inputs.fallback }}
           MODE: ${{ inputs.mode }}
           IS_PRIVATE: ${{ github.event.repository.private }}
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           choose() { echo "runs-on=$1" >> "$GITHUB_OUTPUT"; echo "picked runner: $1"; }
 
@@ -58,6 +62,16 @@ jobs:
           # fast: skip the fleet for an immediate, never-queued start (billable).
           if [ "$MODE" = fast ]; then
             echo "fast mode -> hosted (immediate, never queues)"
+            choose "$FALLBACK"; exit 0
+          fi
+
+          # A pull_request payload carries no commit message, so a PR's head commit is read back.
+          message="$HEAD_COMMIT_MESSAGE"
+          if [ -n "$PR_HEAD_SHA" ]; then
+            message="$(gh api "repos/$GITHUB_REPOSITORY/commits/$PR_HEAD_SHA" --jq .commit.message)"
+          fi
+          if [[ "${message,,}" == *"[ci fast]"* ]]; then
+            echo "[ci fast] marker -> hosted (immediate, never queues)"
             choose "$FALLBACK"; exit 0
           fi
 

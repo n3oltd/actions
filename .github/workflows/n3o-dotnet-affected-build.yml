@@ -16,7 +16,7 @@ on:
         type: string
         default: Release
       mode:
-        description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable). A [ci fast] commit marker forces fast."
+        description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable)."
         type: string
         default: wait
     outputs:
@@ -28,7 +28,7 @@ jobs:
   pick:
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
-      mode: ${{ contains(github.event.head_commit.message, '[ci fast]') && 'fast' || inputs.mode }}
+      mode: ${{ inputs.mode }}
     secrets: inherit
 
   build:
