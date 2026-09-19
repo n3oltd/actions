@@ -45,7 +45,7 @@ COPY --from=builder /app/build/static/js/ /
 ########################
 ### final
 ########################
-FROM node:26.8.2 AS final
+FROM node:26.9.0 AS final
 
 WORKDIR /app
 
