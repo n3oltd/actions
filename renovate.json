@@ -80,19 +80,6 @@
       "groupName": "caddy"
     },
     {
-      "description": "Node 26 aborts svc-fe-engage's production build partway through with a V8 Zone allocation failure, reproducibly and at heap sizes no --max-old-space-size value reaches. Scoped to this file, because n3o-node shares the package and should keep being offered new majors.",
-      "matchManagers": [
-        "dockerfile"
-      ],
-      "matchFileNames": [
-        "docker/n3o-react"
-      ],
-      "matchPackageNames": [
-        "node"
-      ],
-      "allowedVersions": "/^24\\./"
-    },
-    {
       "description": "Umbraco 13 targets net8.0, and .NET does not roll forward a major by default, so a newer runtime base here is wrong by construction rather than merely undesirable: the image would build clean and fail at container start. Scoped to this file, because n3o-dotnet shares the package and should keep being offered new majors. Moving to Umbraco 17 replaces this Dockerfile rather than bumping it.",
       "matchManagers": [
         "dockerfile"
@@ -140,19 +127,6 @@
     }
   },
   "customManagers": [
-    {
-      "description": "The express version n3o-react's runtime stage installs is an argument to npm install, which the dockerfile manager does not read.",
-      "customType": "regex",
-      "managerFilePatterns": [
-        "docker/n3o-react"
-      ],
-      "matchStrings": [
-        "npm install express@(?<currentValue>\\S+)"
-      ],
-      "depNameTemplate": "express",
-      "datasourceTemplate": "npm",
-      "versioningTemplate": "npm"
-    },
     {
       "description": "The ResourceSpace release is a Subversion URL in docker/resourcespace, which no packaged manager reads.",
       "customType": "regex",
