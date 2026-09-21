@@ -38,7 +38,6 @@ RUN --mount=type=secret,id=github_token,required=true \
 
 ########################
 ### sourcemaps
-### exported via `--output type=local,dest=...` for upload by CI
 ########################
 FROM scratch AS sourcemaps
 
@@ -49,7 +48,7 @@ COPY --from=builder /app/build/static/js/ /
 ########################
 FROM builder AS served
 
-# A delete after the final stage's COPY only writes whiteouts; the maps stay in the layer beneath.
+# Deleting after the final stage's copy only writes whiteouts; the bytes stay beneath.
 RUN find /app/build -name '*.map' -delete
 
 ########################
