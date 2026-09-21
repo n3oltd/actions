@@ -49,7 +49,7 @@ COPY --from=builder /app/build/static/js/ /
 ########################
 FROM builder AS served
 
-# Deleting after the final stage's COPY only writes whiteouts, leaving the maps in the layer beneath.
+# A delete after the final stage's COPY only writes whiteouts; the maps stay in the layer beneath.
 RUN find /app/build -name '*.map' -delete
 
 ########################

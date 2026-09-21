@@ -80,7 +80,7 @@
       "groupName": "caddy"
     },
     {
-      "description": "Node 26 aborts this app's production build partway through with a V8 Zone allocation failure, reproducibly and at heap sizes no --max-old-space-size value reaches. Scoped to this file, because n3o-node shares the package and should keep being offered new majors.",
+      "description": "Node 26 aborts svc-fe-engage's production build partway through with a V8 Zone allocation failure, reproducibly and at heap sizes no --max-old-space-size value reaches. Scoped to this file, because n3o-node shares the package and should keep being offered new majors.",
       "matchManagers": [
         "dockerfile"
       ],
