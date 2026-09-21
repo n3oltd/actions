@@ -1,8 +1,8 @@
-# Builds and publishes a Create React App project on the self-hosted React-App-Runner.
-# Sets up Node, installs dependencies with sourcemaps and Sentry, then runs the production
-# build. Called by React app repos to build releases.
+# Builds a Create React App project on React-App-Runner, a GitHub-hosted larger runner.
+# Verification only: despite the name, nothing here uploads, publishes or creates a release.
 #
-# The caller's own .npmrc supplies the registry and reads its token from GH_PAT.
+# The caller supplies its own .npmrc, which names the registry and reads its token from GH_PAT.
+# Its engines.node must admit the version set below, because engine-strict is then in effect.
 name: react app build and publish
 
 on:
