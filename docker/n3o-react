@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM node:14.21.3-bullseye-slim AS base
+FROM node:24.20.0-slim AS base
 
 WORKDIR /app
 
@@ -10,14 +10,16 @@ WORKDIR /app
 ########################
 FROM base AS builder
 
-RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y \
+# The slim base purges its own ca-certificates once Node is unpacked.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 ARG REACT_APP_SENTRY_RELEASE
 
+# webpack 4 hashes with MD4, which OpenSSL 3 only exposes via the legacy provider.
 ENV REACT_APP_SENTRY_RELEASE=${REACT_APP_SENTRY_RELEASE} \
-    NODE_OPTIONS=--max-old-space-size=4096 \
+    NODE_OPTIONS="--max-old-space-size=8192 --openssl-legacy-provider" \
     GENERATE_SOURCEMAP=true
 
 COPY package.json package-lock.json .npmrc ./
@@ -43,9 +45,17 @@ FROM scratch AS sourcemaps
 COPY --from=builder /app/build/static/js/ /
 
 ########################
+### served
+########################
+FROM builder AS served
+
+# Deleting after the final stage's COPY only writes whiteouts, leaving the maps in the layer beneath.
+RUN find /app/build -name '*.map' -delete
+
+########################
 ### final
 ########################
-FROM node:26.8.2 AS final
+FROM node:24.20.0-slim AS final
 
 WORKDIR /app
 
@@ -53,10 +63,9 @@ ARG BUILD_VERSION
 ARG COMMIT_SHA
 ENV BUILD_VERSION=${BUILD_VERSION} COMMIT_SHA=${COMMIT_SHA}
 
-RUN npm install express@latest
+RUN npm install express@5.2.1
 
-COPY --from=builder /app/build ./build
-RUN find ./build -name '*.map' -delete
+COPY --from=served /app/build ./build
 
 COPY server.js ./
 
