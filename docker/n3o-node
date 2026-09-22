@@ -75,7 +75,7 @@ RUN mkdir -p "${OUTPUT_DIR}/releaseinfo" && \
 # from the image with no error anywhere unless it is folded in here.
 ARG APP_DIR
 RUN app="${APP_DIR:-${OUTPUT_DIR%/.next}}"; \
-    if [ -d "${OUTPUT_DIR}/standalone" ] && [ -d "${app}/public" ]; then \
+    if [ -d "${OUTPUT_DIR}/standalone/${app}" ] && [ -d "${app}/public" ]; then \
       cp -R "${app}/public" "${OUTPUT_DIR}/standalone/${app}/"; \
     fi
 
