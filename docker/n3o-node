@@ -39,8 +39,7 @@ COPY <<'INSTALL' /usr/local/bin/install-deps
 #!/bin/sh
 set -eu
 
-# pnpm refuses a credential a project .npmrc expands from the environment, so the
-# token goes to a user-level config on a tmpfs the build never commits.
+# pnpm refuses a credential a project .npmrc expands from the environment.
 export GH_PAT="$(cat /run/secrets/github_token)"
 export NPM_CONFIG_USERCONFIG=/npmauth/npmrc
 {
