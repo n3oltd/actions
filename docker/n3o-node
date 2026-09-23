@@ -38,17 +38,22 @@ ARG BUILD_SCRIPT=build
 COPY <<'INSTALL' /usr/local/bin/install-deps
 #!/bin/sh
 set -eu
+
+# pnpm refuses a credential a project .npmrc expands from the environment.
 export GH_PAT="$(cat /run/secrets/github_token)"
+export NPM_CONFIG_USERCONFIG=/npmauth/npmrc
+{
+  printf '@n3oltd:registry=https://npm.pkg.github.com\n'
+  printf '//npm.pkg.github.com/:_authToken=%s\n' "$GH_PAT"
+} > "$NPM_CONFIG_USERCONFIG"
+
 if [ -f "${PACKAGE}/package-lock.json" ]; then
   cd "${PACKAGE}" && exec npm ci
 fi
 if [ -f "${PACKAGE}/pnpm-lock.yaml" ]; then
   cd "${PACKAGE}" && exec pnpm install --frozen-lockfile
 fi
-cp .npmrc .npmrc.bak 2>/dev/null || touch .npmrc.bak
-printf "\n//npm.pkg.github.com/:_authToken=%s\n" "$GH_PAT" >> .npmrc
-pnpm install --frozen-lockfile --fail-if-no-match --filter "${PACKAGE}..."
-mv .npmrc.bak .npmrc
+exec pnpm install --frozen-lockfile --fail-if-no-match --filter "${PACKAGE}..."
 INSTALL
 RUN chmod +x /usr/local/bin/install-deps
 
@@ -62,7 +67,7 @@ RUNBUILD
 RUN chmod +x /usr/local/bin/run-build
 
 ENV PACKAGE=${PACKAGE} BUILD_SCRIPT=${BUILD_SCRIPT}
-RUN --mount=type=secret,id=github_token,required=true install-deps
+RUN --mount=type=secret,id=github_token,required=true --mount=type=tmpfs,target=/npmauth install-deps
 RUN run-build
 ARG OUTPUT_DIR
 ARG BUILD_VERSION
