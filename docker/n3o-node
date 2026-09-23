@@ -71,8 +71,7 @@ RUN mkdir -p "${OUTPUT_DIR}/releaseinfo" && \
     node -e "process.stdout.write(JSON.stringify({releaseVersion:null,buildVersion:process.env.BUILD_VERSION||null,commit:process.env.COMMIT_SHA||null}))" \
     > "${OUTPUT_DIR}/releaseinfo/v1.0"
 
-# Next copies nothing but its own output into standalone, so public/ is absent
-# from the image with no error anywhere unless it is folded in here.
+# Next copies nothing but its own output into standalone, and a missing public/ raises no error.
 ARG APP_DIR
 RUN app="${APP_DIR:-${OUTPUT_DIR%/.next}}"; \
     if [ -d "${OUTPUT_DIR}/standalone/${app}" ] && [ -d "${app}/public" ]; then \
