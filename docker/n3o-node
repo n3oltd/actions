@@ -5,6 +5,7 @@
 #   PACKAGE          workspace package, or the directory to build in outside a workspace
 #   BUILD_SCRIPT     package script to run (default: build)
 #   OUTPUT_DIR       context-relative built output — static and oauth; the .next directory for next
+#   APP_DIR          next only: the app's path within the context, `.` at the context root
 #   START_ENTRY      entry the server runs — node
 #   PORT             port the final image listens on (default 8080)
 #   BASE_PATH        public path the static site is served under
@@ -69,6 +70,13 @@ ARG COMMIT_SHA
 RUN mkdir -p "${OUTPUT_DIR}/releaseinfo" && \
     node -e "process.stdout.write(JSON.stringify({releaseVersion:null,buildVersion:process.env.BUILD_VERSION||null,commit:process.env.COMMIT_SHA||null}))" \
     > "${OUTPUT_DIR}/releaseinfo/v1.0"
+
+# Next copies nothing but its own output into standalone, and a missing public/ raises no error.
+ARG APP_DIR
+RUN app="${APP_DIR:-${OUTPUT_DIR%/.next}}"; \
+    if [ -d "${OUTPUT_DIR}/standalone/${app}" ] && [ -d "${app}/public" ]; then \
+      cp -R "${app}/public" "${OUTPUT_DIR}/standalone/${app}/"; \
+    fi
 
 ########################
 ### sourcemaps
@@ -168,7 +176,6 @@ CMD ["sh", "-c", "exec node ${START_ENTRY}"]
 
 # Standalone output carries its own pruned node_modules, so the variant copies it
 # alone; static assets sit beside the server at the path the build wrote them to.
-# PACKAGE names a workspace package, not a path, so everything derives from OUTPUT_DIR.
 FROM node:24.20.0-slim AS variant-next
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
@@ -177,12 +184,13 @@ ARG COMMIT_SHA
 ENV BUILD_VERSION=${BUILD_VERSION} COMMIT_SHA=${COMMIT_SHA}
 WORKDIR /app
 ARG OUTPUT_DIR
+ARG APP_DIR
 COPY --from=build --chown=node:node /repo/${OUTPUT_DIR}/standalone ./
 COPY --from=build --chown=node:node /repo/${OUTPUT_DIR}/static ./${OUTPUT_DIR}/static
-ENV OUTPUT_DIR=${OUTPUT_DIR}
+ENV OUTPUT_DIR=${OUTPUT_DIR} APP_DIR=${APP_DIR}
 EXPOSE ${PORT}
 USER node
-CMD ["sh", "-c", "exec node ${OUTPUT_DIR%/.next}/server.js"]
+CMD ["sh", "-c", "exec node ${APP_DIR:-${OUTPUT_DIR%/.next}}/server.js"]
 
 FROM oauth2proxy AS variant-oauth
 ARG PORT=8080
