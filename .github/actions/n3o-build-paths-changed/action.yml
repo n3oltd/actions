@@ -1,5 +1,5 @@
 name: n3o build paths changed
-description: Coarse CI pre-gate — true when any build-relevant path changed (src, CPM props, global.json, nuget.config).
+description: Coarse CI pre-gate — true when any build-relevant path changed (src, the root Directory.Build and Directory.Packages files, global.json, nuget.config).
 
 inputs:
   base:
@@ -25,6 +25,7 @@ runs:
             - 'src/**'
             - 'Directory.Build.props'
             - 'Directory.Build.rsp'
+            - 'Directory.Build.targets'
             - 'Directory.Packages.props'
             - 'global.json'
             - 'nuget.config'

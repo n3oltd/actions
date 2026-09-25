@@ -62,10 +62,10 @@ jobs:
 
           changed="$(git diff --name-only "$base" "$TO_SHA")"
 
-          # A genuinely-global config change (props/global.json/nuget.config) alters the build for
+          # A genuinely-global config change (props/rsp/global.json/nuget.config) alters the build for
           # EVERY project — build the whole solution. Per-project files (.csproj/.slnx/lock) stay on
           # the affected path below.
-          global='(^|/)(Directory\.Build\.props|Directory\.Packages\.props|global\.json|nuget\.config)$'
+          global='(^|/)(Directory\.Build\.props|Directory\.Build\.rsp|Directory\.Packages\.props|global\.json|nuget\.config)$'
           if printf '%s\n' "$changed" | grep -qiE "$global"; then
             echo "scope=full" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
