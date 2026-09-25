@@ -11,7 +11,8 @@
 #   BASE_PATH        public path the static site is served under
 #   ENV_PREFIX       env vars with this prefix reach the browser as window.__APP_ENV__
 #   NEXT_PUBLIC_TYPESENSE_URL, NEXT_PUBLIC_TYPESENSE_SEARCH_KEY
-#                    next only: the search cluster and its search-only key, compiled into the bundle
+#                    the search cluster and its search-only key, compiled into the bundle by next;
+#                    a NEXT_PUBLIC_ name not declared below is dropped in silence
 #   BUILD_VERSION    build number reported by releaseinfo/v1.0
 #   COMMIT_SHA       built commit reported by releaseinfo/v1.0
 
@@ -72,8 +73,8 @@ ENV PACKAGE=${PACKAGE} BUILD_SCRIPT=${BUILD_SCRIPT}
 RUN --mount=type=secret,id=github_token,required=true --mount=type=tmpfs,target=/npmauth install-deps
 
 # No ENV line: an ARG alone leaves a name nobody passed absent from the environment, where an
-# ENV would materialise it as empty and defeat the app's own default. Next inlines whatever is
-# named NEXT_PUBLIC_ into the bundle it serves, so nothing private can travel this way.
+# ENV would materialise it as empty and defeat the app's own default. A NEXT_PUBLIC_ name is one
+# the browser bundle may carry, so nothing private belongs in this block.
 ARG NEXT_PUBLIC_TYPESENSE_URL
 ARG NEXT_PUBLIC_TYPESENSE_SEARCH_KEY
 RUN run-build
