@@ -81,6 +81,9 @@ def working_tree(repo: str, checkouts: dict[str, pathlib.Path],
     if target.is_dir():
         return target
 
+    # Blobs are fetched on demand, so whatever runs this needs git credentials for github.com
+    # beyond gh's own — `gh auth setup-git` installs them. Without that, listing succeeds and
+    # the first read fails.
     result = subprocess.run(
         ["gh", "repo", "clone", f"{ORG}/{repo}", str(target),
          "--", "--depth", "1", "--filter=blob:none", "--no-checkout", "--quiet"],

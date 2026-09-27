@@ -23,6 +23,10 @@ runs:
         NAME: ${{ inputs.checkout }}
         TREE: ${{ inputs.path }}
       run: |
+        # The scan clones each repository without blobs and reads a handful on demand; that
+        # fetch is plain git, which has no token of its own on a runner.
+        gh auth setup-git --hostname github.com
+
         catalogue="$RUNNER_TEMP/workload-catalogue"
         rm -rf "$catalogue"
         gh repo clone n3oltd/devops "$catalogue" -- --depth 1 --quiet
