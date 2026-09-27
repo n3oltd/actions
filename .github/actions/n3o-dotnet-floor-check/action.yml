@@ -24,8 +24,8 @@ runs:
         TREE: ${{ inputs.path }}
       run: |
         catalogue="$RUNNER_TEMP/workload-catalogue"
-        git clone --quiet --depth 1 \
-          "https://x-access-token:$GH_TOKEN@github.com/n3oltd/devops.git" "$catalogue"
+        rm -rf "$catalogue"
+        gh repo clone n3oltd/devops "$catalogue" -- --depth 1 --quiet
 
         args=(--catalogue "$catalogue" --explain)
         # An && chain here would end the step when the input is empty, because a run step
