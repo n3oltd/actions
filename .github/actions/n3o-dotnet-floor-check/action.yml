@@ -1,0 +1,37 @@
+name: n3o dotnet floor check
+description: Every .NET SDK the estate builds with must satisfy every global.json floor it declares.
+
+inputs:
+  access-token:
+    description: Token with read access to the organisation's repositories
+    required: true
+  checkout:
+    description: Repository name whose working tree holds the proposed state, read in place of its default branch
+    required: false
+    default: ''
+  path:
+    description: Path to that working tree
+    required: false
+    default: '.'
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.access-token }}
+        NAME: ${{ inputs.checkout }}
+        TREE: ${{ inputs.path }}
+      run: |
+        catalogue="$RUNNER_TEMP/workload-catalogue"
+        git clone --quiet --depth 1 \
+          "https://x-access-token:$GH_TOKEN@github.com/n3oltd/devops.git" "$catalogue"
+
+        args=(--catalogue "$catalogue" --explain)
+        # An && chain here would end the step when the input is empty, because a run step
+        # already has -e and the test is the last command.
+        if [ -n "$NAME" ]; then
+          args+=(--checkout "$NAME=$(cd "$TREE" && pwd)")
+        fi
+
+        python3 "$GITHUB_ACTION_PATH/dotnet-floor-check.py" "${args[@]}"

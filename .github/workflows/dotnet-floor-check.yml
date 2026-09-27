@@ -1,0 +1,33 @@
+# The shared Dockerfile catalogue installs the SDK that every container build in the estate
+# compiles with, so a change here can put a build environment below a floor another repository
+# declares. The schedule is the backstop for a merge that went in over a red check; it is only
+# visible because builds.md names a scheduled workflow that has stopped succeeding.
+name: .NET Floor Check
+
+on:
+  pull_request:
+    paths:
+      - docker/**
+      - .github/actions/n3o-dotnet-floor-check/**
+      - .github/workflows/dotnet-floor-check.yml
+  schedule:
+    - cron: '40 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: dotnet-floor-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The local path, not @main: a pull request here must be checked against its own proposal.
+      - uses: ./.github/actions/n3o-dotnet-floor-check
+        with:
+          access-token: ${{ secrets.GH_PAT }}
+          checkout: actions
