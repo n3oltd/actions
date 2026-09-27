@@ -30,6 +30,12 @@ SDK_CHANNEL = re.compile(r"--channel\s+[\"']?\$?\{?(?P<arg>[A-Z_]+)\}?[\"']?|--c
 DOCKER_ARG = re.compile(r"^\s*ARG\s+(?P<name>[A-Z_]+)=(?P<value>\S+)", re.M)
 
 DOCKERFILE_NAME = re.compile(r"(^|/)(Dockerfile([.-][\w.-]+)?|[\w.-]+\.Dockerfile)$")
+
+# Where the shared Dockerfile catalogue lives, as n3o-dockerfile-fetch addresses it. Move the
+# catalogue and this moves with it.
+CATALOGUE_REPO = "actions"
+CATALOGUE_DIRECTORY = "docker"
+IN_CATALOGUE = re.compile(rf"^{CATALOGUE_DIRECTORY}/[^/]+$")
 PRUNE = re.compile(r"(^|/)(node_modules|\.git|bin|obj)/")
 
 
@@ -62,8 +68,25 @@ def source_repositories(catalogue: pathlib.Path) -> list[str]:
     return sorted(found)
 
 
-def asserts_a_version(path: str) -> bool:
-    """A floor or a Dockerfile.
+def catalogue_names(checkouts: dict[str, pathlib.Path]) -> set[str]:
+    """Names in the shared Dockerfile catalogue.
+
+    n3o-dockerfile-fetch writes a catalogue image to a bare name and prefers a copy the calling
+    repository has committed at that path, so the name is the only thing identifying one
+    wherever it lands.
+    """
+    root = checkouts.get(CATALOGUE_REPO)
+    if root:
+        directory = root / CATALOGUE_DIRECTORY
+        return {f.name for f in directory.iterdir() if f.is_file()} if directory.is_dir() else set()
+
+    tree = gh(f"repos/{ORG}/{CATALOGUE_REPO}/git/trees/HEAD?recursive=1")["tree"]
+    return {pathlib.PurePath(n["path"]).name for n in tree
+            if n["type"] == "blob" and IN_CATALOGUE.match(n["path"])}
+
+
+def asserts_a_version(path: str, catalogue: set[str]) -> bool:
+    """A floor, a Dockerfile, or a repository's own copy of a catalogue image.
 
     Anything directly inside a docker/ directory counts as a Dockerfile — the shared catalogue
     names its images without an extension, and a name-only rule would miss every one of them.
@@ -71,10 +94,10 @@ def asserts_a_version(path: str) -> bool:
     if PRUNE.search("/" + path):
         return False
     return bool(path.endswith("global.json") or DOCKERFILE_NAME.search(path)
-                or re.match(r"docker/[^/]+$", path))
+                or IN_CATALOGUE.match(path) or pathlib.PurePath(path).name in catalogue)
 
 
-def source(repo: str, checkouts: dict[str, pathlib.Path]):
+def source(repo: str, checkouts: dict[str, pathlib.Path], catalogue: set[str]):
     """Where a repository's contents are read from: a checkout when one is given, else HEAD.
 
     A pull request's own change is only visible in its checkout. Reading the caller from HEAD
@@ -91,17 +114,19 @@ def source(repo: str, checkouts: dict[str, pathlib.Path]):
         except subprocess.CalledProcessError as error:
             raise SystemExit(f"::error::--checkout {repo}={root} is not a git checkout, so nothing "
                              f"can be listed from it: {error.stderr.strip()}")
-        paths = [p for p in listing.stdout.split("\0") if p and asserts_a_version(p)]
+        paths = [p for p in listing.stdout.split("\0") if p and asserts_a_version(p, catalogue)]
         return sorted(paths), lambda p: (root / p).read_text(errors="replace")
 
     tree = gh(f"repos/{ORG}/{repo}/git/trees/HEAD?recursive=1")["tree"]
-    paths = [n["path"] for n in tree if n["type"] == "blob" and asserts_a_version(n["path"])]
+    paths = [n["path"] for n in tree
+             if n["type"] == "blob" and asserts_a_version(n["path"], catalogue)]
     return sorted(paths), lambda p: gh(f"repos/{ORG}/{repo}/contents/{p}", raw=True)
 
 
-def scan(repo: str, checkouts: dict[str, pathlib.Path]) -> tuple[list[dict], list[dict]]:
+def scan(repo: str, checkouts: dict[str, pathlib.Path],
+         catalogue: set[str]) -> tuple[list[dict], list[dict]]:
     floors, installs = [], []
-    paths, read = source(repo, checkouts)
+    paths, read = source(repo, checkouts, catalogue)
     for path in paths:
         body = read(path)
 
@@ -152,6 +177,8 @@ Discovered, so a new one is found the day it is added:
   * a floor written as "sdk": { "version": ... } in any global.json
   * an SDK installed as FROM mcr.microsoft.com/dotnet/sdk:<tag>
   * an SDK installed by dotnet-install --channel
+  * a repository's own copy of a shared catalogue image, matched by its name wherever it sits,
+    because n3o-dockerfile-fetch prefers a committed copy over the catalogue's
 
 Not covered, and these would be missed:
   * an SDK installed by any other means — an apt package, a version baked into a base image
@@ -188,8 +215,9 @@ def main() -> int:
 
     floors: list[dict] = []
     installs: list[dict] = []
+    catalogue = catalogue_names(checkouts)
     for repo in repos:
-        found_floors, found_installs = scan(repo, checkouts)
+        found_floors, found_installs = scan(repo, checkouts, catalogue)
         floors += found_floors
         installs += found_installs
 
