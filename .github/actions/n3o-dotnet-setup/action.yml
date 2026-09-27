@@ -19,16 +19,36 @@ runs:
           exit 1
         fi
 
-        # `dotnet --version` resolves global.json, so it is the check that the baked-in SDK is
-        # usable here and not merely present. Its status has to be captured: interpolated into an
-        # echo it is discarded, and the step passes while every later dotnet call exits 155.
-        if ! resolved="$(dotnet --version 2>&1)"; then
-          printf '%s\n' "$resolved" >&2
-          echo "::error::The baked-in .NET SDK does not satisfy this repository's global.json (detail above). Rebuild n3o-toolchain in n3oltd/devops so the runner fleet carries the requested SDK." >&2
-          exit 1
+        # Resolution is checked from every global.json in the workspace, not from this step's own
+        # directory: a composite step starts in $GITHUB_WORKSPACE and never inherits the job's
+        # defaults.run.working-directory, so the directory the build resolves from is not this one.
+        manifests=''
+        if [ -d "$GITHUB_WORKSPACE" ]; then
+          manifests="$(find "$GITHUB_WORKSPACE" \
+            \( -name node_modules -o -name bin -o -name obj -o -name .git \) -prune -o \
+            -name global.json -print 2>/dev/null | sort || true)"
         fi
 
-        echo "Using baked-in .NET SDK $resolved at $(command -v dotnet)"
+        # The status of `dotnet --version` is the whole check. Interpolated into an echo it is
+        # discarded, and a floor the image cannot meet passes here and exits 155 a step later.
+        if [ -z "$manifests" ]; then
+          if ! resolved="$(dotnet --version 2>&1)"; then
+            printf '%s\n' "$resolved" >&2
+            echo "::error::The baked-in .NET SDK could not be resolved. No global.json is present, so this is a broken SDK installation in the runner image rather than an unmet version floor." >&2
+            exit 1
+          fi
+          echo "No global.json under $GITHUB_WORKSPACE, so nothing constrains the SDK here. Baked-in .NET SDK $resolved at $(command -v dotnet)."
+          exit 0
+        fi
+
+        while IFS= read -r manifest; do
+          if ! resolved="$(cd "$(dirname "$manifest")" && dotnet --version 2>&1)"; then
+            printf '%s\n' "$resolved" >&2
+            echo "::error::The baked-in .NET SDK could not be resolved for $manifest — commonly because it does not satisfy that floor, in which case rebuild n3o-toolchain in n3oltd/devops so the runner fleet carries the requested SDK." >&2
+            exit 1
+          fi
+          echo "Using baked-in .NET SDK $resolved at $(command -v dotnet), satisfying $manifest"
+        done <<< "$manifests"
 
     - name: Install .NET SDK (GitHub-hosted)
       if: runner.environment == 'github-hosted'
