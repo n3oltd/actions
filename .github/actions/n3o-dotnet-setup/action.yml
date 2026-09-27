@@ -19,9 +19,9 @@ runs:
           exit 1
         fi
 
-        # Resolution is checked from every global.json in the workspace, not from this step's own
-        # directory: a composite step starts in $GITHUB_WORKSPACE and never inherits the job's
-        # defaults.run.working-directory, so the directory the build resolves from is not this one.
+        # A composite step starts in $GITHUB_WORKSPACE and never inherits the job's
+        # defaults.run.working-directory, so the build's directory is not this one: every
+        # global.json in the workspace is checked, not whichever happens to sit above the cwd.
         manifests=''
         if [ -d "$GITHUB_WORKSPACE" ]; then
           manifests="$(find "$GITHUB_WORKSPACE" \
@@ -29,8 +29,9 @@ runs:
             -name global.json -print 2>/dev/null | sort || true)"
         fi
 
-        # The status of `dotnet --version` is the whole check. Interpolated into an echo it is
-        # discarded, and a floor the image cannot meet passes here and exits 155 a step later.
+        # `dotnet --version` resolves global.json, so it is the check that the SDK is usable here
+        # and not merely present. Its exit status is the result, so it is captured: interpolated
+        # into an echo it would be discarded.
         if [ -z "$manifests" ]; then
           if ! resolved="$(dotnet --version 2>&1)"; then
             printf '%s\n' "$resolved" >&2
