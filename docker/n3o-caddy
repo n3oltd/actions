@@ -2,7 +2,7 @@
 # is mounted at /etc/caddy/routes and never built in, so nothing here knows which fleet it is.
 
 ########################
-### caddy with brotli, which the default build omits
+### caddy with the modules the default build omits
 ########################
 FROM caddy:2.11.4-builder AS builder
 
@@ -32,6 +32,7 @@ RUN xcaddy build \
       --with github.com/ueffel/caddy-brotli@v1.6.0 \
       --with github.com/caddy-dns/azure@v0.6.0 \
       --with github.com/caddy-dns/cloudflare@v0.2.4 \
+      --with github.com/mholt/caddy-ratelimit@v0.1.0 \
       --with github.com/libdns/azure=/src/libdns-azure
 
 ########################
@@ -48,7 +49,7 @@ COPY caddy-Caddyfile /etc/config/Caddyfile
 RUN set -eu; \
     mkdir -p /etc/caddy/routes; \
     modules=$(caddy list-modules); \
-    for module in http.encoders.br dns.providers.azure dns.providers.cloudflare; do \
+    for module in http.encoders.br dns.providers.azure dns.providers.cloudflare http.handlers.rate_limit; do \
       echo "$modules" | grep -qx "$module"; \
     done; \
     caddy validate --config /etc/config/Caddyfile --adapter caddyfile
