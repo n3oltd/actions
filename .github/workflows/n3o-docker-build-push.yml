@@ -198,6 +198,9 @@ jobs:
           context: ${{ inputs.context }}
           target: final
           file: ${{ inputs.dockerfile }}
+          # The SDK build stage follows a two-component tag, which only moves if the base is
+          # re-resolved; without this the builder keeps serving whatever digest it first saw.
+          pull: true
           build-args: ${{ steps.build-args.outputs.args }}
           secrets: |
             github_token=${{ env.GH_PAT }}
@@ -221,6 +224,7 @@ jobs:
           context: ${{ inputs.context }}
           target: final
           file: ${{ inputs.dockerfile }}
+          pull: true
           build-args: ${{ steps.build-args.outputs.args }}
           secrets: |
             github_token=${{ env.GH_PAT }}
