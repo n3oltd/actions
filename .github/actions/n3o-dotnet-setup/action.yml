@@ -20,7 +20,9 @@ runs:
         sdks=$(dotnet --version 2>"$errors") || rc=$?
 
         if [ "$rc" -eq 0 ]; then
-          out=$sdks
+          # A quiet success is the normal case; anything on stderr means the runner has something
+          # to report, so it is shown rather than dropped.
+          out=$(printf 'Resolved .NET SDK %s at %s\n' "$sdks" "$(command -v dotnet)"; cat "$errors")
         else
           # The installed list is on stdout and the rest on stderr. Merged with 2>&1 the list
           # flushes below its own "Installed SDKs:" header, which reads as none installed.
@@ -35,7 +37,7 @@ runs:
         out=${out//'##['/'## ['}
 
         if [ "$rc" -eq 0 ]; then
-          echo "Resolved .NET SDK $out at $(command -v dotnet)"
+          printf '%s\n' "$out"
         else
           printf '%s\n' "${out:-dotnet exited $rc with no output}" >&2
           echo "::error::No usable .NET SDK — see the output above. A missing or too-old SDK is fixed by rebuilding n3o-toolchain in n3oltd/devops; a malformed or unsatisfiable global.json is fixed in this repository." >&2
