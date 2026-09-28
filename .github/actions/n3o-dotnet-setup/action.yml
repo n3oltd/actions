@@ -14,58 +14,23 @@ runs:
       if: runner.environment != 'github-hosted'
       shell: bash
       run: |
-        if ! command -v dotnet >/dev/null 2>&1; then
-          echo "::error::dotnet not found on PATH; expected the self-hosted runner image to bake in the .NET SDK." >&2
+        rc=0
+        out=$(dotnet --version 2>&1) || rc=$?
+
+        # Repository-controlled and unbounded, and the substitutions below are quadratic in the
+        # number of matches.
+        out=${out:0:65536}
+        # :: and ##[ are broken rather than indented; the runner trims before it matches.
+        out=${out//::/: :}
+        out=${out//'##['/'## ['}
+
+        if [ "$rc" -eq 0 ]; then
+          echo "Resolved .NET SDK $out at $(command -v dotnet)"
+        else
+          printf '%s\n' "${out:-dotnet exited $rc with no output}" >&2
+          echo "::error::No usable .NET SDK — see the output above. A missing or too-old SDK is fixed by rebuilding n3o-toolchain in n3oltd/devops; a malformed or unsatisfiable global.json is fixed in this repository." >&2
           exit 1
         fi
-
-        # Output that came from the repository is fenced: the runner parses a line starting
-        # with :: as a command, and whether the SDK resolver can ever echo one is a property
-        # of its parser rather than of this step.
-        emit_untrusted() {
-          local fence="stop-$RANDOM$RANDOM$RANDOM"
-          echo "::stop-commands::$fence" >&2
-          printf '%s\n' "$1" >&2
-          echo "::$fence::" >&2
-        }
-
-        # A composite step starts in $GITHUB_WORKSPACE and never inherits the job's
-        # defaults.run.working-directory, so the build's directory is not this one: every
-        # global.json in the workspace is checked, not whichever happens to sit above the cwd.
-        # NUL-delimited, because a newline is legal in a path and git will carry one.
-        manifests=()
-        if [ -d "$GITHUB_WORKSPACE" ]; then
-          while IFS= read -r -d '' manifest; do
-            manifests+=("$manifest")
-          done < <(find "$GITHUB_WORKSPACE" \
-            \( -name node_modules -o -name bin -o -name obj -o -name .git \) -prune -o \
-            -name global.json -print0 2>/dev/null | sort -z)
-        fi
-
-        # `dotnet --version` resolves global.json, so it is the check that the SDK is usable here
-        # and not merely present. Its exit status is the result, so it is captured: interpolated
-        # into an echo it would be discarded.
-        if [ "${#manifests[@]}" -eq 0 ]; then
-          if ! resolved="$(dotnet --version 2>&1)"; then
-            emit_untrusted "$resolved"
-            echo "::error::The baked-in .NET SDK could not be resolved. No global.json is present, so this is a broken SDK installation in the runner image rather than an unmet version floor." >&2
-            exit 1
-          fi
-          echo "No global.json under $GITHUB_WORKSPACE, so nothing constrains the SDK here. Baked-in .NET SDK $resolved at $(command -v dotnet)."
-          exit 0
-        fi
-
-        for manifest in "${manifests[@]}"; do
-          # %q, because a path is repository-controlled and a newline in one would otherwise
-          # start a line of its own, which the runner reads as a command.
-          shown="$(printf '%q' "$manifest")"
-          if ! resolved="$(cd "$(dirname "$manifest")" && dotnet --version 2>&1)"; then
-            emit_untrusted "$resolved"
-            echo "::error::The baked-in .NET SDK could not be resolved for $shown — commonly because it does not satisfy that floor, in which case rebuild n3o-toolchain in n3oltd/devops so the runner fleet carries the requested SDK." >&2
-            exit 1
-          fi
-          echo "Using baked-in .NET SDK $resolved at $(command -v dotnet), satisfying $shown"
-        done
 
     - name: Install .NET SDK (GitHub-hosted)
       if: runner.environment == 'github-hosted'
