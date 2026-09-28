@@ -32,7 +32,7 @@ RUN xcaddy build \
       --with github.com/ueffel/caddy-brotli@v1.6.0 \
       --with github.com/caddy-dns/azure@v0.6.0 \
       --with github.com/caddy-dns/cloudflare@v0.2.4 \
-      --with github.com/mholt/caddy-ratelimit@v0.1.0 \
+      --with github.com/mholt/caddy-ratelimit@5625512f24f6f59d6f64fb3aafe5eecff0b286db \
       --with github.com/libdns/azure=/src/libdns-azure
 
 ########################
