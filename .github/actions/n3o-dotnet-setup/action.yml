@@ -19,16 +19,53 @@ runs:
           exit 1
         fi
 
-        # `dotnet --version` resolves global.json, so it is the check that the baked-in SDK is
-        # usable here and not merely present. Its status has to be captured: interpolated into an
-        # echo it is discarded, and the step passes while every later dotnet call exits 155.
-        if ! resolved="$(dotnet --version 2>&1)"; then
-          printf '%s\n' "$resolved" >&2
-          echo "::error::The baked-in .NET SDK does not satisfy this repository's global.json (detail above). Rebuild n3o-toolchain in n3oltd/devops so the runner fleet carries the requested SDK." >&2
-          exit 1
+        # Output that came from the repository is fenced: the runner parses a line starting
+        # with :: as a command, and whether the SDK resolver can ever echo one is a property
+        # of its parser rather than of this step.
+        emit_untrusted() {
+          local fence="stop-$RANDOM$RANDOM$RANDOM"
+          echo "::stop-commands::$fence" >&2
+          printf '%s\n' "$1" >&2
+          echo "::$fence::" >&2
+        }
+
+        # A composite step starts in $GITHUB_WORKSPACE and never inherits the job's
+        # defaults.run.working-directory, so the build's directory is not this one: every
+        # global.json in the workspace is checked, not whichever happens to sit above the cwd.
+        # NUL-delimited, because a newline is legal in a path and git will carry one.
+        manifests=()
+        if [ -d "$GITHUB_WORKSPACE" ]; then
+          while IFS= read -r -d '' manifest; do
+            manifests+=("$manifest")
+          done < <(find "$GITHUB_WORKSPACE" \
+            \( -name node_modules -o -name bin -o -name obj -o -name .git \) -prune -o \
+            -name global.json -print0 2>/dev/null | sort -z)
         fi
 
-        echo "Using baked-in .NET SDK $resolved at $(command -v dotnet)"
+        # `dotnet --version` resolves global.json, so it is the check that the SDK is usable here
+        # and not merely present. Its exit status is the result, so it is captured: interpolated
+        # into an echo it would be discarded.
+        if [ "${#manifests[@]}" -eq 0 ]; then
+          if ! resolved="$(dotnet --version 2>&1)"; then
+            emit_untrusted "$resolved"
+            echo "::error::The baked-in .NET SDK could not be resolved. No global.json is present, so this is a broken SDK installation in the runner image rather than an unmet version floor." >&2
+            exit 1
+          fi
+          echo "No global.json under $GITHUB_WORKSPACE, so nothing constrains the SDK here. Baked-in .NET SDK $resolved at $(command -v dotnet)."
+          exit 0
+        fi
+
+        for manifest in "${manifests[@]}"; do
+          # %q, because a path is repository-controlled and a newline in one would otherwise
+          # start a line of its own, which the runner reads as a command.
+          shown="$(printf '%q' "$manifest")"
+          if ! resolved="$(cd "$(dirname "$manifest")" && dotnet --version 2>&1)"; then
+            emit_untrusted "$resolved"
+            echo "::error::The baked-in .NET SDK could not be resolved for $shown — commonly because it does not satisfy that floor, in which case rebuild n3o-toolchain in n3oltd/devops so the runner fleet carries the requested SDK." >&2
+            exit 1
+          fi
+          echo "Using baked-in .NET SDK $resolved at $(command -v dotnet), satisfying $shown"
+        done
 
     - name: Install .NET SDK (GitHub-hosted)
       if: runner.environment == 'github-hosted'
