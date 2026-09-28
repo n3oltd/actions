@@ -16,6 +16,7 @@ runs:
       run: |
         rc=0
         errors=$(mktemp)
+        trap 'rm -f "$errors"' EXIT
         sdks=$(dotnet --version 2>"$errors") || rc=$?
 
         if [ "$rc" -eq 0 ]; then
@@ -25,7 +26,6 @@ runs:
           # flushes below its own "Installed SDKs:" header, which reads as none installed.
           out=$(cat "$errors"; printf 'Installed SDKs: %s\n' "${sdks:-none}")
         fi
-        rm -f "$errors"
 
         # Repository-controlled and unbounded, and the substitutions below are quadratic in the
         # number of matches.
