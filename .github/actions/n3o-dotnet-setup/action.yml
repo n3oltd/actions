@@ -17,8 +17,7 @@ runs:
         if out=$(dotnet --version 2>&1); then
           echo "Using baked-in .NET SDK $out"
         else
-          # Breaking the :: token is what stops the resolver's output being read as a runner
-          # command. Indenting it does not: the runner trims the line before matching.
+          # The runner TrimStart()s before matching ::, so indenting neutralises nothing.
           printf '%s\n' "$out" | sed -e 's/::/: :/g' -e 's/##\[/## [/g' >&2
           echo "::error::No usable .NET SDK on this runner — rebuild n3o-toolchain in n3oltd/devops so the fleet carries one that satisfies global.json." >&2
           exit 1
