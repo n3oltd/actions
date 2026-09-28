@@ -14,16 +14,13 @@ runs:
       if: runner.environment != 'github-hosted'
       shell: bash
       run: |
-        if ! command -v dotnet >/dev/null 2>&1; then
-          echo "::error::dotnet is not on PATH, so the runner image has no baked-in .NET SDK — rebuild n3o-toolchain in n3oltd/devops." >&2
-          exit 1
-        fi
-
-        # The exit status is the result. Interpolated into an echo it is discarded, and an SDK
-        # that cannot resolve passes this step. Its output is dropped rather than logged: the
-        # resolver quotes the repository back, and a line beginning :: is a runner command.
-        if ! dotnet --version >/dev/null 2>&1; then
-          echo "::error::The baked-in .NET SDK does not satisfy this repository's global.json — rebuild n3o-toolchain in n3oltd/devops to carry a newer SDK to the runner fleet." >&2
+        if out=$(dotnet --version 2>&1); then
+          echo "Using baked-in .NET SDK $out"
+        else
+          # Breaking the :: token is what stops the resolver's output being read as a runner
+          # command. Indenting it does not: the runner trims the line before matching.
+          printf '%s\n' "$out" | sed -e 's/::/: :/g' -e 's/##\[/## [/g' >&2
+          echo "::error::No usable .NET SDK on this runner — rebuild n3o-toolchain in n3oltd/devops so the fleet carries one that satisfies global.json." >&2
           exit 1
         fi
 
