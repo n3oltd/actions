@@ -15,7 +15,7 @@ runs:
       shell: bash
       run: |
         if ! command -v dotnet >/dev/null 2>&1; then
-          echo "::error::dotnet not found on PATH; expected the self-hosted runner image to bake in the .NET SDK." >&2
+          echo "::error::dotnet is not on PATH, so the runner image has no baked-in .NET SDK — rebuild n3o-toolchain in n3oltd/devops." >&2
           exit 1
         fi
 
@@ -23,7 +23,7 @@ runs:
         # that cannot resolve passes this step. Its output is dropped rather than logged: the
         # resolver quotes the repository back, and a line beginning :: is a runner command.
         if ! dotnet --version >/dev/null 2>&1; then
-          echo "::error::The baked-in .NET SDK did not resolve. Run 'dotnet --version' on the runner to see why." >&2
+          echo "::error::The baked-in .NET SDK does not satisfy this repository's global.json — rebuild n3o-toolchain in n3oltd/devops to carry a newer SDK to the runner fleet." >&2
           exit 1
         fi
 
