@@ -73,7 +73,7 @@ jobs:
           # EVERY project — build the whole solution. Per-project files (.csproj/.slnx/lock) stay on
           # the affected path below.
           global='(^|/)(Directory\.Build\.props|Directory\.Build\.rsp|Directory\.Packages\.props|global\.json|nuget\.config)$'
-          if printf '%s\n' "$changed" | grep -qiE "$global"; then
+          if grep -qiE "$global" <<< "$changed"; then
             echo "scope=full" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
             projects="$(find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' \
