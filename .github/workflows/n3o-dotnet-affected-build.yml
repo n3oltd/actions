@@ -15,6 +15,13 @@ on:
       build-configuration:
         type: string
         default: Release
+      after-build:
+        description: >-
+          Shell command run in the build job once the affected projects are built, reading their output.
+          AFFECTED_PROJECTS_FILE names a file listing the built project files, one repo-relative path per
+          line, and BUILD_CONFIGURATION is set; the step is skipped when nothing is affected.
+        type: string
+        default: ''
       mode:
         description: "wait (self-hosted, free, queued) or fast (GitHub-hosted, billable)."
         type: string
@@ -72,6 +79,7 @@ jobs:
             projects="$(find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' \
               | sed -E 's#.*/##; s/\.csproj$//' | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
             echo "projects=$projects" >> "$GITHUB_OUTPUT"
+            find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' | sed 's#^\./##' | sort > "$RUNNER_TEMP/affected-projects.txt"
             exit 0
           fi
           echo "scope=affected" >> "$GITHUB_OUTPUT"
@@ -100,6 +108,12 @@ jobs:
           projects="$(printf '%s\n%s\n' "$aff" "$chg" | { grep -v '^$' || true; } | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
           echo "projects=$projects" >> "$GITHUB_OUTPUT"
 
+          # Names repeat across the tree, so a step reading the build output needs the paths that were built.
+          {
+            [ -f "$RUNNER_TEMP/affected.proj" ] && { grep -oE 'Include="[^"]+\.csproj"' "$RUNNER_TEMP/affected.proj" || true; } | sed -E 's/^Include="//; s/"$//'
+            cat "$RUNNER_TEMP/changed-csprojs.txt"
+          } | while read -r p; do realpath -m --relative-to="$PWD" "$p"; done | sort -u > "$RUNNER_TEMP/affected-projects.txt"
+
       - name: build affected
         if: steps.affected.outputs.any == 'true'
         shell: bash
@@ -117,3 +131,19 @@ jobs:
             [ -f "$RUNNER_TEMP/affected.proj" ] && dotnet build "$RUNNER_TEMP/affected.proj" -c "$cfg" -m:4 -nodeReuse:true
             while read -r c; do [ -n "$c" ] && dotnet build "$c" -c "$cfg" -m:4 -nodeReuse:true; done < "$RUNNER_TEMP/changed-csprojs.txt"
           fi
+
+      # Runs here rather than in a job of its own, because another job would have to build the same
+      # projects again to read them.
+      - name: after build
+        if: inputs.after-build != '' && steps.affected.outputs.any == 'true'
+        shell: bash
+        env:
+          AFFECTED_PROJECTS_FILE: ${{ runner.temp }}/affected-projects.txt
+          BUILD_CONFIGURATION: ${{ inputs.build-configuration }}
+          # The n3o CLI reads its configuration from Key Vault at startup, whatever the command.
+          AZURE_CLIENT_ID: ${{ secrets.N3O_CLI_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.N3O_CLI_AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.N3O_CLI_AZURE_TENANT_ID }}
+          GH_USERNAME: n3oltd
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: ${{ inputs.after-build }}
