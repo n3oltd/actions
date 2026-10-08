@@ -69,25 +69,42 @@ jobs:
 
           changed="$(git diff --name-only "$base" "$TO_SHA")"
 
+          full_scope() {
+            find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' \
+              | sed 's#^\./##' | sort > "$RUNNER_TEMP/affected-projects.txt"
+            projects="$(sed -E 's#.*/##; s/\.csproj$//' "$RUNNER_TEMP/affected-projects.txt" \
+              | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
+            echo "scope=full" >> "$GITHUB_OUTPUT"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "projects=$projects" >> "$GITHUB_OUTPUT"
+          }
+
           # A genuinely-global config change (props/rsp/global.json/nuget.config) alters the build for
           # EVERY project — build the whole solution. Per-project files (.csproj/.slnx/lock) stay on
           # the affected path below.
           global='(^|/)(Directory\.Build\.props|Directory\.Build\.rsp|Directory\.Packages\.props|global\.json|nuget\.config)$'
           if grep -qiE "$global" <<< "$changed"; then
-            echo "scope=full" >> "$GITHUB_OUTPUT"
-            echo "any=true" >> "$GITHUB_OUTPUT"
-            projects="$(find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' \
-              | sed -E 's#.*/##; s/\.csproj$//' | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')"
-            echo "projects=$projects" >> "$GITHUB_OUTPUT"
-            find . -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*' | sed 's#^\./##' | sort > "$RUNNER_TEMP/affected-projects.txt"
+            full_scope
             exit 0
           fi
-          echo "scope=affected" >> "$GITHUB_OUTPUT"
 
-          # dotnet-affected: the changed projects + their dependents (exits non-zero when nothing is
-          # affected — tolerated). It doesn't reliably trace a brand-new project's dependency edge,
-          # so the build step also builds the directly-changed .csproj explicitly (changed-csprojs).
-          dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected || true
+          # dotnet-affected: the changed projects + their dependents. It doesn't reliably trace a
+          # brand-new project's dependency edge, so the build step also builds the directly-changed
+          # .csproj explicitly (changed-csprojs).
+          set +e
+          dotnet affected --from "$base" --to "$TO_SHA" --format traversal --output-dir "$RUNNER_TEMP" --output-name affected
+          affected_rc=$?
+          set -e
+
+          # 166 is dotnet-affected's "nothing is affected"; on any other failure the scope is unknown,
+          # and a partial build would pass this gate having compiled almost nothing.
+          if [ "$affected_rc" -ne 0 ] && [ "$affected_rc" -ne 166 ]; then
+            echo "::warning title=dotnet-affected failed::Exit code $affected_rc, so the scope is unknown and the whole tree is built."
+            full_scope
+            exit 0
+          fi
+
+          echo "scope=affected" >> "$GITHUB_OUTPUT"
 
           # GitHub runs steps with `bash -e -o pipefail`, so a grep that matches nothing (exit 1)
           # aborts the step. Guard each grep that may legitimately find nothing with `|| true`.
