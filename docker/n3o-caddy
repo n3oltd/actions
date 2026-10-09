@@ -4,7 +4,7 @@
 ########################
 ### caddy with the modules the default build omits
 ########################
-FROM caddy:2.11.4-builder AS builder
+FROM caddy:2.11.6-builder AS builder
 
 # libdns/azure authenticates with a client secret or over IMDS, and has no path for the
 # federated token an AKS workload identity supplies, so a fleet running as one cannot answer
@@ -38,7 +38,7 @@ RUN xcaddy build \
 ########################
 ### final
 ########################
-FROM caddy:2.11.4 AS final
+FROM caddy:2.11.7 AS final
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
