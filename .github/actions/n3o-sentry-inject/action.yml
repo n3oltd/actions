@@ -1,0 +1,42 @@
+name: n3o sentry inject
+description: >-
+  Injects Sentry debug IDs into a built folder's scripts and source maps, then moves the maps out
+  into another folder, so the folder ships without them and the maps can be uploaded on their own.
+  Does nothing to a folder with no maps. The Sentry CLI is pinned by this action's lockfile.
+
+inputs:
+  path:
+    description: The built folder.
+    required: true
+  maps:
+    description: The folder the source maps move to, keeping their relative paths.
+    required: true
+
+outputs:
+  found:
+    description: "'true' when the folder held source maps."
+    value: ${{ steps.inject.outputs.found }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: inject
+      shell: bash
+      env:
+        BUILT: ${{ inputs.path }}
+        MAPS: ${{ inputs.maps }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p "$MAPS"
+
+        if [ -z "$(find "$BUILT" -type f -name '*.map')" ]; then
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        npm ci --prefix "$GITHUB_ACTION_PATH" --ignore-scripts --no-audit --no-fund --loglevel=error
+        "$GITHUB_ACTION_PATH/node_modules/.bin/sentry-cli" sourcemaps inject "$BUILT"
+
+        (cd "$BUILT" && find . -type f -name '*.map' -exec sh -c 'mkdir -p "$MAPS/$(dirname "$1")" && mv "$1" "$MAPS/$1"' sh {} \;)
+        echo "found=true" >> "$GITHUB_OUTPUT"

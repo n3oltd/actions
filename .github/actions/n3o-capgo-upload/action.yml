@@ -1,0 +1,111 @@
+name: n3o capgo upload
+description: >-
+  Uploads a built folder as one key-v2 signed bundle version to each of a list of Capgo apps, onto
+  each app's upload-default channel, and makes sure that channel holds the version, linking it when
+  an upload left it unlinked. A re-run skips an app that already has the version, and a build equal
+  to the channel's current bundle still uploads as the new version. The Capgo CLI is pinned by this
+  action's lockfile.
+
+inputs:
+  apps:
+    description: Space- or newline-separated Capgo app IDs.
+    required: true
+  path:
+    description: The built folder, relative to working-directory.
+    required: false
+    default: dist
+  version:
+    description: The bundle version.
+    required: true
+  channel:
+    description: The apps' upload-default channel, which must hold the version afterwards.
+    required: true
+  min-update-version:
+    description: The oldest native version the bundle runs on.
+    required: true
+  comment:
+    description: The bundle's comment in Capgo.
+    required: false
+    default: ''
+  link:
+    description: A link Capgo shows with the bundle.
+    required: false
+    default: ''
+  api-key:
+    description: A Capgo API key that can upload to each app and promote to its upload-default channel.
+    required: true
+  signing-key:
+    description: The key-v2 private key, PEM.
+    required: true
+  working-directory:
+    description: The Capacitor project, whose config and installed updater the CLI reads.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: npm ci --prefix "$GITHUB_ACTION_PATH" --ignore-scripts --no-audit --no-fund --loglevel=error
+
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        APPS: ${{ inputs.apps }}
+        BUNDLE_PATH: ${{ inputs.path }}
+        VERSION: ${{ inputs.version }}
+        CHANNEL: ${{ inputs.channel }}
+        MINIMUM: ${{ inputs.min-update-version }}
+        COMMENT: ${{ inputs.comment }}
+        LINK: ${{ inputs.link }}
+        CAPGO_TOKEN: ${{ inputs.api-key }}
+        SIGNING_KEY: ${{ inputs.signing-key }}
+        CAPGO_DISABLE_TELEMETRY: "true"
+      run: |
+        set -euo pipefail
+        set -f
+        shopt -s extglob
+
+        if [ -z "$CAPGO_TOKEN" ] || [ -z "$SIGNING_KEY" ]; then
+          echo "::error::the Capgo API key or the signing key is empty"
+          exit 1
+        fi
+
+        capgo="$GITHUB_ACTION_PATH/node_modules/.bin/capgo"
+
+        umask 077
+        key="$RUNNER_TEMP/capgo-signing-key"
+        trap 'rm -f "$key"' EXIT
+        printf '%s\n' "$SIGNING_KEY" > "$key"
+
+        optional=()
+        [ -z "$COMMENT" ] || optional+=(--comment "$COMMENT")
+        [ -z "$LINK" ] || optional+=(--link "$LINK")
+
+        holds() {
+          local linked
+          linked=$("$capgo" channel currentBundle "$CHANNEL" "$1" --quiet 2>&1 || true)
+          linked=${linked//$'\e['*([0-9;])m/}
+          grep -qE "(^|[[:space:]])${VERSION//./\\.}\$" <<< "$linked"
+        }
+
+        for app in $APPS; do
+          "$capgo" bundle upload "$app" \
+            --path "$BUNDLE_PATH" \
+            --bundle "$VERSION" \
+            --key-v2 "$key" \
+            --min-update-version "$MINIMUM" \
+            --version-exists-ok \
+            --ignore-checksum-check \
+            "${optional[@]}"
+
+          if ! holds "$app"; then
+            "$capgo" channel set "$CHANNEL" "$app" --bundle "$VERSION" --ignore-metadata-check
+
+            if ! holds "$app"; then
+              echo "::error::$app's $CHANNEL channel does not hold $VERSION"
+              exit 1
+            fi
+          fi
+
+          echo "$app: $VERSION on $CHANNEL" >> "$GITHUB_STEP_SUMMARY"
+        done

@@ -1,0 +1,38 @@
+name: n3o capgo key check
+description: >-
+  Refuses a Capgo key-v2 private key whose public half is not the one a Capacitor project ships as
+  plugins.CapacitorUpdater.publicKey, so no bundle is ever signed with a key its phones cannot verify.
+
+inputs:
+  signing-key:
+    description: The key-v2 private key, PEM.
+    required: true
+  working-directory:
+    description: The Capacitor project holding capacitor.config.*.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SIGNING_KEY: ${{ inputs.signing-key }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+
+        configs=(capacitor.config.*)
+
+        if [ "${#configs[@]}" -eq 0 ]; then
+          echo "::error::$PWD holds no capacitor.config"
+          exit 1
+        fi
+
+        public=$(printf '%s\n' "$SIGNING_KEY" | openssl rsa -RSAPublicKey_out 2> /dev/null | grep -v -- '-----' | tr -d '\n' || true)
+        shipped=$(cat "${configs[@]}" | tr -d ' \n' | sed 's/\\n//g')
+
+        if [ -z "$public" ] || [[ "$shipped" != *"$public"* ]]; then
+          echo "::error::the signing key is missing, or its public half is not the one $PWD ships"
+          exit 1
+        fi

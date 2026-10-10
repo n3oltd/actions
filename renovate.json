@@ -7,6 +7,7 @@
     "github-actions",
     "dockerfile",
     "custom.regex",
+    "npm",
     "pip_requirements"
   ],
   "dependencyDashboard": true,
@@ -25,6 +26,13 @@
     ]
   },
   "packageRules": [
+    {
+      "description": "The npm lockfiles pin the CLIs the mobile release actions run beside a signing key, so a release waits the seven days n3oltd/frontend gives every third-party package.",
+      "matchManagers": [
+        "npm"
+      ],
+      "minimumReleaseAge": "7 days"
+    },
     {
       "matchManagers": [
         "github-actions"
