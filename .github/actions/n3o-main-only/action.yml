@@ -1,0 +1,45 @@
+name: n3o main only
+description: >-
+  Refuses a run whose ref is not the repository's protected main branch, or whose checked-out commit
+  is not on it. Run it after a checkout with fetch-depth 0.
+
+inputs:
+  branch:
+    description: The branch a run must come from.
+    required: false
+    default: main
+  token:
+    description: Reads the branch's protection.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+        GH_TOKEN: ${{ inputs.token }}
+        RUN_REF: ${{ github.ref }}
+      run: |
+        set -euo pipefail
+
+        if [ "$RUN_REF" != "refs/heads/$BRANCH" ]; then
+          echo "::error::this runs only from $BRANCH, not $RUN_REF"
+          exit 1
+        fi
+
+        if [ "$(gh api "repos/$GITHUB_REPOSITORY/branches/$BRANCH" --jq .protected)" != "true" ]; then
+          echo "::error::$BRANCH is not a protected branch"
+          exit 1
+        fi
+
+        if ! git rev-parse --verify --quiet "refs/remotes/origin/$BRANCH^{commit}" > /dev/null; then
+          echo "::error::origin/$BRANCH is not fetched; check out with fetch-depth 0"
+          exit 1
+        fi
+
+        if ! git merge-base --is-ancestor HEAD "origin/$BRANCH"; then
+          echo "::error::$(git rev-parse HEAD) is not on $BRANCH"
+          exit 1
+        fi
