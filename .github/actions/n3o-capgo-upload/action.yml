@@ -2,8 +2,8 @@ name: n3o capgo upload
 description: >-
   Uploads a built folder as one key-v2 signed bundle version to each of a list of Capgo apps, onto
   each app's upload-default channel, and makes sure that channel holds the version, linking it when
-  an upload left it unlinked. A re-run skips an app that already has the version, and a build equal to
-  the channel's current bundle still uploads as the new version. The Capgo CLI is pinned by this
+  an upload left it unlinked. A re-run skips an app that already has the version, and a build equal
+  to the channel's current bundle still uploads as the new version. The Capgo CLI is pinned by this
   action's lockfile.
 
 inputs:
