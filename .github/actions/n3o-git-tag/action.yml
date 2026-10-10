@@ -32,12 +32,17 @@ runs:
         export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
         export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
 
+        if git rev-parse --quiet --verify "refs/tags/$NAME" > /dev/null || git ls-remote --exit-code --tags origin "refs/tags/$NAME" > /dev/null; then
+          echo "::error::the tag $NAME already exists"
+          exit 1
+        fi
+
         git -c user.name='github-actions[bot]' \
           -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
           tag -a "$NAME" -m "$MESSAGE"
 
         if ! git push --quiet origin "refs/tags/$NAME"; then
           git tag -d "$NAME"
-          echo "::error::the tag $NAME could not be pushed; its name is taken"
+          echo "::error::the tag $NAME could not be pushed"
           exit 1
         fi
