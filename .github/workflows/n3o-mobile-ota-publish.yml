@@ -302,7 +302,17 @@ jobs:
         working-directory: ${{ inputs.app-path }}
         env:
           MIN_UPDATE_VERSION_COMMAND: ${{ inputs.min-update-version-command }}
-        run: echo "version=$(bash -c "$MIN_UPDATE_VERSION_COMMAND")" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+
+          minimum=$(bash -c "$MIN_UPDATE_VERSION_COMMAND")
+
+          if [ -z "$minimum" ] || [ "$minimum" = null ]; then
+            echo "::error::the native floor command printed no version"
+            exit 1
+          fi
+
+          echo "version=$minimum" >> "$GITHUB_OUTPUT"
 
       - uses: n3oltd/actions/.github/actions/n3o-capgo-upload@main
         with:
