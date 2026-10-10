@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       family:
-        description: The bundle family; passed to the commands below as FAMILY.
+        description: The bundle family, naming the job and its concurrency group.
         type: string
         required: true
       app-path:
@@ -90,7 +90,6 @@ jobs:
       run:
         shell: bash
     env:
-      FAMILY: ${{ inputs.family }}
       OUTPUT_PATH: ${{ inputs.output-path }}
       BUILT: ${{ inputs.app-path }}/${{ inputs.output-path }}
     steps:
