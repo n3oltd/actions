@@ -1,0 +1,31 @@
+name: n3o git authenticated
+description: >-
+  Runs a command whose git calls to github.com authenticate with a token, for a checkout that keeps
+  no credentials. The token reaches only this command, never the steps after it.
+
+inputs:
+  run:
+    description: The command, run with bash in the workspace.
+    required: true
+  token:
+    description: The token git presents.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        RUN: ${{ inputs.run }}
+        TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+        echo "::add-mask::$auth"
+
+        GIT_CONFIG_COUNT=1 \
+          GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth" \
+          bash -c "$RUN"

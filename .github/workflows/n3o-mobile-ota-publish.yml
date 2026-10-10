@@ -1,3 +1,8 @@
+# Publishes a Capacitor app's web build as a Capgo OTA bundle without releasing it: fixes the next
+# version by tagging the commit with the bundle's tree hash, keeps the bundle on that tag's release,
+# and uploads it, key-v2 signed, onto each app's upload-default channel. Given a version, it uploads
+# that published bundle to the apps named instead. The caller passes its version counter, tree hash,
+# build, check and native floor as commands.
 name: n3o mobile ota publish
 
 on:
@@ -24,11 +29,11 @@ on:
         type: string
         default: ''
       next-version-command:
-        description: Prints the family's next version, run at the root.
+        description: Prints the family's next version, run at the root after every tag is fetched; it gets no token.
         type: string
         required: true
       assert-version-command:
-        description: Exits non-zero to refuse VERSION as a bundle version of FAMILY, run at the root.
+        description: Exits non-zero to refuse VERSION as a bundle version of FAMILY, run at the root after every tag is fetched; it gets no token.
         type: string
         required: true
       tree-hash-command:
@@ -72,16 +77,16 @@ on:
         type: boolean
         default: false
     secrets:
-      GH_PAT:
+      gh-pat:
         description: Reads the n3oltd npm packages.
         required: true
-      CAPGO_API_KEY:
+      capgo-api-key:
         description: Uploads to the apps and promotes to their upload-default channel only.
         required: true
-      CAPGO_SIGNING_KEY:
+      capgo-signing-key:
         description: The family's key-v2 private key.
         required: true
-      SENTRY_AUTH_TOKEN:
+      sentry-auth-token:
         description: Uploads the source maps.
         required: false
 
@@ -121,7 +126,7 @@ jobs:
 
       - uses: n3oltd/actions/.github/actions/n3o-capgo-key-check@main
         with:
-          signing-key: ${{ secrets.CAPGO_SIGNING_KEY }}
+          signing-key: ${{ secrets.capgo-signing-key }}
           working-directory: ${{ inputs.app-path }}
 
       - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
@@ -133,7 +138,7 @@ jobs:
 
       - name: install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
+          NODE_AUTH_TOKEN: ${{ secrets.gh-pat }}
           INSTALL_COMMAND: ${{ inputs.install-command }}
         run: bash -c "$INSTALL_COMMAND"
 
@@ -144,6 +149,11 @@ jobs:
           CHECK_COMMAND: ${{ inputs.check-command }}
         run: bash -c "$CHECK_COMMAND"
 
+      - name: fetch every tag
+        uses: n3oltd/actions/.github/actions/n3o-git-authenticated@main
+        with:
+          run: git fetch --quiet --force --tags origin
+
       - id: version
         name: fix the version
         env:
@@ -151,15 +161,8 @@ jobs:
           TAG_PREFIX: ${{ inputs.tag-prefix }}
           NEXT_VERSION_COMMAND: ${{ inputs.next-version-command }}
           ASSERT_VERSION_COMMAND: ${{ inputs.assert-version-command }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-          echo "::add-mask::$auth"
-          export GIT_CONFIG_COUNT=1
-          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
-          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
 
           if [ -n "$REQUESTED" ]; then
             tag="$TAG_PREFIX$REQUESTED"
@@ -247,31 +250,31 @@ jobs:
 
           echo "hash=$hash" >> "$GITHUB_OUTPUT"
 
-      - if: steps.version.outputs.existing == 'false'
-        uses: n3oltd/actions/.github/actions/n3o-git-tag@main
-        with:
-          name: ${{ steps.version.outputs.tag }}
-          message: |
-            ${{ steps.version.outputs.tag }}
+      - name: tag the commit
+        if: steps.version.outputs.existing == 'false'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          HASH: ${{ steps.hash.outputs.hash }}
+        run: |
+          set -euo pipefail
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            tag -a "$TAG" -m "$TAG" -m "tree-sha256: $HASH"
 
-            tree-sha256: ${{ steps.hash.outputs.hash }}
+      - name: push the tag
+        if: steps.version.outputs.existing == 'false'
+        uses: n3oltd/actions/.github/actions/n3o-git-authenticated@main
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        with:
+          run: git push --quiet origin "refs/tags/$TAG" && git fetch --quiet --force --tags origin
 
       - name: assert the version again
         if: steps.version.outputs.existing == 'false'
         env:
           VERSION: ${{ steps.version.outputs.version }}
           ASSERT_VERSION_COMMAND: ${{ inputs.assert-version-command }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-          echo "::add-mask::$auth"
-          export GIT_CONFIG_COUNT=1
-          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
-          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
-
-          bash -c "$ASSERT_VERSION_COMMAND"
+        run: bash -c "$ASSERT_VERSION_COMMAND"
 
       - if: steps.maps.outputs.found == 'true' && inputs.sentry-project != ''
         uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
@@ -279,7 +282,7 @@ jobs:
           project: ${{ inputs.sentry-project }}
           release: ${{ steps.version.outputs.version }}
           sourcemaps: ${{ runner.temp }}/sourcemaps
-          auth-token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          auth-token: ${{ secrets.sentry-auth-token }}
 
       - name: pack the bundle
         if: steps.released.outputs.found != 'true'
@@ -310,6 +313,6 @@ jobs:
           min-update-version: ${{ steps.minimum.outputs.version }}
           comment: ${{ steps.version.outputs.tag }} ${{ steps.version.outputs.commit }}
           link: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}
-          api-key: ${{ secrets.CAPGO_API_KEY }}
-          signing-key: ${{ secrets.CAPGO_SIGNING_KEY }}
+          api-key: ${{ secrets.capgo-api-key }}
+          signing-key: ${{ secrets.capgo-signing-key }}
           working-directory: ${{ inputs.app-path }}
