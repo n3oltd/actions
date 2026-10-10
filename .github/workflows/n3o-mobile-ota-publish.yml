@@ -59,6 +59,10 @@ on:
         description: Sentry project for the bundle's source maps; empty uploads none.
         type: string
         default: ''
+      sentry-release:
+        description: The Sentry release the source maps go to; {version} is replaced by the bundle version.
+        type: string
+        default: '{version}'
       node-version-file:
         description: File to read the Node version from.
         type: string
@@ -156,6 +160,7 @@ jobs:
           TAG_PREFIX: ${{ inputs.tag-prefix }}
           NEXT_VERSION_COMMAND: ${{ inputs.next-version-command }}
           ASSERT_VERSION_COMMAND: ${{ inputs.assert-version-command }}
+          SENTRY_RELEASE: ${{ inputs.sentry-release }}
         run: |
           set -euo pipefail
 
@@ -189,6 +194,7 @@ jobs:
             echo "tag=$tag"
             echo "expected=$expected"
             echo "commit=$(git rev-parse HEAD)"
+            echo "sentry-release=${SENTRY_RELEASE//\{version\}/$version}"
           } >> "$GITHUB_OUTPUT"
 
       - id: released
@@ -275,7 +281,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
         with:
           project: ${{ inputs.sentry-project }}
-          release: ${{ steps.version.outputs.version }}
+          release: ${{ steps.version.outputs.sentry-release }}
           sourcemaps: ${{ runner.temp }}/sourcemaps
           auth-token: ${{ secrets.sentry-auth-token }}
 
