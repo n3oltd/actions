@@ -36,9 +36,21 @@ inputs:
     required: false
     default: '8'
 
+  retention-days:
+    description: The number of days each published version is kept; when empty the packages are published unstamped
+    required: false
+    default: ''
+
 runs:
   using: "composite"
   steps:
+    - name: stamp the retention period
+      if: inputs.retention-days != ''
+      uses: n3oltd/actions/.github/actions/n3o-package-retention-stamp@main
+      with:
+        retention-days: ${{ inputs.retention-days }}
+        npm-package-directories: ${{ inputs.package-directories }}
+
     - name: npm publish
       shell: bash
       run: |
