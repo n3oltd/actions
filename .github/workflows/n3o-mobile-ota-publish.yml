@@ -3,8 +3,8 @@ name: n3o mobile ota publish
 on:
   workflow_call:
     inputs:
-      family:
-        description: The bundle family, naming the job and its concurrency group.
+      product:
+        description: The mobile app's product ID, which names the job and its concurrency group.
         type: string
         required: true
       app-path:
@@ -63,7 +63,7 @@ on:
         description: Uploads to the apps and promotes to their upload-default channel only.
         required: true
       capgo-signing-key:
-        description: The family's key-v2 private key.
+        description: The product's key-v2 private key.
         required: true
       sentry-auth-token:
         description: Uploads the source maps.
@@ -78,11 +78,11 @@ jobs:
       mode: ${{ inputs.fast && 'fast' || 'wait' }}
 
   publish:
-    name: publish ${{ inputs.family }}
+    name: publish ${{ inputs.product }}
     needs: pick
     runs-on: ${{ needs.pick.outputs.runs-on }}
     concurrency:
-      group: n3o-mobile-ota-publish-${{ github.repository }}-${{ inputs.family }}
+      group: n3o-mobile-ota-publish-${{ github.repository }}-${{ inputs.product }}
       cancel-in-progress: false
     permissions:
       contents: read
