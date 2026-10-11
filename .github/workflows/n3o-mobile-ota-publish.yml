@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       product:
-        description: The mobile app's product, naming the job and its concurrency group.
+        description: The mobile app's product ID, which names the job and its concurrency group.
         type: string
         required: true
       app-path:
