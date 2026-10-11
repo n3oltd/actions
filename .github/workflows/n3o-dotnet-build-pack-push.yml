@@ -16,10 +16,20 @@ on:
         required: true
         type: string
 
+      npm-retention-days:
+        description: The number of days each published npm version is kept; when empty the packages are published unstamped
+        type: string
+        default: ''
+
       nuget-packages:
         description: List of NuGet packages to create as a JSON array
         required: true
         type: string
+
+      nuget-retention-days:
+        description: The number of days each published NuGet version is kept; when empty the packages are published unstamped
+        type: string
+        default: ''
 
       set-assembly-version:
         description: Whether to set AssemblyVersion and FileVersion to match the package version
@@ -122,6 +132,7 @@ jobs:
         with:
           build-configuration: ${{ inputs.build-configuration }}
           projects: ${{ inputs.nuget-packages }}
+          retention-days: ${{ inputs.nuget-retention-days }}
           set-assembly-version: ${{ inputs.set-assembly-version }}
           version-suffix: ${{ inputs.version-suffix }}
           working-directory: ${{ inputs.working-directory }}
@@ -139,4 +150,5 @@ jobs:
         with:
           package-directories: ${{ inputs.npm-packages }}
           access-token: ${{ secrets.GH_PAT }}
+          retention-days: ${{ inputs.npm-retention-days }}
           version-suffix: ${{ inputs.version-suffix }}

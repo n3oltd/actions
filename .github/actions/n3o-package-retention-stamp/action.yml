@@ -1,0 +1,51 @@
+name: n3o package retention stamp
+description: >-
+  The one place the package retention stamp format lives. Makes the stamp for a number of days and
+  appends it to the description of each listed npm package.
+
+inputs:
+  retention-days:
+    description: The number of days the published version is kept.
+    required: true
+
+  npm-package-directories:
+    description: The npm package directories whose description takes the stamp, as a JSON array.
+    required: false
+    default: '[]'
+
+outputs:
+  stamp:
+    description: The retention stamp.
+    value: ${{ steps.stamp.outputs.stamp }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: stamp
+      name: stamp the retention period
+      shell: bash
+      env:
+        RETENTION_DAYS: ${{ inputs.retention-days }}
+        NPM_PACKAGE_DIRECTORIES: ${{ inputs.npm-package-directories }}
+      run: |
+        set -euo pipefail
+
+        if ! [[ "$RETENTION_DAYS" =~ ^[1-9][0-9]{0,4}$ ]]; then
+          echo "::error::retention-days must be a whole number of days from 1 to 99999, got '$RETENTION_DAYS'"
+          exit 1
+        fi
+
+        stamp="[retention-${RETENTION_DAYS}d]"
+        echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
+
+        directories=$(jq -r '.[]' <<< "$NPM_PACKAGE_DIRECTORIES")
+
+        while IFS= read -r directory; do
+          [ -n "$directory" ] || continue
+          manifest="$directory/package.json"
+          jq --arg stamp "$stamp" \
+            '.description = ([((.description // "") | sub("\\s+$"; "") | select(. != "")), $stamp] | join(" "))' \
+            "$manifest" > "$manifest.stamped"
+          mv "$manifest.stamped" "$manifest"
+          echo "stamped $stamp: $manifest"
+        done <<< "$directories"

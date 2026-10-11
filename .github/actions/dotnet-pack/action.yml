@@ -10,6 +10,10 @@ inputs:
     description: The list of projects to pack as a JSON array
     required: true
 
+  retention-days:
+    description: The number of days each packed version is kept; when empty the packages are packed unstamped
+    default: ''
+
   set-assembly-version:
     description: Whether to set AssemblyVersion and FileVersion to match the package version
     default: 'false'
@@ -25,8 +29,17 @@ inputs:
 runs:
   using: "composite"
   steps: 
+    - id: retention
+      name: make the retention stamp
+      if: inputs.retention-days != ''
+      uses: n3oltd/actions/.github/actions/n3o-package-retention-stamp@main
+      with:
+        retention-days: ${{ inputs.retention-days }}
+
     - name: dotnet-pack
       shell: bash
+      env:
+        RETENTION_STAMP: ${{ steps.retention.outputs.stamp }}
       run: |
         version=$(date -u +"%Y.%m.%d").${{ github.run_number }}
         if [ "${{ inputs.version-suffix }}" != "" ];then
@@ -40,6 +53,16 @@ runs:
           assembly_version_args=""
           if [ "${{ inputs.set-assembly-version }}" = "true" ]; then
             assembly_version_args="/p:AssemblyVersion=$version /p:FileVersion=$version"
+          fi
+          if [ -n "$RETENTION_STAMP" ]; then
+            unset PackageDescription
+            description=$(dotnet msbuild "$csProj" -getProperty:Description)
+            # A /p: value is split at semicolons and commas; the environment carries it whole.
+            export PackageDescription="${description:+$description }$RETENTION_STAMP"
+            if [ "$(dotnet msbuild "$csProj" -getProperty:PackageDescription)" != "$PackageDescription" ]; then
+              echo "::error::$project sets its own PackageDescription, so the retention stamp cannot be added to it"
+              exit 1
+            fi
           fi
           # --no-build must NOT be used here: dotnet pack must rebuild the DLL so that
           # /p:Version, /p:AssemblyVersion and /p:FileVersion are baked into the binary.
