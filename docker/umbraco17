@@ -1,0 +1,70 @@
+########################
+### base
+########################
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-noble AS base
+
+WORKDIR /app
+
+########################
+### build
+########################
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+
+ARG PROJECT
+ARG PROJECT_PATH
+ARG VERSION
+ARG SOURCE_REVISION_ID
+
+WORKDIR /src
+
+ENV PROJECT=${PROJECT}
+
+COPY . .
+
+# Monorepo callers build with the repo root as the context and pass PROJECT_PATH (the project
+# directory, context-relative); single-repo callers build with the project's parent as the context
+# and pass PROJECT only, so PROJECT_PATH defaults to PROJECT.
+RUN cd "/src/${PROJECT_PATH:-$PROJECT}" \
+ && dotnet build --configuration Release --output /build /p:Version=${VERSION:-1.0.0} /p:SourceRevisionId=${SOURCE_REVISION_ID}
+
+########################
+### publish
+########################
+FROM build AS publish
+
+ARG PROJECT
+ARG PROJECT_PATH
+ARG VERSION
+ARG SOURCE_REVISION_ID
+
+RUN cd "/src/${PROJECT_PATH:-$PROJECT}" \
+ && dotnet publish "${PROJECT}.csproj" --configuration Release --output /publish /p:Version=${VERSION:-1.0.0} /p:SourceRevisionId=${SOURCE_REVISION_ID}
+
+########################
+### final
+########################
+FROM base AS final
+
+RUN apt-get update
+RUN echo "yes" | apt install ttf-mscorefonts-installer --assume-yes
+RUN apt-get install --assume-yes curl wget zip unzip ghostscript git make gdebi fontconfig
+
+ARG PROJECT
+
+WORKDIR /publish
+
+ENV ASPNETCORE_URLS http://*:80
+ENV DLL="${PROJECT}.dll"
+
+COPY --from=publish /publish .
+
+RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+RUN sed -i '/\[openssl_init\]/a ssl_conf = ssl_sect' /etc/ssl/openssl.cnf
+RUN printf "\n[ssl_sect]\nsystem_default = system_default_sect\n" >> /etc/ssl/openssl.cnf
+RUN printf "\n[system_default_sect]\nMinProtocol = TLSv1.2\nCipherString = DEFAULT@SECLEVEL=0" >> /etc/ssl/openssl.cnf
+
+ENTRYPOINT ["./entrypoint.sh"]
+
+EXPOSE 80
