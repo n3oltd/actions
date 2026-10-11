@@ -99,7 +99,7 @@
       "enabled": false
     },
     {
-      "description": "Umbraco 13 targets net8.0, and .NET does not roll forward a major by default, so a newer runtime base here is wrong by construction rather than merely undesirable: the image would build clean and fail at container start. Scoped to this file, because n3o-dotnet shares the package and should keep being offered new majors. Moving to Umbraco 17 replaces this Dockerfile rather than bumping it.",
+      "description": "Umbraco 13 targets net8.0, and .NET does not roll forward a major by default, so a newer runtime base here is wrong by construction rather than merely undesirable: the image would build clean and fail at container start. Scoped to this file, because n3o-dotnet shares the package and should keep being offered new majors. A site moving to Umbraco 17 builds from docker/umbraco17 rather than a bumped copy of this one.",
       "matchManagers": [
         "dockerfile"
       ],
@@ -110,6 +110,19 @@
         "mcr.microsoft.com/dotnet/aspnet"
       ],
       "allowedVersions": "/^8\\./"
+    },
+    {
+      "description": "Umbraco 17 targets net10.0, so docker/umbraco17 holds its runtime base to .NET 10 for the reason docker/umbraco13 holds its own to .NET 8: a newer major builds clean and fails at container start.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/umbraco17"
+      ],
+      "matchPackageNames": [
+        "mcr.microsoft.com/dotnet/aspnet"
+      ],
+      "allowedVersions": "/^10\\./"
     },
     {
       "description": "The release listing yields directory names, so the trailing slash has to come off before the version can be compared. Raised above the default priority because prConcurrentLimit silently withholds new pull requests once ten are open, and with the dependency dashboard off there would be nothing anywhere saying a ResourceSpace release was waiting behind them.",
