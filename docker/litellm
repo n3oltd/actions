@@ -1,13 +1,10 @@
 ########################
 ### base
 ########################
-# LiteLLM's official image, never its PyPI package, which was compromised in
-# March 2026 when the signed image was not. Named by digest, never by tag: the
-# build workflow resolves the newest stable release to its digest and checks that
-# digest against LiteLLM's signing key before this runs, and a tag can move after
-# the check.
-ARG LITELLM_DIGEST
-FROM ghcr.io/berriai/litellm@${LITELLM_DIGEST} AS base
+# LiteLLM's signed image, never its PyPI package. Pinned by release and digest,
+# and the build verifies the digest against LiteLLM's signing key before it
+# builds. Bumping this is what a new LiteLLM looks like.
+FROM litellm/litellm:v1.105.1@sha256:b7b9e2c306343721802253d0dd9436b9634a2eb4e14da7c7cf06c5c7b7530802 AS base
 
 ########################
 ### final
@@ -19,8 +16,8 @@ LABEL org.opencontainers.image.description="LiteLLM's signed proxy image, readin
 
 # Each of these otherwise reads a file from the main branch of LiteLLM's
 # repository when the proxy starts or a screen asks, so what the proxy charges
-# and sends upstream could change without a release. The copies shipped in the
-# image are used instead.
+# and sends upstream could change without a release. The build fails if the
+# package reads a switch that is not set here.
 ENV LITELLM_LOCAL_MODEL_COST_MAP="True" \
     LITELLM_LOCAL_ANTHROPIC_BETA_HEADERS="True" \
     LITELLM_LOCAL_AUTOROUTER_PRESETS="True" \

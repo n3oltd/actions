@@ -1,7 +1,6 @@
-# Builds and pushes the N3O LiteLLM image to ACR with date and latest tags, from
-# LiteLLM's newest stable release once its signature verifies, fetching the
-# Dockerfile from the actions repo. Runs on the self-hosted fleet unless the
-# caller asks for fast.
+# Builds and pushes the N3O LiteLLM image to ACR with date and latest tags,
+# fetching the Dockerfile from the actions repo, once the pinned upstream digest
+# verifies. Runs on the self-hosted fleet unless the caller asks for fast.
 name: 'docker-build-push-litellm'
 
 on:
@@ -13,12 +12,6 @@ on:
         required: false
         default: wait
   workflow_dispatch:
-
-env:
-  UPSTREAM: ghcr.io/berriai/litellm
-  # LiteLLM's public key at the commit its release notes name. A key read from
-  # main could be replaced along with the image it vouches for.
-  UPSTREAM_KEY: https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub
 
 jobs:
   pick:
@@ -48,35 +41,52 @@ jobs:
           dockerfile: litellm
           path: Dockerfile.litellm
 
-      # GitHub's latest release, which LiteLLM marks only on a stable one; the
-      # pattern refuses a release candidate or nightly marked by mistake.
       - id: upstream
-        name: resolve the newest stable release
-        env:
-          GH_TOKEN: ${{ github.token }}
+        name: read the pinned upstream image
         run: |
           set -euo pipefail
-          release=$(gh api repos/BerriAI/litellm/releases/latest --jq .tag_name)
-          if ! [[ "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error title=Not a stable release::LiteLLM's latest release is ${release}"
-            exit 1
-          fi
-          digest=$(docker buildx imagetools inspect "${UPSTREAM}:${release}" --format '{{json .Manifest}}' | jq -r .digest)
-          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::could not resolve ${release} to a digest"; exit 1; }
-          echo "release=$release" >> "$GITHUB_OUTPUT"
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "LiteLLM ${release} is ${digest}"
+          image=$(sed -n 's/^FROM \(litellm\/litellm:[^ ]*@sha256:[0-9a-f]\{64\}\) AS base$/\1/p' Dockerfile.litellm)
+          [ -n "$image" ] || { echo "Dockerfile.litellm pins no upstream image by digest"; exit 1; }
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Upstream: $image"
 
       - uses: sigstore/cosign-installer@v4
 
-      # The digest verified here is the digest built from, so nothing published
-      # between the check and the build can be substituted.
+      # LiteLLM's key at the commit its release notes name: a key read from main
+      # could be replaced along with the image it vouches for.
       - name: verify the signature
         env:
-          DIGEST: ${{ steps.upstream.outputs.digest }}
+          IMAGE: ${{ steps.upstream.outputs.image }}
         run: |
           set -euo pipefail
-          cosign verify --key "$UPSTREAM_KEY" "${UPSTREAM}@${DIGEST}" >/dev/null
+          cosign verify \
+            --key https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub \
+            "$IMAGE" >/dev/null
+
+      # A release that adds a switch would otherwise read that file from GitHub
+      # unnoticed.
+      - name: check every runtime fetch is switched off
+        env:
+          IMAGE: ${{ steps.upstream.outputs.image }}
+        run: |
+          set -euo pipefail
+          read_by_package=$(docker run --rm --platform linux/amd64 --entrypoint python "$IMAGE" -c '
+          import litellm, os, re
+          names = set()
+          for directory, _, files in os.walk(os.path.dirname(litellm.__file__)):
+              for name in files:
+                  if name.endswith(".py"):
+                      with open(os.path.join(directory, name), encoding="utf-8", errors="ignore") as source:
+                          names.update(re.findall(r"LITELLM_LOCAL_[A-Z_]+", source.read()))
+          print("\n".join(sorted(names)))
+          ')
+          set_by_recipe=$(grep -oE 'LITELLM_LOCAL_[A-Z_]+' Dockerfile.litellm | sort -u)
+          unset_names=$(comm -23 <(echo "$read_by_package") <(echo "$set_by_recipe"))
+          if [ -n "$unset_names" ]; then
+            echo "LiteLLM reads switches docker/litellm does not set:"
+            echo "$unset_names"
+            exit 1
+          fi
 
       - id: meta
         name: prepare litellm
@@ -87,9 +97,6 @@ jobs:
       # Stated rather than inherited: upstream publishes multi-arch, and an arm64
       # build reaches Container Apps as an exec format error at container start
       # rather than as a failed build.
-      #
-      # The base labels are what the deploy reads to record which release a
-      # federation runs.
       - name: build and push litellm
         uses: docker/build-push-action@v7
         with:
@@ -100,10 +107,4 @@ jobs:
           platforms: linux/amd64
           pull: true
           push: true
-          build-args: |
-            LITELLM_DIGEST=${{ steps.upstream.outputs.digest }}
           tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
-          labels: |
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.base.name=${{ env.UPSTREAM }}:${{ steps.upstream.outputs.release }}
-            org.opencontainers.image.base.digest=${{ steps.upstream.outputs.digest }}
