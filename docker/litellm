@@ -1,9 +1,9 @@
 ########################
 ### base
 ########################
-# LiteLLM's signed image, never its PyPI package. Pinned by release and digest,
-# and the build verifies the digest against LiteLLM's signing key before it
-# builds. Bumping this is what a new LiteLLM looks like.
+# LiteLLM's signed image, never its PyPI package. Pinned by digest as well as
+# release: the digest is what the signature is verified against, and a tag can
+# move after the check. Bumping this is what a new LiteLLM looks like.
 FROM litellm/litellm:v1.105.1@sha256:b7b9e2c306343721802253d0dd9436b9634a2eb4e14da7c7cf06c5c7b7530802 AS base
 
 ########################
