@@ -52,6 +52,20 @@
       "enabled": false
     },
     {
+      "description": "sigstore/cosign-installer publishes no major tag, so it is pinned to a full version and each new minor and patch is offered.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "sigstore/cosign-installer"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "enabled": true
+    },
+    {
       "description": "One PR per base image: neutralise the grouping config:recommended inherits, so a fleet-wide image bump is reviewed on its own.",
       "matchManagers": [
         "dockerfile"

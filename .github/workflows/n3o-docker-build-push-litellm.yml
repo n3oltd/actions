@@ -46,7 +46,7 @@ jobs:
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "Upstream: $image"
 
-      - uses: sigstore/cosign-installer@v4
+      - uses: sigstore/cosign-installer@v4.1.2
 
       # The key at a fixed commit: one read from main could be replaced with the image.
       - name: verify the signature
