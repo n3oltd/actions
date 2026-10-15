@@ -52,11 +52,12 @@
       "enabled": false
     },
     {
-      "description": "sigstore/cosign-installer publishes no major tag, so it is pinned to a full version and each new minor and patch is offered.",
+      "description": "These actions publish no major tag, so each is pinned to a full version and offered every new minor and patch.",
       "matchManagers": [
         "github-actions"
       ],
       "matchPackageNames": [
+        "renovatebot/github-action",
         "sigstore/cosign-installer"
       ],
       "matchUpdateTypes": [
