@@ -52,11 +52,12 @@
       "enabled": false
     },
     {
-      "description": "These actions publish no major tag, so each is pinned to a full version and offered every new minor and patch.",
+      "description": "These actions publish no major tag, or one that does not follow their releases, so each is pinned to a full version and offered every new minor and patch.",
       "matchManagers": [
         "github-actions"
       ],
       "matchPackageNames": [
+        "azure/use-kubelogin",
         "renovatebot/github-action",
         "sigstore/cosign-installer"
       ],
