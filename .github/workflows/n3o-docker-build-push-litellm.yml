@@ -1,6 +1,3 @@
-# Builds and pushes the N3O LiteLLM image to ACR with date and latest tags,
-# fetching the Dockerfile from the actions repo, once the pinned upstream digest
-# verifies. Runs on the self-hosted fleet unless the caller asks for fast.
 name: 'docker-build-push-litellm'
 
 on:
@@ -33,8 +30,7 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # An explicit path: the calling repository has a litellm directory for the
-      # bare catalogue name to collide with.
+      # A distinct path: the calling repository has a litellm directory.
       - name: fetch dockerfile
         uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
         with:
@@ -52,8 +48,7 @@ jobs:
 
       - uses: sigstore/cosign-installer@v4
 
-      # LiteLLM's key at the commit its release notes name: a key read from main
-      # could be replaced along with the image it vouches for.
+      # The key at a fixed commit: one read from main could be replaced with the image.
       - name: verify the signature
         env:
           IMAGE: ${{ steps.upstream.outputs.image }}
@@ -63,8 +58,6 @@ jobs:
             --key https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub \
             "$IMAGE" >/dev/null
 
-      # A release that adds a switch would otherwise read that file from GitHub
-      # unnoticed.
       - name: check every runtime fetch is switched off
         env:
           IMAGE: ${{ steps.upstream.outputs.image }}
@@ -94,9 +87,7 @@ jobs:
         with:
           repository: n3o-litellm
 
-      # Stated rather than inherited: upstream publishes multi-arch, and an arm64
-      # build reaches Container Apps as an exec format error at container start
-      # rather than as a failed build.
+      # Stated, not inherited: an arm64 image builds clean and fails at container start.
       - name: build and push litellm
         uses: docker/build-push-action@v7
         with:

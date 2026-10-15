@@ -1,9 +1,7 @@
 ########################
 ### base
 ########################
-# LiteLLM's signed image, never its PyPI package. Pinned by digest as well as
-# release: the digest is what the signature is verified against, and a tag can
-# move after the check. Bumping this is what a new LiteLLM looks like.
+# The digest is what the build's signature check verifies; a tag can move after it.
 FROM litellm/litellm:v1.105.1@sha256:b7b9e2c306343721802253d0dd9436b9634a2eb4e14da7c7cf06c5c7b7530802 AS base
 
 ########################
@@ -14,10 +12,7 @@ FROM base AS final
 LABEL org.opencontainers.image.title="LiteLLM"
 LABEL org.opencontainers.image.description="LiteLLM's signed proxy image, reading nothing from GitHub at runtime."
 
-# Each of these otherwise reads a file from the main branch of LiteLLM's
-# repository when the proxy starts or a screen asks, so what the proxy charges
-# and sends upstream could change without a release. The build fails if the
-# package reads a switch that is not set here.
+# Unset, each reads a file from LiteLLM's main branch at runtime; the build checks all are set.
 ENV LITELLM_LOCAL_MODEL_COST_MAP="True" \
     LITELLM_LOCAL_ANTHROPIC_BETA_HEADERS="True" \
     LITELLM_LOCAL_AUTOROUTER_PRESETS="True" \
