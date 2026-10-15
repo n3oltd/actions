@@ -144,6 +144,19 @@
         "ubuntu"
       ],
       "allowedVersions": "/^24\\./"
+    },
+    {
+      "description": "LiteLLM publishes release candidates, nightlies and development builds under the same image, and supports only its latest stable release, which is the only tag of the plain vX.Y.Z form.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/litellm"
+      ],
+      "matchPackageNames": [
+        "litellm/litellm"
+      ],
+      "allowedVersions": "/^v\\d+\\.\\d+\\.\\d+$/"
     }
   ],
   "pip_requirements": {

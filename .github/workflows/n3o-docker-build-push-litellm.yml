@@ -1,0 +1,101 @@
+name: 'docker-build-push-litellm'
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
+        type: string
+        required: false
+        default: wait
+  workflow_dispatch:
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode || 'wait' }}
+
+  build-push-docker-image-job:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: acr
+        name: acr login
+        uses: n3oltd/actions/.github/actions/n3o-acr-login@main
+        with:
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # A distinct path: the calling repository has a litellm directory.
+      - name: fetch dockerfile
+        uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
+        with:
+          dockerfile: litellm
+          path: Dockerfile.litellm
+
+      - id: upstream
+        name: read the pinned upstream image
+        run: |
+          set -euo pipefail
+          image=$(sed -n 's/^FROM \(litellm\/litellm:[^ ]*@sha256:[0-9a-f]\{64\}\) AS base$/\1/p' Dockerfile.litellm)
+          [ -n "$image" ] || { echo "Dockerfile.litellm pins no upstream image by digest"; exit 1; }
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "Upstream: $image"
+
+      - uses: sigstore/cosign-installer@v4
+
+      # The key at a fixed commit: one read from main could be replaced with the image.
+      - name: verify the signature
+        env:
+          IMAGE: ${{ steps.upstream.outputs.image }}
+        run: |
+          set -euo pipefail
+          cosign verify \
+            --key https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub \
+            "$IMAGE" >/dev/null
+
+      - name: check every runtime fetch is switched off
+        env:
+          IMAGE: ${{ steps.upstream.outputs.image }}
+        run: |
+          set -euo pipefail
+          read_by_package=$(docker run --rm --platform linux/amd64 --entrypoint python "$IMAGE" -c '
+          import litellm, os, re
+          names = set()
+          for directory, _, files in os.walk(os.path.dirname(litellm.__file__)):
+              for name in files:
+                  if name.endswith(".py"):
+                      with open(os.path.join(directory, name), encoding="utf-8", errors="ignore") as source:
+                          names.update(re.findall(r"LITELLM_LOCAL_[A-Z_]+", source.read()))
+          print("\n".join(sorted(names)))
+          ')
+          set_by_recipe=$(grep -oE 'LITELLM_LOCAL_[A-Z_]+' Dockerfile.litellm | sort -u)
+          unset_names=$(comm -23 <(echo "$read_by_package") <(echo "$set_by_recipe"))
+          if [ -n "$unset_names" ]; then
+            echo "LiteLLM reads switches docker/litellm does not set:"
+            echo "$unset_names"
+            exit 1
+          fi
+
+      - id: meta
+        name: prepare litellm
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: n3o-litellm
+
+      # Stated, not inherited: an arm64 image builds clean and fails at container start.
+      - name: build and push litellm
+        uses: docker/build-push-action@v7
+        with:
+          builder: ${{ steps.acr.outputs.builder }}
+          context: .
+          target: final
+          file: Dockerfile.litellm
+          platforms: linux/amd64
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
