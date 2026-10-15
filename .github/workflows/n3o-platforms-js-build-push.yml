@@ -47,14 +47,12 @@ jobs:
         run: |
           mkdir -p packages/n3o-elements/src
 
-          wget -O app.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/app.json
           wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
           wget -O localization.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/subscription/localization.json
 
           jq -n \
-            --arg app "$(cat app.json)" \
             --arg themes "$(cat themes.json)" \
-            '{app: ($app | fromjson), themes: ($themes | fromjson)}' \
+            '{themes: ($themes | fromjson)}' \
             > packages/n3o-elements/src/configuration.json
 
           jq -n \
