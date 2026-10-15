@@ -173,6 +173,19 @@
   },
   "customManagers": [
     {
+      "description": "The shared Renovate workflow pins the Renovate image through the action's renovate-version input, which no packaged manager reads, so a release that hangs cannot reach every repository the day it ships.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        ".github/workflows/n3o-renovate.yml"
+      ],
+      "matchStrings": [
+        "renovate-version: (?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "ghcr.io/renovatebot/renovate",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
       "description": "The ResourceSpace release is a Subversion URL in docker/resourcespace, which no packaged manager reads.",
       "customType": "regex",
       "managerFilePatterns": [
