@@ -103,7 +103,7 @@ COPY --from=build /repo/${OUTPUT_DIR}/ /
 ########################
 ### variants
 ########################
-FROM caddy:2.11.4-alpine AS variant-static
+FROM caddy:2.11.7-alpine AS variant-static
 RUN apk add --no-cache jq
 ARG OUTPUT_DIR
 ARG BASE_PATH=/
