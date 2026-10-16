@@ -175,6 +175,19 @@
       "allowedVersions": "/^v\\d+\\.\\d+\\.\\d+$/"
     },
     {
+      "description": "ProjectSend publishes floating major and minor tags beside each release under the same image; only the full X.Y.Z tag names one release.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/projectsend"
+      ],
+      "matchPackageNames": [
+        "projectsend/projectsend"
+      ],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/"
+    },
+    {
       "description": "Zammad tags each build of a release as X.Y.Z-NNNN, which the docker versioning reads as a different compatibility on every build; parsing the build number makes a newer build of a release an upgrade.",
       "matchManagers": [
         "dockerfile"

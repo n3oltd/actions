@@ -1,0 +1,12 @@
+########################
+### base
+########################
+FROM projectsend/projectsend:2.7.0@sha256:43a9c4af584478bb6c23e77dae4564c990162b652828f32edacf3b3f6cb2f87d AS base
+
+########################
+### final
+########################
+FROM base AS final
+
+LABEL org.opencontainers.image.title="ProjectSend"
+LABEL org.opencontainers.image.description="ProjectSend's official image, pinned by release and digest."
