@@ -1,7 +1,6 @@
 ########################
 ### base
 ########################
-# Pinned by digest as well as release: a tag can move after it.
 FROM ghcr.io/zammad/zammad:7.2.2-0003@sha256:c3c1f2df6881178dae82dc2c9b26cc8ac25c24abb43a7da1ac038602fc659372 AS base
 
 ########################
