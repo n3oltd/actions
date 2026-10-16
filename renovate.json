@@ -52,6 +52,22 @@
       "enabled": false
     },
     {
+      "description": "These actions publish no major tag, or one that does not follow their releases, so each is pinned to a full version and offered every new minor and patch.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "azure/use-kubelogin",
+        "renovatebot/github-action",
+        "sigstore/cosign-installer"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "enabled": true
+    },
+    {
       "description": "One PR per base image: neutralise the grouping config:recommended inherits, so a fleet-wide image bump is reviewed on its own.",
       "matchManagers": [
         "dockerfile"
