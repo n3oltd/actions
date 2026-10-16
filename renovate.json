@@ -173,6 +173,19 @@
         "litellm/litellm"
       ],
       "allowedVersions": "/^v\\d+\\.\\d+\\.\\d+$/"
+    },
+    {
+      "description": "ProjectSend publishes floating major and minor tags beside each release under the same image; only the full X.Y.Z tag names one release.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/projectsend"
+      ],
+      "matchPackageNames": [
+        "projectsend/projectsend"
+      ],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/"
     }
   ],
   "pip_requirements": {
