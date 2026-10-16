@@ -1,0 +1,12 @@
+########################
+### base
+########################
+FROM ghcr.io/zammad/zammad:7.2.2-0003@sha256:c3c1f2df6881178dae82dc2c9b26cc8ac25c24abb43a7da1ac038602fc659372 AS base
+
+########################
+### final
+########################
+FROM base AS final
+
+LABEL org.opencontainers.image.title="Zammad"
+LABEL org.opencontainers.image.description="Zammad's own image, pinned by release and digest."

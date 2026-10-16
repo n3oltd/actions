@@ -186,6 +186,19 @@
         "projectsend/projectsend"
       ],
       "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/"
+    },
+    {
+      "description": "Zammad tags each build of a release as X.Y.Z-NNNN, which the docker versioning reads as a different compatibility on every build; parsing the build number makes a newer build of a release an upgrade.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchFileNames": [
+        "docker/zammad"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/zammad/zammad"
+      ],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)$"
     }
   ],
   "pip_requirements": {

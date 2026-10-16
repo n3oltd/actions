@@ -1,0 +1,63 @@
+name: 'docker-build-push-zammad'
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
+        type: string
+        required: false
+        default: wait
+  workflow_dispatch:
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.mode || 'wait' }}
+
+  build-push-docker-image-job:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: acr
+        name: acr login
+        uses: n3oltd/actions/.github/actions/n3o-acr-login@main
+        with:
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # A distinct path: the calling repository has a zammad directory.
+      - name: fetch dockerfile
+        uses: n3oltd/actions/.github/actions/n3o-dockerfile-fetch@main
+        with:
+          dockerfile: zammad
+          path: Dockerfile.zammad
+
+      - name: check the upstream image is pinned by digest
+        run: |
+          set -euo pipefail
+          grep -qE '^FROM ghcr\.io/zammad/zammad:[^ ]*@sha256:[0-9a-f]{64} AS base$' Dockerfile.zammad \
+            || { echo "Dockerfile.zammad pins no upstream image by digest"; exit 1; }
+
+      - id: meta
+        name: prepare zammad
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: n3o-zammad
+
+      # Stated, not inherited: the clusters that run it are amd64.
+      - name: build and push zammad
+        uses: docker/build-push-action@v7
+        with:
+          builder: ${{ steps.acr.outputs.builder }}
+          context: .
+          target: final
+          file: Dockerfile.zammad
+          platforms: linux/amd64
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
