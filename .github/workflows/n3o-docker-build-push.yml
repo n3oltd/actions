@@ -142,8 +142,6 @@ jobs:
         run: |
           {
             echo "args<<EOF"
-            echo "FEED_URL=https://nuget.pkg.github.com/n3oltd/index.json"
-            echo "PAT=${{ env.GH_PAT }}"
             echo "BUILD_VERSION=${{ steps.metadata.outputs.version }}"
             echo "COMMIT_SHA=${{ steps.commit.outputs.sha }}"
             if [[ -n "${{ inputs.sentry-project }}" ]]; then
@@ -160,7 +158,6 @@ jobs:
               echo "PRINCE_DATE=${{ secrets.PRINCE_DATE }}"
               echo "PRINCE_SIGNATURE=${{ secrets.PRINCE_SIGNATURE }}"
               echo "PRINCE_OPTION_ID=${{ secrets.PRINCE_OPTION_ID }}"
-              echo "CHPASSWORD=${{ secrets.CHPASSWORD }}"
             fi
             if [[ -n "${{ inputs.build-args }}" ]]; then
               echo "${{ inputs.build-args }}"
