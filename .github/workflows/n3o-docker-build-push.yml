@@ -58,6 +58,12 @@ on:
         required: false
         default: wait
 
+      rebuild:
+        description: build and push even when an image already exists for the commit
+        type: boolean
+        required: false
+        default: false
+
       channel:
         description: "release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production."
         type: string
@@ -111,9 +117,14 @@ jobs:
       - id: check-existing
         name: check if image already exists for this commit
         shell: bash
+        env:
+          REBUILD: ${{ inputs.rebuild }}
         run: |
           SHA_TAG="n3oltd.azurecr.io/${{ inputs.container-repository }}:sha-${{ steps.commit.outputs.sha }}"
-          if docker manifest inspect "$SHA_TAG" >/dev/null 2>&1; then
+          if [ "$REBUILD" = "true" ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "rebuilding $SHA_TAG as asked"
+          elif docker manifest inspect "$SHA_TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "$SHA_TAG already exists — skipping build"
           else
