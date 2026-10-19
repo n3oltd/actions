@@ -1,0 +1,61 @@
+name: n3o kubectl image changed
+description: >-
+  Says whether applying a manifest would move a running Deployment to a different image, comparing
+  the first container's image in the cluster with the one the manifest declares.
+
+inputs:
+  namespace:
+    description: The namespace the Deployment runs in.
+    required: true
+  deployment:
+    description: The Deployment's name, in the cluster and in the manifest.
+    required: true
+  manifest:
+    description: The manifest file that declares the Deployment.
+    required: true
+
+outputs:
+  changed:
+    description: "`true` when the Deployment exists and the manifest names a different image."
+    value: ${{ steps.compare.outputs.changed }}
+  running:
+    description: The image the Deployment runs, empty when it does not exist.
+    value: ${{ steps.compare.outputs.running }}
+  wanted:
+    description: The image the manifest declares.
+    value: ${{ steps.compare.outputs.wanted }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: compare
+      shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+        DEPLOYMENT: ${{ inputs.deployment }}
+        MANIFEST: ${{ inputs.manifest }}
+      run: |
+        set -euo pipefail
+
+        wanted=$(DEPLOYMENT="$DEPLOYMENT" yq \
+          'select(.kind == "Deployment" and .metadata.name == strenv(DEPLOYMENT))
+           | .spec.template.spec.containers[0].image' "$MANIFEST")
+        if [ -z "$wanted" ] || [ "$wanted" = "null" ]; then
+          echo "::error::$MANIFEST declares no Deployment $DEPLOYMENT"
+          exit 1
+        fi
+
+        running=$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" --ignore-not-found \
+          -o jsonpath='{.spec.template.spec.containers[0].image}')
+
+        changed=false
+        if [ -n "$running" ] && [ "$running" != "$wanted" ]; then
+          changed=true
+        fi
+
+        echo "${DEPLOYMENT}: ${running:-not deployed} → ${wanted}"
+        {
+          echo "changed=$changed"
+          echo "running=$running"
+          echo "wanted=$wanted"
+        } >> "$GITHUB_OUTPUT"
