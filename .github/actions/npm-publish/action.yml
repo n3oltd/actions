@@ -36,6 +36,11 @@ inputs:
     required: false
     default: '8'
 
+  version:
+    description: The version to publish at; empty computes it with n3o-npm-version.
+    required: false
+    default: ''
+
   retention-days:
     description: The number of days each published version is kept; when empty the packages are published unstamped
     required: false
@@ -44,12 +49,13 @@ inputs:
 outputs:
   version:
     description: The version every package is published at.
-    value: ${{ steps.version.outputs.version }}
+    value: ${{ inputs.version || steps.version.outputs.version }}
 
 runs:
   using: "composite"
   steps:
     - id: version
+      if: inputs.version == ''
       uses: n3oltd/actions/.github/actions/n3o-npm-version@main
 
     - name: stamp the retention period
@@ -62,7 +68,7 @@ runs:
     - name: npm publish
       shell: bash
       run: |
-        version="${{ steps.version.outputs.version }}"
+        version="${{ inputs.version || steps.version.outputs.version }}"
         versionSuffix="${{ inputs.version-suffix }}"
         lock="$RUNNER_TEMP/npm-publish.lock"
         export version versionSuffix lock

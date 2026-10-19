@@ -50,6 +50,11 @@ runs:
 
         read -r -d '' -a paths <<< "$PATHS" || true
 
+        if [ ${#paths[@]} -eq 0 ]; then
+          echo "::error::paths names nothing to commit"
+          exit 1
+        fi
+
         git add -A -- "${paths[@]}"
 
         if git diff --cached --quiet -- "${paths[@]}"; then
