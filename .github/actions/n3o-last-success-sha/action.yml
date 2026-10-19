@@ -1,0 +1,65 @@
+name: n3o last success sha
+description: >-
+  The commit of a workflow's most recent successful run on a branch, so a run can diff from the last
+  commit that passed rather than from its own push. Falls back to the push's before-sha when the
+  workflow has never passed there.
+
+inputs:
+  workflow:
+    description: The workflow file, by name. Empty reads the calling workflow's.
+    required: false
+    default: ''
+  branch:
+    description: The branch whose runs count.
+    required: false
+    default: ${{ github.ref_name }}
+  event:
+    description: The event whose runs count; empty counts every event.
+    required: false
+    default: push
+  fallback:
+    description: The commit returned when no run has passed.
+    required: false
+    default: ${{ github.event.before }}
+  token:
+    description: Reads the workflow's runs.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  sha:
+    description: The last passing run's commit, or the fallback.
+    value: ${{ steps.sha.outputs.sha }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: sha
+      shell: bash
+      env:
+        WORKFLOW: ${{ inputs.workflow }}
+        WORKFLOW_REF: ${{ github.workflow_ref }}
+        BRANCH: ${{ inputs.branch }}
+        EVENT: ${{ inputs.event }}
+        FALLBACK: ${{ inputs.fallback }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "$WORKFLOW" ]; then
+          WORKFLOW=$(basename "${WORKFLOW_REF%%@*}")
+        fi
+
+        query="branch=$BRANCH&status=success&per_page=1"
+        if [ -n "$EVENT" ]; then
+          query="$query&event=$EVENT"
+        fi
+
+        sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$WORKFLOW/runs?$query" --jq '.workflow_runs[0].head_sha // ""')
+
+        if [ -z "$sha" ]; then
+          echo "$WORKFLOW has not passed on $BRANCH; using $FALLBACK"
+          sha=$FALLBACK
+        fi
+
+        echo "sha=$sha" >> "$GITHUB_OUTPUT"

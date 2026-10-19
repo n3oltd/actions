@@ -1,0 +1,43 @@
+name: n3o needs gate
+description: >-
+  Passes or fails one job on the results of the jobs it needs, so a branch rule can require a single
+  check however many jobs a run skips. A required job must succeed; any other fails the gate only
+  when it failed or was cancelled.
+
+inputs:
+  needs:
+    description: The calling job's needs context, as toJSON(needs).
+    required: true
+  required:
+    description: Space-separated IDs of the jobs that must succeed.
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        NEEDS: ${{ inputs.needs }}
+        REQUIRED: ${{ inputs.required }}
+      run: |
+        set -euo pipefail
+
+        jq -r 'to_entries[] | "\(.key)=\(.value.result)"' <<< "$NEEDS"
+
+        failed=0
+
+        for job in $REQUIRED; do
+          result=$(jq -r --arg job "$job" '.[$job].result // "missing"' <<< "$NEEDS")
+          if [ "$result" != success ]; then
+            echo "::error::$job is required to succeed and was $result"
+            failed=1
+          fi
+        done
+
+        while read -r job; do
+          echo "::error::$job did not pass"
+          failed=1
+        done < <(jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key' <<< "$NEEDS")
+
+        exit "$failed"
