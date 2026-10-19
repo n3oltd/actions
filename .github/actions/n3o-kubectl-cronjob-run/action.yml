@@ -1,0 +1,50 @@
+name: n3o kubectl cronjob run
+description: >-
+  Runs a CronJob once, outside its schedule, and waits for that Job to succeed. A failed or
+  overdue Job fails the step and prints its logs.
+
+inputs:
+  namespace:
+    description: The namespace the CronJob lives in.
+    required: true
+  cronjob:
+    description: The CronJob to run.
+    required: true
+  timeout:
+    description: Seconds to wait for the Job to finish.
+    required: false
+    default: "3600"
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+        CRONJOB: ${{ inputs.cronjob }}
+        TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        set -euo pipefail
+
+        job="${CRONJOB}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        kubectl create job "$job" -n "$NAMESPACE" --from="cronjob/$CRONJOB"
+
+        deadline=$(( $(date +%s) + TIMEOUT ))
+        while [ "$(date +%s)" -lt "$deadline" ]; do
+          succeeded=$(kubectl get job "$job" -n "$NAMESPACE" -o jsonpath='{.status.succeeded}')
+          failed=$(kubectl get job "$job" -n "$NAMESPACE" -o jsonpath='{.status.failed}')
+          if [ "${succeeded:-0}" -ge 1 ]; then
+            echo "$job succeeded"
+            exit 0
+          fi
+          if [ "${failed:-0}" -ge 1 ]; then
+            kubectl logs "job/$job" -n "$NAMESPACE" --all-containers --prefix || true
+            echo "::error::$job failed"
+            exit 1
+          fi
+          sleep 15
+        done
+
+        kubectl logs "job/$job" -n "$NAMESPACE" --all-containers --prefix || true
+        echo "::error::$job did not finish within ${TIMEOUT}s"
+        exit 1

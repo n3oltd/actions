@@ -1,0 +1,51 @@
+name: n3o kubectl secret
+description: >-
+  Writes a generic Kubernetes Secret whole from the step's environment, creating it or replacing
+  every key it held, and refuses to write one with an empty value.
+
+inputs:
+  namespace:
+    description: The namespace the Secret lives in.
+    required: true
+  name:
+    description: The Secret's name.
+    required: true
+  keys:
+    description: >-
+      Newline-separated `<secret key>=<environment variable>` pairs. Set the variables on the step's
+      env, so a value of any shape arrives intact.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+        NAME: ${{ inputs.name }}
+        KEYS: ${{ inputs.keys }}
+      run: |
+        set -euo pipefail
+        umask 077
+
+        dir=$(mktemp -d)
+        trap 'rm -rf "$dir"' EXIT
+
+        files=()
+        while IFS='=' read -r key variable; do
+          [ -n "$key" ] || continue
+          if [ -z "${!variable:-}" ]; then
+            echo "::error::$variable is empty, so $NAME is not written"
+            exit 1
+          fi
+          printf '%s' "${!variable}" > "$dir/$key"
+          files+=("--from-file=$key=$dir/$key")
+        done <<< "$KEYS"
+
+        if [ "${#files[@]}" -eq 0 ]; then
+          echo "::error::no keys given for $NAME"
+          exit 1
+        fi
+
+        kubectl create secret generic "$NAME" -n "$NAMESPACE" "${files[@]}" \
+          --dry-run=client -o yaml | kubectl apply -f -
