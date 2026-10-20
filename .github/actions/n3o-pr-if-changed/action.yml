@@ -1,0 +1,81 @@
+name: n3o pr if changed
+description: >-
+  Commits whatever changed under the given paths to a new branch and opens a pull request for it.
+  Does nothing when the paths are unchanged. Run it after the change is made, in a checkout whose
+  credentials can push and with a git identity configured.
+
+inputs:
+  paths:
+    description: Newline- or space-separated paths whose changes are committed.
+    required: true
+  branch:
+    description: The branch the commit is pushed to; it must not exist yet.
+    required: true
+  title:
+    description: The pull request's title, and the commit's message.
+    required: true
+  body:
+    description: The pull request's body.
+    required: true
+  base:
+    description: The branch the pull request targets; empty targets the repository's default.
+    required: false
+    default: ''
+  token:
+    description: Opens the pull request.
+    required: true
+
+outputs:
+  changed:
+    description: "'true' when a pull request was opened."
+    value: ${{ steps.pr.outputs.changed }}
+  url:
+    description: The pull request's URL, when one was opened.
+    value: ${{ steps.pr.outputs.url }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: pr
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        BRANCH: ${{ inputs.branch }}
+        TITLE: ${{ inputs.title }}
+        BODY: ${{ inputs.body }}
+        BASE: ${{ inputs.base }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        read -r -d '' -a paths <<< "$PATHS" || true
+
+        if [ ${#paths[@]} -eq 0 ]; then
+          echo "::error::paths names nothing to commit"
+          exit 1
+        fi
+
+        git add -A -- "${paths[@]}"
+
+        if git diff --cached --quiet -- "${paths[@]}"; then
+          echo "Nothing changed under ${paths[*]}."
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        git switch -c "$BRANCH"
+        git commit -m "$TITLE" -- "${paths[@]}"
+        git push -u origin "$BRANCH"
+
+        args=(--title "$TITLE" --body "$BODY" --head "$BRANCH")
+        if [ -n "$BASE" ]; then
+          args+=(--base "$BASE")
+        fi
+
+        url=$(gh pr create "${args[@]}")
+        echo "$url"
+
+        {
+          echo "changed=true"
+          echo "url=$url"
+        } >> "$GITHUB_OUTPUT"

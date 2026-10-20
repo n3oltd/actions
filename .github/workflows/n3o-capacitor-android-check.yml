@@ -1,0 +1,114 @@
+name: n3o capacitor android check
+
+on:
+  workflow_call:
+    inputs:
+      app-path:
+        description: The Capacitor project.
+        type: string
+        required: true
+      build-command:
+        description: Builds the web bundle, run in app-path.
+        type: string
+        required: true
+      check-command:
+        description: Run in app-path before the build; empty runs nothing.
+        type: string
+        default: ''
+      gradle-task:
+        description: The Gradle task that assembles the app, run in app-path/android.
+        type: string
+        default: assembleDebug
+      node-version-file:
+        description: File to read the Node version from.
+        type: string
+        default: .nvmrc
+      install-command:
+        description: Installs the repository's dependencies.
+        type: string
+        default: pnpm install --frozen-lockfile
+      java-version:
+        description: The Temurin JDK version.
+        type: string
+        default: '21'
+      android-packages:
+        description: The Android SDK packages to install.
+        type: string
+        default: platform-tools platforms;android-36 build-tools;35.0.0
+      fast:
+        description: Run on a GitHub-hosted runner instead of the self-hosted fleet.
+        type: boolean
+        default: false
+    secrets:
+      gh-pat:
+        description: Reads the n3oltd npm packages.
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.fast && 'fast' || 'wait' }}
+
+  check:
+    name: android check (${{ inputs.app-path }})
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          registry-url: https://npm.pkg.github.com
+          scope: "@n3oltd"
+          pnpm: "true"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          cache: gradle
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ${{ inputs.android-packages }}
+          log-accepted-android-sdk-licenses: false
+
+      - name: install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.gh-pat }}
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -c "$INSTALL_COMMAND"
+
+      - name: check
+        if: inputs.check-command != ''
+        working-directory: ${{ inputs.app-path }}
+        env:
+          CHECK_COMMAND: ${{ inputs.check-command }}
+        run: bash -c "$CHECK_COMMAND"
+
+      - name: build the web bundle
+        working-directory: ${{ inputs.app-path }}
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -c "$BUILD_COMMAND"
+
+      - name: sync the Android project
+        working-directory: ${{ inputs.app-path }}
+        run: npx --no-install cap sync android
+
+      - name: assemble
+        working-directory: ${{ inputs.app-path }}/android
+        env:
+          GRADLE_TASK: ${{ inputs.gradle-task }}
+        run: ./gradlew "$GRADLE_TASK" --no-daemon
