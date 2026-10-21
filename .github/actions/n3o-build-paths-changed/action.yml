@@ -50,7 +50,7 @@ runs:
             ]}
           + ($roots | to_entries | map({
               key: "root-\(.key)",
-              value: [(.value | rtrimstr("/") | gsub("(?<c>[][*?{}()!+@\\\\])"; "\\\(.c)")) + "/**"] + $always
+              value: ([(.value | rtrimstr("/") | gsub("(?<c>[][*?{}()!+@\\\\])"; "\\\(.c)")) + "/**"] + $always)
             }) | from_entries)')
         echo "filters=$filters" >> "$GITHUB_OUTPUT"
     - uses: dorny/paths-filter@v4
