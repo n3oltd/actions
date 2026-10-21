@@ -1,9 +1,20 @@
 name: n3o build paths changed
-description: Coarse CI pre-gate — true when any build-relevant path changed (src, the root Directory.Build and Directory.Packages files, global.json, nuget.config).
+description: >-
+  Coarse CI pre-gate — true when any build-relevant path changed (src, the root Directory.Build and
+  Directory.Packages files, global.json, nuget.config). Given roots, it also reports which of them
+  hold a changed file.
 
 inputs:
   base:
     description: Base ref/sha to diff against. Empty uses the event default (the push's before-sha).
+    required: false
+    default: ''
+  roots:
+    description: JSON array of directories, each reported in changed-roots when a file under it changed.
+    required: false
+    default: '[]'
+  all-roots-paths:
+    description: Newline-separated globs whose change reports every root as changed.
     required: false
     default: ''
 
@@ -11,21 +22,50 @@ outputs:
   changed:
     description: "'true' when a build-relevant path changed"
     value: ${{ steps.filter.outputs.build }}
+  changed-roots:
+    description: "JSON array of the roots that changed, in the order given; '[]' when none."
+    value: ${{ steps.roots.outputs.changed-roots }}
 
 runs:
   using: "composite"
   steps:
     - uses: actions/checkout@v7
+    - id: filters
+      shell: bash
+      env:
+        ROOTS: ${{ inputs.roots }}
+        ALL_ROOTS_PATHS: ${{ inputs.all-roots-paths }}
+      run: |
+        set -euo pipefail
+        filters=$(jq -n -c --argjson roots "$ROOTS" --arg always "$ALL_ROOTS_PATHS" '
+          ($always | split("\n") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))) as $always
+          | {build: [
+              "src/**",
+              "Directory.Build.props",
+              "Directory.Build.rsp",
+              "Directory.Build.targets",
+              "Directory.Packages.props",
+              "global.json",
+              "nuget.config"
+            ]}
+          + ($roots | to_entries | map({
+              key: "root-\(.key)",
+              value: [(.value | rtrimstr("/") | gsub("(?<c>[][*?{}()!+@\\\\])"; "\\\(.c)")) + "/**"] + $always
+            }) | from_entries)')
+        echo "filters=$filters" >> "$GITHUB_OUTPUT"
     - uses: dorny/paths-filter@v4
       id: filter
       with:
         base: ${{ inputs.base }}
-        filters: |
-          build:
-            - 'src/**'
-            - 'Directory.Build.props'
-            - 'Directory.Build.rsp'
-            - 'Directory.Build.targets'
-            - 'Directory.Packages.props'
-            - 'global.json'
-            - 'nuget.config'
+        filters: ${{ steps.filters.outputs.filters }}
+    - id: roots
+      shell: bash
+      env:
+        ROOTS: ${{ inputs.roots }}
+        CHANGES: ${{ steps.filter.outputs.changes }}
+      run: |
+        set -euo pipefail
+        changed=$(jq -n -c --argjson roots "$ROOTS" --argjson changes "${CHANGES:-[]}" '
+          [$roots | to_entries[] | select(.key as $i | $changes | any(. == "root-\($i)")) | .value]')
+        echo "changed-roots=$changed" >> "$GITHUB_OUTPUT"
+        echo "Changed roots: $changed"
