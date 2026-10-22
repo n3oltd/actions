@@ -13,6 +13,10 @@
 #   NEXT_PUBLIC_TYPESENSE_URL, NEXT_PUBLIC_TYPESENSE_SEARCH_KEY
 #                    the search cluster and its search-only key, compiled into the bundle by next;
 #                    a NEXT_PUBLIC_ name not declared below is dropped in silence
+#   VITE_SENTRY_RELEASE
+#                    the Sentry release compiled into the bundle; when set, the build's source
+#                    maps get debug IDs (the sourcemaps target exports them for upload) and the
+#                    static and oauth variants ship without maps
 #   BUILD_VERSION    build number reported by releaseinfo/v1.0
 #   COMMIT_SHA       built commit reported by releaseinfo/v1.0
 
@@ -77,8 +81,14 @@ RUN --mount=type=secret,id=github_token,required=true --mount=type=tmpfs,target=
 # the browser bundle may carry, so nothing private belongs in this block.
 ARG NEXT_PUBLIC_TYPESENSE_URL
 ARG NEXT_PUBLIC_TYPESENSE_SEARCH_KEY
+ARG VITE_SENTRY_RELEASE
 RUN run-build
 ARG OUTPUT_DIR
+# Injected here, before any stage copies the output, so the scripts that ship and the maps that
+# are uploaded carry the same IDs. Matches the pin in .github/actions/n3o-sentry-inject.
+RUN if [ -n "${VITE_SENTRY_RELEASE:-}" ] && [ -n "$(find "${OUTPUT_DIR}" -type f -name '*.map')" ]; then \
+      npx --yes @sentry/cli@3.8.0 sourcemaps inject "${OUTPUT_DIR}"; \
+    fi
 ARG BUILD_VERSION
 ARG COMMIT_SHA
 RUN mkdir -p "${OUTPUT_DIR}/releaseinfo" && \
@@ -100,6 +110,14 @@ FROM scratch AS sourcemaps
 ARG OUTPUT_DIR
 COPY --from=build /repo/${OUTPUT_DIR}/ /
 
+# What the static and oauth variants serve. Files are removed here, not after a variant's COPY:
+# a file deleted after the COPY still sits in the copied layer.
+FROM build AS shipped
+ARG OUTPUT_DIR
+ARG VITE_SENTRY_RELEASE
+RUN rm -rf "${OUTPUT_DIR}/.vite" && \
+    if [ -n "${VITE_SENTRY_RELEASE:-}" ]; then find "${OUTPUT_DIR}" -type f -name '*.map' -delete; fi
+
 ########################
 ### variants
 ########################
@@ -114,9 +132,9 @@ ENV APP_ENV_PREFIX=${ENV_PREFIX}
 ARG BUILD_VERSION
 ARG COMMIT_SHA
 ENV BUILD_VERSION=${BUILD_VERSION} COMMIT_SHA=${COMMIT_SHA}
-COPY --from=build /repo/${OUTPUT_DIR} /srv${BASE_PATH}
-# The build manifest is a version-pinned dependency inventory, never content to serve.
-RUN rm -rf /srv${BASE_PATH}.vite
+# The build manifest is a version-pinned dependency inventory, never content to serve; shipped
+# drops it.
+COPY --from=shipped /repo/${OUTPUT_DIR} /srv${BASE_PATH}
 # Config arrives here rather than at the compiler, so the artifact tested in one environment
 # is the one promoted to the next, and a restart re-reads it. APP_BASE_HREF substitutes
 # __APP_BASE__, so one image serves under different public paths.
@@ -211,7 +229,7 @@ ARG PORT=8080
 ENV OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:${PORT}
 ENV OAUTH2_PROXY_UPSTREAMS=file:///var/www/#/
 ARG OUTPUT_DIR
-COPY --from=build /repo/${OUTPUT_DIR} /var/www
+COPY --from=shipped /repo/${OUTPUT_DIR} /var/www
 EXPOSE ${PORT}
 
 ########################

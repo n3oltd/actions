@@ -256,6 +256,8 @@ jobs:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           target: sourcemaps
+          # Resolved as the image build resolved it, so the maps' debug IDs match the shipped scripts.
+          pull: true
           outputs: type=local,dest=${{ runner.temp }}/sourcemaps
           build-args: ${{ steps.build-args.outputs.args }}
           secrets: |
