@@ -3,12 +3,21 @@ name: 'docker-build-push-zammad'
 on:
   workflow_call:
     inputs:
+      channel:
+        description: release channel, main or vnext. Every tag the build pushes carries it.
+        type: string
+        required: true
       mode:
         description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
         type: string
         required: false
         default: wait
   workflow_dispatch:
+    inputs:
+      channel:
+        description: release channel, main or vnext. Every tag the build pushes carries it.
+        type: string
+        required: true
 
 jobs:
   pick:
@@ -48,6 +57,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-image-tags@main
         with:
           repository: n3o-zammad
+          channel: ${{ inputs.channel }}
 
       # Stated, not inherited: the clusters that run it are amd64.
       - name: build and push zammad
@@ -60,4 +70,4 @@ jobs:
           platforms: linux/amd64
           pull: true
           push: true
-          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.channel-tag }} , ${{ steps.meta.outputs.sha-tag }}

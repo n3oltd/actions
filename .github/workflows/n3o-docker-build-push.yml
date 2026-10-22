@@ -1,6 +1,3 @@
-# Builds and pushes an N3O service Docker image to ACR with date/latest/sha
-# tags, skipping the build if an image for the commit already exists, and
-# optionally extracts sourcemaps and creates a Sentry release.
 name: 'docker-build-push'
 
 on:
@@ -65,10 +62,9 @@ on:
         default: false
 
       channel:
-        description: "release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production."
+        description: release channel, main or vnext. Every tag the build pushes carries it.
         type: string
-        required: false
-        default: ''
+        required: true
 
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
@@ -114,13 +110,21 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
+      - id: metadata
+        name: metadata
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: ${{ inputs.container-repository }}
+          channel: ${{ inputs.channel }}
+          commit-sha: ${{ steps.commit.outputs.sha }}
+
       - id: check-existing
         name: check if image already exists for this commit
         shell: bash
         env:
           REBUILD: ${{ inputs.rebuild }}
         run: |
-          SHA_TAG="n3oltd.azurecr.io/${{ inputs.container-repository }}:sha-${{ steps.commit.outputs.sha }}"
+          SHA_TAG="${{ steps.metadata.outputs.sha-tag }}"
           if [ "$REBUILD" = "true" ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "rebuilding $SHA_TAG as asked"
@@ -137,15 +141,6 @@ jobs:
         with:
           dockerfile: ${{ inputs.dockerfile }}
           prefer-local: true
-
-      - id: metadata
-        name: metadata
-        if: steps.check-existing.outputs.exists != 'true'
-        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
-        with:
-          repository: ${{ inputs.container-repository }}
-          channel: ${{ inputs.channel }}
-          commit-sha: ${{ steps.commit.outputs.sha }}
 
       - id: build-args
         name: prepare build args
@@ -217,7 +212,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.metadata.outputs.version-tag }}
-            ${{ steps.metadata.outputs.latest-tag }}
+            ${{ steps.metadata.outputs.channel-tag }}
             ${{ steps.metadata.outputs.sha-tag }}
           labels: |
             org.opencontainers.image.revision=${{ steps.commit.outputs.sha }}
@@ -241,7 +236,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.metadata.outputs.version-tag }}
-            ${{ steps.metadata.outputs.latest-tag }}
+            ${{ steps.metadata.outputs.channel-tag }}
             ${{ steps.metadata.outputs.sha-tag }}
           labels: |
             org.opencontainers.image.revision=${{ steps.commit.outputs.sha }}

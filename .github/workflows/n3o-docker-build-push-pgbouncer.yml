@@ -1,17 +1,23 @@
-# Builds and pushes the N3O PgBouncer Docker image to ACR with date and
-# latest tags, fetching the Dockerfile from the actions repo. Runs on the
-# self-hosted fleet unless the caller asks for fast.
 name: 'docker-build-push-pgbouncer'
 
 on:
   workflow_call:
     inputs:
+      channel:
+        description: release channel, main or vnext. Every tag the build pushes carries it.
+        type: string
+        required: true
       mode:
         description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
         type: string
         required: false
         default: wait
   workflow_dispatch:
+    inputs:
+      channel:
+        description: release channel, main or vnext. Every tag the build pushes carries it.
+        type: string
+        required: true
 
 jobs:
   pick:
@@ -44,6 +50,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-image-tags@main
         with:
           repository: n3o-pgbouncer
+          channel: ${{ inputs.channel }}
 
       - name: build and push pgbouncer
         uses: docker/build-push-action@v7
@@ -53,4 +60,4 @@ jobs:
           target: final
           file: pgbouncer
           push: true
-          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.channel-tag }} , ${{ steps.meta.outputs.sha-tag }}

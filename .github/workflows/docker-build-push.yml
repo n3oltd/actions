@@ -11,6 +11,11 @@ on:
         type: string
         required: false
 
+      channel:
+        description: release channel, main or vnext. Every tag the build pushes carries it.
+        type: string
+        required: true
+
       container-repository:
         description: container registry repository to push the image to
         type: string
@@ -74,6 +79,7 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-image-tags@main
         with:
           repository: ${{ inputs.container-repository }}
+          channel: ${{ inputs.channel }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -89,7 +95,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.version-tag }}
-            ${{ steps.meta.outputs.latest-tag }}
+            ${{ steps.meta.outputs.channel-tag }}
+            ${{ steps.meta.outputs.sha-tag }}
 
       - name: sentry release
         if: inputs.sentry-project != ''
