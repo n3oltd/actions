@@ -5,11 +5,6 @@ name: 'oauth-static-site-deploy'
 on:
   workflow_call:
     inputs:
-      channel:
-        description: release channel of the image, main or vnext
-        type: string
-        required: true
-
       client-id:
         description: OAuth client id
         type: string
@@ -69,7 +64,6 @@ jobs:
           site-name: ${{ inputs.site-name }}
           resource-group: ${{ inputs.resource-group }}
           docker-image: ${{ inputs.docker-image }}
-          channel: ${{ inputs.channel }}
           azure-credentials: ${{ secrets.azure-credentials }}
           registry-username: ${{ secrets.registry-username }}
           registry-password: ${{ secrets.registry-password }}

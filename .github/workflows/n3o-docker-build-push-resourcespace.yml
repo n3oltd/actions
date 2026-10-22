@@ -1,23 +1,17 @@
+# Builds and pushes the two N3O ResourceSpace images to ACR with date and latest
+# tags, fetching the Dockerfiles from the actions repo. Runs on the self-hosted fleet
+# unless the caller asks for fast.
 name: 'docker-build-push-resourcespace'
 
 on:
   workflow_call:
     inputs:
-      channel:
-        description: release channel, main or vnext. Every tag the build pushes carries it.
-        type: string
-        required: true
       mode:
         description: "runner mode: wait (self-hosted, free, queue) or fast (GitHub-hosted, immediate, billable)."
         type: string
         required: false
         default: wait
   workflow_dispatch:
-    inputs:
-      channel:
-        description: release channel, main or vnext. Every tag the build pushes carries it.
-        type: string
-        required: true
 
 jobs:
   pick:
@@ -62,7 +56,6 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-image-tags@main
         with:
           repository: n3o-resourcespace
-          channel: ${{ inputs.channel }}
 
       - name: disk before
         run: df -h /
@@ -79,7 +72,7 @@ jobs:
           platforms: linux/amd64
           pull: true
           push: true
-          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.channel-tag }} , ${{ steps.meta.outputs.sha-tag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
 
       - name: disk after
         if: always()
@@ -114,7 +107,6 @@ jobs:
         uses: n3oltd/actions/.github/actions/n3o-image-tags@main
         with:
           repository: n3o-resourcespace-clip
-          channel: ${{ inputs.channel }}
 
       - name: disk before
         run: df -h /
@@ -129,7 +121,7 @@ jobs:
           platforms: linux/amd64
           pull: true
           push: true
-          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.channel-tag }} , ${{ steps.meta.outputs.sha-tag }}
+          tags: ${{ steps.meta.outputs.version-tag }} , ${{ steps.meta.outputs.latest-tag }}
 
       - name: disk after
         if: always()

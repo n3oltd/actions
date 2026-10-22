@@ -13,8 +13,9 @@ inputs:
     required: false
     default: n3oltd.azurecr.io
   channel:
-    description: Release channel, main or vnext. Every tag the build pushes carries it.
-    required: true
+    description: Release channel of an image a deployment target resolves. Empty publishes :<calver>, :latest and :sha-<commit>; a value publishes :<channel>-<calver>, :<channel> and :<channel>-sha-<commit>.
+    required: false
+    default: ''
   commit-sha:
     description: >-
       The commit the image is built from. A caller that checks out a branch rather than
@@ -25,16 +26,16 @@ inputs:
 
 outputs:
   version:
-    description: The channel and the calver version, <channel>-<calver>.
+    description: The calver version, channel-prefixed when a channel is set.
     value: ${{ steps.tags.outputs.version }}
   version-tag:
-    description: Fully qualified version tag, :<channel>-<calver>.
+    description: Fully qualified tag for this version.
     value: ${{ steps.tags.outputs.version-tag }}
-  channel-tag:
-    description: Fully qualified moving tag, :<channel>.
-    value: ${{ steps.tags.outputs.channel-tag }}
+  latest-tag:
+    description: Fully qualified moving tag for the channel.
+    value: ${{ steps.tags.outputs.latest-tag }}
   sha-tag:
-    description: Fully qualified commit tag, :<channel>-sha-<commit>.
+    description: Fully qualified commit tag, channel-prefixed when a channel is set.
     value: ${{ steps.tags.outputs.sha-tag }}
   created:
     description: RFC 3339 build timestamp for org.opencontainers.image.created.
@@ -53,17 +54,17 @@ runs:
       run: |
         set -euo pipefail
 
-        if [[ ! "$CHANNEL" =~ ^[a-z][a-z0-9]*$ ]]; then
+        if [ -n "$CHANNEL" ] && [[ ! "$CHANNEL" =~ ^[a-z][a-z0-9]*$ ]]; then
           echo "::error::channel must be a lowercase name such as main or vnext, got '$CHANNEL'"
           exit 1
         fi
 
         NOW=$(date -u +'%Y.%-m.%-d')
-        VERSION="${CHANNEL}-${NOW}.${RUN_NUMBER}"
+        VERSION="${CHANNEL:+${CHANNEL}-}${NOW}.${RUN_NUMBER}"
         {
           echo "version=$VERSION"
           echo "version-tag=${IMAGE}:${VERSION}"
-          echo "channel-tag=${IMAGE}:${CHANNEL}"
-          echo "sha-tag=${IMAGE}:${CHANNEL}-sha-${SHA}"
+          echo "latest-tag=${IMAGE}:${CHANNEL:-latest}"
+          echo "sha-tag=${IMAGE}:${CHANNEL:+${CHANNEL}-}sha-${SHA}"
           echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         } >> "$GITHUB_OUTPUT"
