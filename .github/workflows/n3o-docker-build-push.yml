@@ -65,7 +65,7 @@ on:
         default: false
 
       channel:
-        description: "release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production."
+        description: "release channel of an image a deployment target resolves. Empty publishes :<calver>, :latest and :sha-<commit>; a value publishes :<channel>-<calver>, :<channel> and :<channel>-sha-<commit>."
         type: string
         required: false
         default: ''
@@ -114,13 +114,21 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
+      - id: metadata
+        name: metadata
+        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
+        with:
+          repository: ${{ inputs.container-repository }}
+          channel: ${{ inputs.channel }}
+          commit-sha: ${{ steps.commit.outputs.sha }}
+
       - id: check-existing
         name: check if image already exists for this commit
         shell: bash
         env:
           REBUILD: ${{ inputs.rebuild }}
         run: |
-          SHA_TAG="n3oltd.azurecr.io/${{ inputs.container-repository }}:sha-${{ steps.commit.outputs.sha }}"
+          SHA_TAG="${{ steps.metadata.outputs.sha-tag }}"
           if [ "$REBUILD" = "true" ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "rebuilding $SHA_TAG as asked"
@@ -137,15 +145,6 @@ jobs:
         with:
           dockerfile: ${{ inputs.dockerfile }}
           prefer-local: true
-
-      - id: metadata
-        name: metadata
-        if: steps.check-existing.outputs.exists != 'true'
-        uses: n3oltd/actions/.github/actions/n3o-image-tags@main
-        with:
-          repository: ${{ inputs.container-repository }}
-          channel: ${{ inputs.channel }}
-          commit-sha: ${{ steps.commit.outputs.sha }}
 
       - id: build-args
         name: prepare build args

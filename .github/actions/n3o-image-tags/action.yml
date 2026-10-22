@@ -13,7 +13,7 @@ inputs:
     required: false
     default: n3oltd.azurecr.io
   channel:
-    description: Release channel. Empty publishes :<calver> and :latest; a value publishes :<channel>-<calver> and :<channel>, leaving :latest to whichever pipeline deploys production.
+    description: Release channel of an image a deployment target resolves. Empty publishes :<calver>, :latest and :sha-<commit>; a value publishes :<channel>-<calver>, :<channel> and :<channel>-sha-<commit>.
     required: false
     default: ''
   commit-sha:
@@ -35,7 +35,7 @@ outputs:
     description: Fully qualified moving tag for the channel.
     value: ${{ steps.tags.outputs.latest-tag }}
   sha-tag:
-    description: Fully qualified commit tag, which is what a deploy pins.
+    description: Fully qualified commit tag, channel-prefixed when a channel is set.
     value: ${{ steps.tags.outputs.sha-tag }}
   created:
     description: RFC 3339 build timestamp for org.opencontainers.image.created.
@@ -53,12 +53,18 @@ runs:
         SHA: ${{ inputs.commit-sha }}
       run: |
         set -euo pipefail
+
+        if [ -n "$CHANNEL" ] && [[ ! "$CHANNEL" =~ ^[a-z][a-z0-9]*$ ]]; then
+          echo "::error::channel must be a lowercase name such as main or vnext, got '$CHANNEL'"
+          exit 1
+        fi
+
         NOW=$(date -u +'%Y.%-m.%-d')
         VERSION="${CHANNEL:+${CHANNEL}-}${NOW}.${RUN_NUMBER}"
         {
           echo "version=$VERSION"
           echo "version-tag=${IMAGE}:${VERSION}"
           echo "latest-tag=${IMAGE}:${CHANNEL:-latest}"
-          echo "sha-tag=${IMAGE}:sha-${SHA}"
+          echo "sha-tag=${IMAGE}:${CHANNEL:+${CHANNEL}-}sha-${SHA}"
           echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         } >> "$GITHUB_OUTPUT"
