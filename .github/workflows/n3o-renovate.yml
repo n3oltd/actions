@@ -70,7 +70,7 @@ jobs:
           echo "RENOVATE_HOST_RULES=$rules" >> "$GITHUB_ENV"
           echo "host rules: github packages$([ -n "${ACR_USERNAME:-}" ] && echo ' + n3oltd.azurecr.io')"
 
-      - uses: renovatebot/github-action@v46.3.8
+      - uses: renovatebot/github-action@v46.3.9
         with:
           token: ${{ secrets.token }}
           renovate-version: 44.156.3
