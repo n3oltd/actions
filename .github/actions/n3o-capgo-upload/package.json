@@ -1,6 +1,6 @@
 {
   "private": true,
   "dependencies": {
-    "@capgo/cli": "8.77.0"
+    "@capgo/cli": "8.83.0"
   }
 }
