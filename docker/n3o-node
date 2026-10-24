@@ -168,7 +168,8 @@ COPY <<CADDY /etc/caddy/Caddyfile
 	# A miss here is a miss: falling back serves HTML where a script was asked
 	# for, and the browser executes it.
 	handle ${BASE_PATH}assets/* {
-		header Cache-Control "public, max-age=31536000, immutable"
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
 		file_server
 	}
 
