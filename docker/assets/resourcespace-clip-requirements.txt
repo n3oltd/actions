@@ -8,7 +8,7 @@ faiss-cpu==1.15.1
 fastapi==0.156.4
 uvicorn==0.54.0
 python-multipart==0.0.32
-mysql-connector-python==26.7.0
+mysql-connector-python==26.10.0
 pillow==13.0.0
 numpy==2.5.4
 requests==2.34.2
