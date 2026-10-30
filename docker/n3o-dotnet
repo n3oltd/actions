@@ -142,6 +142,34 @@ RUN echo "    <option id=\"upgrades\">${PRINCE_OPTION_ID}</option>" >> /usr/loca
 RUN echo "</license>" >> /usr/local/lib/prince/license/license.dat
 
 ########################
+### variant-chromium
+########################
+FROM variant-base AS variant-chromium
+
+# Microsoft.Playwright publishes its driver with the app, so the browser it installs is the build
+# the driver expects. A printed page carries its own type faces, which cover Latin only, so names
+# in other scripts fall back to the Noto faces, preferred over those the browser's install brings.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN apt-get install --assume-yes fontconfig fonts-liberation fonts-noto-core
+RUN /app/.playwright/node/linux-x64/node /app/.playwright/package/cli.js \
+    install --with-deps --only-shell chromium
+COPY <<'FONTS' /etc/fonts/local.conf
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <alias>
+    <family>sans-serif</family>
+    <prefer><family>Noto Sans</family><family>Noto Sans Arabic</family></prefer>
+  </alias>
+  <alias>
+    <family>serif</family>
+    <prefer><family>Noto Serif</family><family>Noto Naskh Arabic</family></prefer>
+  </alias>
+</fontconfig>
+FONTS
+RUN fc-cache -f
+
+########################
 ### final
 ########################
 FROM variant-${VARIANT} AS final
