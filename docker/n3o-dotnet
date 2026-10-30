@@ -150,9 +150,10 @@ FROM variant-base AS variant-chromium
 # the driver expects. A printed page carries its own type faces, which cover Latin only, so names
 # in other scripts fall back to the Noto faces, preferred over those the browser's install brings.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN apt-get install --assume-yes fontconfig fonts-liberation fonts-noto-core
-RUN /app/.playwright/node/linux-x64/node /app/.playwright/package/cli.js \
-    install --with-deps --only-shell chromium
+RUN apt-get update && \
+    apt-get install --assume-yes fontconfig fonts-liberation fonts-noto-core && \
+    /app/.playwright/node/linux-x64/node /app/.playwright/package/cli.js \
+        install --with-deps --only-shell chromium
 COPY <<'FONTS' /etc/fonts/local.conf
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
