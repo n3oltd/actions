@@ -183,7 +183,7 @@ RUN fc-cache -f
 # renderer dies rather than growing. The profile directory the driver made as root is handed to
 # that user first.
 ENV PDF_PRINTER_CHROMIUM=/usr/local/bin/chromium-printer
-ENV PDF_PRINTER_DATA_LIMIT=1610612736
+ENV PDF_PRINTER_DATA_LIMIT=5368709120
 COPY --chmod=755 <<'LAUNCHER' /usr/local/bin/chromium-printer
 #!/bin/sh
 set -eu
