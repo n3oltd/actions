@@ -187,6 +187,7 @@ ENV PDF_PRINTER_DATA_LIMIT=1610612736
 COPY --chmod=755 <<'LAUNCHER' /usr/local/bin/chromium-printer
 #!/bin/sh
 set -eu
+: "${PDF_PRINTER_DATA_LIMIT:?names no data limit for Chromium}"
 for argument in "$@"; do
   case "$argument" in
     --user-data-dir=*) chown -R app:app "${argument#--user-data-dir=}" ;;
@@ -194,12 +195,9 @@ for argument in "$@"; do
 done
 shell=$(ls -d /ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64)
 shell="$shell/chrome-headless-shell"
-limit=""
-if [ -n "${PDF_PRINTER_DATA_LIMIT:-}" ]; then
-  limit="prlimit --data=$PDF_PRINTER_DATA_LIMIT"
-fi
-exec $limit setpriv --reuid=app --regid=app --init-groups --no-new-privs --inh-caps=-all \
-  --bounding-set=-all -- env HOME=/tmp "$shell" "$@"
+exec prlimit --data="$PDF_PRINTER_DATA_LIMIT" \
+  setpriv --reuid=app --regid=app --init-groups --no-new-privs --inh-caps=-all --bounding-set=-all \
+  -- env HOME=/tmp "$shell" "$@"
 LAUNCHER
 
 ########################
