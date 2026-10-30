@@ -170,6 +170,24 @@ COPY <<'FONTS' /etc/fonts/local.conf
 FONTS
 RUN fc-cache -f
 
+# Chromium cannot use its own sandbox under the runtime's default seccomp profile, so it at least
+# runs as the image's unprivileged app user, with no capabilities and no way to gain any. The
+# profile directory the driver made as root is handed to that user first.
+ENV PDF_PRINTER_CHROMIUM=/usr/local/bin/chromium-printer
+COPY --chmod=755 <<'LAUNCHER' /usr/local/bin/chromium-printer
+#!/bin/sh
+set -eu
+for argument in "$@"; do
+  case "$argument" in
+    --user-data-dir=*) chown -R app:app "${argument#--user-data-dir=}" ;;
+  esac
+done
+shell=$(ls -d /ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64)
+shell="$shell/chrome-headless-shell"
+exec setpriv --reuid=app --regid=app --init-groups --no-new-privs --inh-caps=-all \
+  --bounding-set=-all -- env HOME=/tmp "$shell" "$@"
+LAUNCHER
+
 ########################
 ### final
 ########################
