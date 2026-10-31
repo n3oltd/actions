@@ -146,12 +146,6 @@ RUN echo "</license>" >> /usr/local/lib/prince/license/license.dat
 ########################
 FROM variant-base AS variant-chromium
 
-# The libraries the headless shell needs, from Playwright's own list for Ubuntu 24.04, rather than
-# --with-deps, which also brings an X server and faces the shell never uses. The driver is the one
-# published with the app for an amd64 build host, so the shell it installs is the build it expects.
-# A printed page carries its own type faces, which cover Latin only, so names in other scripts fall
-# back to the Noto faces. These layers follow the app's and are rebuilt and pulled with each
-# release; moving them below it means reshaping variant-base, which every variant shares.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN apt-get update && \
     apt-get install --assume-yes --no-install-recommends \
@@ -177,11 +171,6 @@ COPY <<'FONTS' /etc/fonts/local.conf
 FONTS
 RUN fc-cache -f
 
-# Chromium cannot use its own sandbox under the runtime's default seccomp profile, so it at least
-# runs as the image's unprivileged app user, with no capabilities and no way to gain any, and each
-# of its processes may commit no more than PDF_PRINTER_DATA_LIMIT bytes of data, past which a
-# renderer dies rather than growing. The profile directory the driver made as root is handed to
-# that user first.
 ENV PDF_PRINTER_CHROMIUM=/usr/local/bin/chromium-printer
 ENV PDF_PRINTER_DATA_LIMIT=5368709120
 COPY --chmod=755 <<'LAUNCHER' /usr/local/bin/chromium-printer
