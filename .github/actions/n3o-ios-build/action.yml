@@ -1,0 +1,101 @@
+name: n3o ios build
+description: >-
+  Archives an iOS app unsigned, with its version, build number and team passed as build setting
+  overrides, then signs the archived app ad hoc with its configuration's entitlements, so a later
+  export with cloud-managed signing keeps them. Holds no credentials and signs nothing for
+  distribution.
+
+inputs:
+  project:
+    description: The .xcodeproj.
+    required: true
+  scheme:
+    description: The scheme to archive.
+    required: false
+    default: App
+  configuration:
+    description: The build configuration, which decides the app's bundle ID and entitlements.
+    required: true
+  team-id:
+    description: The Apple team ID, passed as DEVELOPMENT_TEAM.
+    required: true
+  marketing-version:
+    description: CFBundleShortVersionString, passed as MARKETING_VERSION.
+    required: true
+  build-number:
+    description: CFBundleVersion, passed as CURRENT_PROJECT_VERSION.
+    required: true
+  archive-path:
+    description: Where the .xcarchive is written.
+    required: true
+
+outputs:
+  archive-path:
+    description: The .xcarchive.
+    value: ${{ inputs.archive-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        PROJECT: ${{ inputs.project }}
+        SCHEME: ${{ inputs.scheme }}
+        CONFIGURATION: ${{ inputs.configuration }}
+        TEAM_ID: ${{ inputs.team-id }}
+        MARKETING_VERSION: ${{ inputs.marketing-version }}
+        BUILD_NUMBER: ${{ inputs.build-number }}
+        ARCHIVE_PATH: ${{ inputs.archive-path }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+
+        settings=$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION" -showBuildSettings -json 2> /dev/null)
+        entitlements=$(jq -r '[.[].buildSettings | select(.WRAPPER_EXTENSION == "app")][0].CODE_SIGN_ENTITLEMENTS // empty' <<< "$settings")
+        project_dir=$(jq -r '[.[].buildSettings | select(.WRAPPER_EXTENSION == "app")][0].PROJECT_DIR // empty' <<< "$settings")
+
+        if [ -z "$entitlements" ]; then
+          echo "::error::$CONFIGURATION sets no CODE_SIGN_ENTITLEMENTS"
+          exit 1
+        fi
+
+        [[ "$entitlements" == /* ]] || entitlements="$project_dir/$entitlements"
+
+        rm -rf "$ARCHIVE_PATH"
+        xcodebuild archive \
+          -project "$PROJECT" \
+          -scheme "$SCHEME" \
+          -configuration "$CONFIGURATION" \
+          -destination 'generic/platform=iOS' \
+          -archivePath "$ARCHIVE_PATH" \
+          DEVELOPMENT_TEAM="$TEAM_ID" \
+          CODE_SIGNING_ALLOWED=NO \
+          MARKETING_VERSION="$MARKETING_VERSION" \
+          CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+
+        apps=("$ARCHIVE_PATH"/Products/Applications/*.app)
+
+        if [ "${#apps[@]}" -ne 1 ]; then
+          echo "::error::the archive holds ${#apps[@]} apps, not one"
+          exit 1
+        fi
+
+        app=${apps[0]}
+
+        for nested in "$app"/Frameworks/*.framework "$app"/Frameworks/*.dylib; do
+          codesign --force --sign - "$nested"
+        done
+
+        codesign --force --sign - --entitlements "$entitlements" --generate-entitlement-der "$app"
+
+        plist="$app/Info.plist"
+        identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")
+        version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")
+        build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")
+
+        if [ "$version" != "$MARKETING_VERSION" ] || [ "$build" != "$BUILD_NUMBER" ]; then
+          echo "::error::$identifier was archived as $version ($build), not $MARKETING_VERSION ($BUILD_NUMBER)"
+          exit 1
+        fi
+
+        echo "$identifier $version ($build) archived and signed ad hoc" >> "$GITHUB_STEP_SUMMARY"
