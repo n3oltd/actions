@@ -85,6 +85,7 @@ jobs:
       group: n3o-mobile-ota-publish-${{ github.repository }}-${{ inputs.product }}
       cancel-in-progress: false
     permissions:
+      actions: read
       contents: read
     defaults:
       run:
@@ -128,6 +129,8 @@ jobs:
       - id: version
         name: stamp the bundle version
         env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
           RUN_NUMBER: ${{ github.run_number }}
           SENTRY_RELEASE: ${{ inputs.sentry-release }}
         run: |
@@ -138,7 +141,8 @@ jobs:
             exit 1
           fi
 
-          version="$(date -u +'%Y.%-m.%-d')-$RUN_NUMBER"
+          created=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq .created_at)
+          version="${created:0:4}.$((10#${created:5:2})).$((10#${created:8:2}))-$RUN_NUMBER"
 
           {
             echo "version=$version"
