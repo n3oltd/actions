@@ -1,0 +1,101 @@
+name: n3o android build
+description: >-
+  Builds one flavour of a Capacitor Android app as a release bundle signed with its upload key, with
+  its version name and code passed as the Gradle properties appVersionName and appVersionCode and the
+  key as uploadKeystoreFile and uploadKeystorePassword. Then builds the bundle's universal APK with a
+  pinned bundletool and checks its 16 KB page alignment. Run it after the Android SDK is set up.
+
+inputs:
+  working-directory:
+    description: The Gradle project, holding gradlew.
+    required: true
+  module:
+    description: The application module.
+    required: false
+    default: app
+  flavour:
+    description: The product flavour to build.
+    required: true
+  version-name:
+    description: The version name.
+    required: true
+  version-code:
+    description: The version code.
+    required: true
+  keystore-file:
+    description: A file holding the upload keystore, PKCS12, base64-encoded.
+    required: true
+  password-file:
+    description: A file holding the keystore's password, which is also its key's.
+    required: true
+
+outputs:
+  aab:
+    description: The signed bundle.
+    value: ${{ steps.build.outputs.aab }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MODULE: ${{ inputs.module }}
+        FLAVOUR: ${{ inputs.flavour }}
+        VERSION_NAME: ${{ inputs.version-name }}
+        VERSION_CODE: ${{ inputs.version-code }}
+        KEYSTORE_FILE: ${{ inputs.keystore-file }}
+        PASSWORD_FILE: ${{ inputs.password-file }}
+        BUNDLETOOL_VERSION: 1.18.3
+        BUNDLETOOL_SHA256: a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+
+        umask 077
+        work=$(mktemp -d "$RUNNER_TEMP/n3o-android-build.XXXXXX")
+        trap 'rm -rf "$work"' EXIT
+
+        base64 --decode < "$KEYSTORE_FILE" > "$work/upload.p12"
+
+        ORG_GRADLE_PROJECT_uploadKeystorePassword=$(< "$PASSWORD_FILE") ./gradlew \
+          ":$MODULE:bundle${FLAVOUR^}Release" \
+          -PappVersionName="$VERSION_NAME" \
+          -PappVersionCode="$VERSION_CODE" \
+          -PuploadKeystoreFile="$work/upload.p12" \
+          --no-daemon
+
+        bundles=("$MODULE/build/outputs/bundle/${FLAVOUR}Release"/*.aab)
+
+        if [ "${#bundles[@]}" -ne 1 ]; then
+          echo "::error::the build left ${#bundles[@]} bundles, not one"
+          exit 1
+        fi
+
+        aab="$PWD/${bundles[0]}"
+
+        bundletool="$RUNNER_TEMP/bundletool-$BUNDLETOOL_VERSION.jar"
+
+        if [ ! -f "$bundletool" ]; then
+          curl --fail --silent --show-error --location --output "$bundletool.download" \
+            "https://github.com/google/bundletool/releases/download/$BUNDLETOOL_VERSION/bundletool-all-$BUNDLETOOL_VERSION.jar"
+          echo "$BUNDLETOOL_SHA256  $bundletool.download" | sha256sum -c -
+          mv "$bundletool.download" "$bundletool"
+        fi
+
+        java -jar "$bundletool" build-apks --mode=universal --bundle="$aab" --output="$work/universal.apks"
+        unzip -q "$work/universal.apks" universal.apk -d "$work"
+
+        build_tools=("$ANDROID_HOME"/build-tools/*/zipalign)
+
+        if [ "${#build_tools[@]}" -eq 0 ]; then
+          echo "::error::no zipalign under $ANDROID_HOME/build-tools"
+          exit 1
+        fi
+
+        "${build_tools[-1]}" -c -P 16 -v 4 "$work/universal.apk" > "$work/zipalign.log"
+        tail -1 "$work/zipalign.log"
+
+        echo "aab=$aab" >> "$GITHUB_OUTPUT"
+        echo "$(basename "$aab") $VERSION_NAME ($VERSION_CODE) built, signed and 16 KB aligned" >> "$GITHUB_STEP_SUMMARY"

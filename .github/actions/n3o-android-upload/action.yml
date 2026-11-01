@@ -1,0 +1,85 @@
+name: n3o android upload
+description: >-
+  Uploads a signed bundle to a Google Play app through the Play Developer API and makes it the
+  track's draft release, keeping the track's other releases and replacing any earlier draft. An app
+  that already holds the version code is left alone, so a re-run converges. A refusal is reported,
+  never retried. A dry run uploads and validates the bundle in an edit it then discards.
+
+inputs:
+  package-name:
+    description: The app's package name.
+    required: true
+  aab:
+    description: The signed bundle.
+    required: true
+  version-code:
+    description: The bundle's version code.
+    required: true
+  release-name:
+    description: The draft release's name.
+    required: true
+  track:
+    description: The track the draft release goes on.
+    required: false
+    default: internal
+  service-account-file:
+    description: A file holding the Play service account's JSON key.
+    required: true
+  changes-not-sent-for-review:
+    description: Set "true" when Play refuses a commit that would send changes for review.
+    required: false
+    default: 'false'
+  dry-run:
+    description: Set "true" to validate the upload and commit nothing.
+    required: false
+    default: 'false'
+
+outputs:
+  result:
+    description: "'held' when the app already held the version code, 'uploaded', or 'dry-run'."
+    value: ${{ steps.upload.outputs.result }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: upload
+      shell: bash
+      env:
+        PACKAGE_NAME: ${{ inputs.package-name }}
+        AAB: ${{ inputs.aab }}
+        VERSION_CODE: ${{ inputs.version-code }}
+        RELEASE_NAME: ${{ inputs.release-name }}
+        TRACK: ${{ inputs.track }}
+        SERVICE_ACCOUNT_FILE: ${{ inputs.service-account-file }}
+        CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes-not-sent-for-review }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+
+        status=0
+        outcome=$(node "$GITHUB_ACTION_PATH/google-play.mjs" 2> "$RUNNER_TEMP/n3o-android-upload.err") || status=$?
+
+        if [ "$status" -ne 0 ]; then
+          {
+            echo "$PACKAGE_NAME $RELEASE_NAME: refused by Google Play"
+            echo '```'
+            grep -E '^Error' "$RUNNER_TEMP/n3o-android-upload.err" || tail -5 "$RUNNER_TEMP/n3o-android-upload.err"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "::error::$PACKAGE_NAME $RELEASE_NAME was not uploaded"
+          exit 1
+        fi
+
+        result=$(jq -r .result <<< "$outcome")
+        echo "result=$result" >> "$GITHUB_OUTPUT"
+
+        case "$result" in
+          held) line="already on Google Play, not uploaded" ;;
+          dry-run) line="uploaded to a discarded edit and validated, SHA-256 $(jq -r .sha256 <<< "$outcome")" ;;
+          *) line="a draft on $TRACK, SHA-256 $(jq -r .sha256 <<< "$outcome")" ;;
+        esac
+
+        replaced=$(jq -r '.replaced // [] | join(", ")' <<< "$outcome")
+        [ -z "$replaced" ] || line="$line, replacing the draft $replaced"
+
+        echo "$PACKAGE_NAME $RELEASE_NAME: $line" >> "$GITHUB_STEP_SUMMARY"

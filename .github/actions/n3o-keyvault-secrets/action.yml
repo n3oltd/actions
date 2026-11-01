@@ -1,0 +1,90 @@
+name: n3o keyvault secrets
+description: >-
+  Signs in to Azure with the job's GitHub OIDC token and writes each named Key Vault secret to its
+  own file, readable only by the runner user, in a fresh folder under the runner's temp directory.
+  Every line of a value long enough to identify it is masked, and no value reaches an output or the
+  environment. Signs out of Azure before it ends.
+
+inputs:
+  client-id:
+    description: The client ID of the identity the job's OIDC token is federated with.
+    required: true
+  tenant-id:
+    description: The identity's tenant ID.
+    required: true
+  vault:
+    description: The Key Vault's name.
+    required: true
+  secrets:
+    description: One `file=secret-name` pair per line, naming each file in the folder and the secret it holds.
+    required: true
+
+outputs:
+  directory:
+    description: The folder holding one file per secret.
+    value: ${{ steps.read.outputs.directory }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.client-id }}
+        tenant-id: ${{ inputs.tenant-id }}
+        allow-no-subscriptions: true
+
+    - id: read
+      shell: bash
+      env:
+        VAULT: ${{ inputs.vault }}
+        SECRETS: ${{ inputs.secrets }}
+      run: |
+        set -euo pipefail
+
+        trap 'az logout > /dev/null 2>&1 || true' EXIT
+
+        umask 077
+        directory=$(mktemp -d "$RUNNER_TEMP/n3o-keyvault-secrets.XXXXXX")
+        count=0
+
+        while IFS= read -r pair; do
+          pair=${pair//[[:space:]]/}
+          [ -n "$pair" ] || continue
+
+          file=${pair%%=*}
+          name=${pair#*=}
+
+          if [ "$file" = "$pair" ] || [ -z "$file" ] || [ -z "$name" ] || [[ "$file" == */* ]]; then
+            echo "::error::'$pair' is not a file=secret-name pair"
+            exit 1
+          fi
+
+          if [ -e "$directory/$file" ]; then
+            echo "::error::$file is named twice"
+            exit 1
+          fi
+
+          value=$(az keyvault secret show --vault-name "$VAULT" --name "$name" --query value --output tsv)
+
+          if [ -z "$value" ]; then
+            echo "::error::$name in $VAULT is empty"
+            exit 1
+          fi
+
+          while IFS= read -r line; do
+            trimmed=${line//[[:space:]]/}
+            [ "${#trimmed}" -lt 4 ] || echo "::add-mask::$line"
+          done <<< "$value"
+
+          printf '%s' "$value" > "$directory/$file"
+          unset value
+          count=$((count + 1))
+        done <<< "$SECRETS"
+
+        if [ "$count" -eq 0 ]; then
+          echo "::error::no secrets were named"
+          exit 1
+        fi
+
+        echo "directory=$directory" >> "$GITHUB_OUTPUT"
+        echo "read $count secrets from $VAULT"

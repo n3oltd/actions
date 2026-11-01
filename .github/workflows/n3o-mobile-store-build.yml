@@ -1,0 +1,517 @@
+name: n3o mobile store build
+
+on:
+  workflow_call:
+    inputs:
+      product:
+        description: The mobile app's product ID, which names the jobs.
+        type: string
+        required: true
+      app-path:
+        description: The Capacitor project.
+        type: string
+        required: true
+      output-path:
+        description: The built web bundle, relative to app-path.
+        type: string
+        default: dist
+      build-command:
+        description: Builds the web bundle, run in app-path with BUNDLE_VERSION set.
+        type: string
+        required: true
+      check-command:
+        description: Run in app-path before the build; empty runs nothing.
+        type: string
+        default: ''
+      native-floor-command:
+        description: Prints the oldest marketing version a store build may carry, run in app-path.
+        type: string
+        required: true
+      ota-target:
+        description: The deployment target whose latest release names the bundle version and commit the builds embed.
+        type: string
+        required: true
+      twins:
+        description: >-
+          A JSON array of the apps to build, each {name, ios?, android?}. ios is {configuration,
+          bundleId, teamId, vault, secrets: {key, keyId, issuerId}}; android is {flavour,
+          packageName, vault, secrets: {keystore, password, serviceAccount}}, each secret a Key Vault
+          secret name.
+        type: string
+        required: true
+      platform:
+        description: ios, android or both.
+        type: string
+        default: both
+      ios-project:
+        description: The .xcodeproj, relative to app-path.
+        type: string
+        default: ios/App/App.xcodeproj
+      ios-scheme:
+        description: The scheme to archive.
+        type: string
+        default: App
+      xcode-version:
+        description: The Xcode the iOS builds use, as /Applications/Xcode_<version>.app on the runner.
+        type: string
+        required: true
+      macos-runner:
+        description: The GitHub-hosted macOS runner label, which must carry that Xcode.
+        type: string
+        required: true
+      java-version:
+        description: The Temurin JDK version.
+        type: string
+        default: '21'
+      android-packages:
+        description: The Android SDK packages to install.
+        type: string
+        default: platform-tools platforms;android-36 build-tools;36.0.0
+      azure-client-id:
+        description: The client ID of the identity that reads the store credentials.
+        type: string
+        required: true
+      azure-tenant-id:
+        description: The identity's tenant ID.
+        type: string
+        required: true
+      environment:
+        description: The GitHub environment the jobs that read credentials run in.
+        type: string
+        default: mobile-store-build
+      dry-run:
+        description: Build, sign and validate every app, upload nothing, and allow a run from any branch.
+        type: boolean
+        default: false
+      node-version-file:
+        description: File to read the Node version from.
+        type: string
+        default: .nvmrc
+      install-command:
+        description: Installs the repository's dependencies.
+        type: string
+        default: pnpm install --frozen-lockfile
+      fast:
+        description: Run the Android builds on a GitHub-hosted runner instead of the self-hosted fleet.
+        type: boolean
+        default: false
+    secrets:
+      gh-pat:
+        description: Reads the n3oltd npm packages.
+        required: true
+      deployments-read-token:
+        description: Reads the n3oltd/deployments release records.
+        required: true
+    outputs:
+      uploads:
+        description: >-
+          A JSON array of {bundleId, platform, marketingVersion, buildNumber, result} for each app and
+          store whose job succeeded, result being uploaded, held or dry-run.
+        value: ${{ jobs.report.outputs.uploads }}
+
+permissions: {}
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+    with:
+      mode: ${{ inputs.fast && 'fast' || 'wait' }}
+
+  prepare:
+    name: prepare ${{ inputs.product }}
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      bundle-version: ${{ steps.bundle.outputs.version }}
+      marketing-version: ${{ steps.version.outputs.marketing }}
+      build-number: ${{ steps.version.outputs.build }}
+      ios: ${{ steps.twins.outputs.ios }}
+      android: ${{ steps.twins.outputs.android }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - if: ${{ !inputs.dry-run }}
+        uses: n3oltd/actions/.github/actions/n3o-main-only@main
+
+      - id: twins
+        name: list the builds
+        env:
+          TWINS: ${{ inputs.twins }}
+          PLATFORM: ${{ inputs.platform }}
+        run: |
+          set -euo pipefail
+
+          case "$PLATFORM" in
+            ios|android|both) ;;
+            *) echo "::error::platform is ios, android or both, not $PLATFORM"; exit 1 ;;
+          esac
+
+          for platform in ios android; do
+            if [ "$PLATFORM" = both ] || [ "$PLATFORM" = "$platform" ]; then
+              echo "$platform=$(jq -c --arg platform "$platform" '[.[] | select(has($platform))]' <<< "$TWINS")"
+            else
+              echo "$platform=[]"
+            fi
+          done >> "$GITHUB_OUTPUT"
+
+      - id: bundle
+        name: read the bundle the upstream target released
+        env:
+          GH_TOKEN: ${{ secrets.deployments-read-token }}
+          OTA_TARGET: ${{ inputs.ota-target }}
+          RUN_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if ! release=$(gh api "repos/n3oltd/deployments/contents/releases/$OTA_TARGET/latest/release.json" -H 'Accept: application/vnd.github.raw'); then
+            echo "::error::$OTA_TARGET has no release to take the bundle from"
+            exit 1
+          fi
+
+          version=$(jq -r '.source.identifier // empty' <<< "$release")
+          commit=$(jq -r '.source.commitSha // empty' <<< "$release")
+
+          if [ -z "$version" ] || [ -z "$commit" ]; then
+            echo "::error::$OTA_TARGET's latest release names no bundle version and commit"
+            exit 1
+          fi
+
+          if [ "$commit" != "$RUN_SHA" ]; then
+            echo "::error::$OTA_TARGET released $version from $commit, not this run's $RUN_SHA"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - id: version
+        name: number the builds
+        working-directory: ${{ inputs.app-path }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          NATIVE_FLOOR_COMMAND: ${{ inputs.native-floor-command }}
+        run: |
+          set -euo pipefail
+
+          created=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq .created_at)
+          marketing="${created:0:4}.$((10#${created:5:2})).$((10#${created:8:2}))"
+
+          floor=$(bash -c "$NATIVE_FLOOR_COMMAND")
+
+          if [ -z "$floor" ] || [ "$floor" = null ]; then
+            echo "::error::the native floor command printed no version"
+            exit 1
+          fi
+
+          if [ "$(printf '%s\n%s\n' "$floor" "$marketing" | sort -t. -k1,1n -k2,2n -k3,3n | head -1)" != "$floor" ]; then
+            echo "::error::the marketing version $marketing is below the native floor $floor"
+            exit 1
+          fi
+
+          {
+            echo "marketing=$marketing"
+            echo "build=$RUN_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          registry-url: https://npm.pkg.github.com
+          scope: "@n3oltd"
+          pnpm: "true"
+
+      - name: install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.gh-pat }}
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -c "$INSTALL_COMMAND"
+
+      - name: check
+        if: inputs.check-command != ''
+        working-directory: ${{ inputs.app-path }}
+        env:
+          CHECK_COMMAND: ${{ inputs.check-command }}
+        run: bash -c "$CHECK_COMMAND"
+
+      - name: build the web bundle
+        working-directory: ${{ inputs.app-path }}
+        env:
+          BUNDLE_VERSION: ${{ steps.bundle.outputs.version }}
+          BUILD_COMMAND: ${{ inputs.build-command }}
+          OUTPUT_PATH: ${{ inputs.output-path }}
+        run: |
+          set -euo pipefail
+          rm -rf "$OUTPUT_PATH"
+          bash -c "$BUILD_COMMAND"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: n3o-mobile-store-build-bundle
+          path: ${{ inputs.app-path }}/${{ inputs.output-path }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  ios:
+    name: ios ${{ inputs.product }} ${{ matrix.twin.name }}
+    needs: prepare
+    if: needs.prepare.outputs.ios != '[]'
+    runs-on: ${{ inputs.macos-runner }}
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 90
+    concurrency:
+      group: n3o-mobile-store-build-${{ github.repository }}-ios-${{ matrix.twin.ios.bundleId }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        twin: ${{ fromJSON(needs.prepare.outputs.ios) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      MARKETING_VERSION: ${{ needs.prepare.outputs.marketing-version }}
+      BUILD_NUMBER: ${{ needs.prepare.outputs.build-number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: select Xcode
+        env:
+          XCODE_VERSION: ${{ inputs.xcode-version }}
+        run: |
+          set -euo pipefail
+
+          sudo xcode-select --switch "/Applications/Xcode_$XCODE_VERSION.app"
+
+          if [ "$(xcodebuild -version | head -1)" != "Xcode $XCODE_VERSION" ]; then
+            echo "::error::the runner's Xcode is $(xcodebuild -version | head -1), not $XCODE_VERSION"
+            exit 1
+          fi
+
+      - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          registry-url: https://npm.pkg.github.com
+          scope: "@n3oltd"
+          pnpm: "true"
+
+      - name: install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.gh-pat }}
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -c "$INSTALL_COMMAND"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: n3o-mobile-store-build-bundle
+          path: ${{ inputs.app-path }}/${{ inputs.output-path }}
+
+      - name: sync the iOS project
+        working-directory: ${{ inputs.app-path }}
+        run: npx --no-install cap sync ios
+
+      - uses: n3oltd/actions/.github/actions/n3o-ios-build@main
+        with:
+          project: ${{ inputs.app-path }}/${{ inputs.ios-project }}
+          scheme: ${{ inputs.ios-scheme }}
+          configuration: ${{ matrix.twin.ios.configuration }}
+          team-id: ${{ matrix.twin.ios.teamId }}
+          marketing-version: ${{ env.MARKETING_VERSION }}
+          build-number: ${{ env.BUILD_NUMBER }}
+          archive-path: ${{ runner.temp }}/${{ matrix.twin.ios.bundleId }}.xcarchive
+
+      - id: credentials
+        uses: n3oltd/actions/.github/actions/n3o-keyvault-secrets@main
+        with:
+          client-id: ${{ inputs.azure-client-id }}
+          tenant-id: ${{ inputs.azure-tenant-id }}
+          vault: ${{ matrix.twin.ios.vault }}
+          secrets: |
+            key=${{ matrix.twin.ios.secrets.key }}
+            key-id=${{ matrix.twin.ios.secrets.keyId }}
+            issuer-id=${{ matrix.twin.ios.secrets.issuerId }}
+
+      - id: upload
+        uses: n3oltd/actions/.github/actions/n3o-ios-upload@main
+        with:
+          archive-path: ${{ runner.temp }}/${{ matrix.twin.ios.bundleId }}.xcarchive
+          bundle-id: ${{ matrix.twin.ios.bundleId }}
+          team-id: ${{ matrix.twin.ios.teamId }}
+          marketing-version: ${{ env.MARKETING_VERSION }}
+          build-number: ${{ env.BUILD_NUMBER }}
+          key-file: ${{ steps.credentials.outputs.directory }}/key
+          key-id-file: ${{ steps.credentials.outputs.directory }}/key-id
+          issuer-id-file: ${{ steps.credentials.outputs.directory }}/issuer-id
+          dry-run: ${{ inputs.dry-run }}
+
+      - name: record the result
+        env:
+          BUNDLE_ID: ${{ matrix.twin.ios.bundleId }}
+          RESULT: ${{ steps.upload.outputs.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          jq -n --arg bundleId "$BUNDLE_ID" --arg marketingVersion "$MARKETING_VERSION" --arg buildNumber "$BUILD_NUMBER" --arg result "$RESULT" \
+            '{$bundleId, platform: "ios", $marketingVersion, $buildNumber, $result}' > "$RUNNER_TEMP/result/result.json"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: n3o-mobile-store-build-result-ios-${{ matrix.twin.ios.bundleId }}
+          path: ${{ runner.temp }}/result/result.json
+          retention-days: 1
+
+  android:
+    name: android ${{ inputs.product }} ${{ matrix.twin.name }}
+    needs: [pick, prepare]
+    if: needs.prepare.outputs.android != '[]'
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 60
+    concurrency:
+      group: n3o-mobile-store-build-${{ github.repository }}-android-${{ matrix.twin.android.packageName }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        twin: ${{ fromJSON(needs.prepare.outputs.android) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      MARKETING_VERSION: ${{ needs.prepare.outputs.marketing-version }}
+      BUILD_NUMBER: ${{ needs.prepare.outputs.build-number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          registry-url: https://npm.pkg.github.com
+          scope: "@n3oltd"
+          pnpm: "true"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          cache: gradle
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ${{ inputs.android-packages }}
+          log-accepted-android-sdk-licenses: false
+
+      - name: install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.gh-pat }}
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -c "$INSTALL_COMMAND"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: n3o-mobile-store-build-bundle
+          path: ${{ inputs.app-path }}/${{ inputs.output-path }}
+
+      - name: sync the Android project
+        working-directory: ${{ inputs.app-path }}
+        run: npx --no-install cap sync android
+
+      - id: credentials
+        uses: n3oltd/actions/.github/actions/n3o-keyvault-secrets@main
+        with:
+          client-id: ${{ inputs.azure-client-id }}
+          tenant-id: ${{ inputs.azure-tenant-id }}
+          vault: ${{ matrix.twin.android.vault }}
+          secrets: |
+            keystore=${{ matrix.twin.android.secrets.keystore }}
+            password=${{ matrix.twin.android.secrets.password }}
+            service-account=${{ matrix.twin.android.secrets.serviceAccount }}
+
+      - id: build
+        uses: n3oltd/actions/.github/actions/n3o-android-build@main
+        with:
+          working-directory: ${{ inputs.app-path }}/android
+          flavour: ${{ matrix.twin.android.flavour }}
+          version-name: ${{ env.MARKETING_VERSION }}
+          version-code: ${{ env.BUILD_NUMBER }}
+          keystore-file: ${{ steps.credentials.outputs.directory }}/keystore
+          password-file: ${{ steps.credentials.outputs.directory }}/password
+
+      - id: upload
+        uses: n3oltd/actions/.github/actions/n3o-android-upload@main
+        with:
+          package-name: ${{ matrix.twin.android.packageName }}
+          aab: ${{ steps.build.outputs.aab }}
+          version-code: ${{ env.BUILD_NUMBER }}
+          release-name: ${{ env.MARKETING_VERSION }} (${{ env.BUILD_NUMBER }})
+          service-account-file: ${{ steps.credentials.outputs.directory }}/service-account
+          dry-run: ${{ inputs.dry-run }}
+
+      - name: record the result
+        env:
+          PACKAGE_NAME: ${{ matrix.twin.android.packageName }}
+          RESULT: ${{ steps.upload.outputs.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/result"
+          jq -n --arg bundleId "$PACKAGE_NAME" --arg marketingVersion "$MARKETING_VERSION" --arg buildNumber "$BUILD_NUMBER" --arg result "$RESULT" \
+            '{$bundleId, platform: "android", $marketingVersion, $buildNumber, $result}' > "$RUNNER_TEMP/result/result.json"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: n3o-mobile-store-build-result-android-${{ matrix.twin.android.packageName }}
+          path: ${{ runner.temp }}/result/result.json
+          retention-days: 1
+
+  report:
+    name: report ${{ inputs.product }}
+    needs: [prepare, ios, android]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      uploads: ${{ steps.report.outputs.uploads }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: n3o-mobile-store-build-result-*
+          path: ${{ runner.temp }}/results
+
+      - id: report
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          results=("$RUNNER_TEMP"/results/*/result.json)
+
+          if [ "${#results[@]}" -eq 0 ]; then
+            uploads='[]'
+          else
+            uploads=$(jq -c -s 'sort_by(.bundleId, .platform)' "${results[@]}")
+          fi
+
+          echo "uploads=$uploads" >> "$GITHUB_OUTPUT"
+          jq -r '.[] | "\(.bundleId) \(.platform) \(.marketingVersion) (\(.buildNumber)): \(.result)"' <<< "$uploads" >> "$GITHUB_STEP_SUMMARY"

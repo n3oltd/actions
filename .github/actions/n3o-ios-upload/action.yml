@@ -1,0 +1,217 @@
+name: n3o ios upload
+description: >-
+  Exports an archive signed for App Store Connect with cloud-managed signing, checks the .ipa, and
+  uploads it with altool, then waits for App Store Connect to list the build. An app that already
+  holds the build number under the marketing version is left alone, so a re-run converges. A dry
+  run exports, checks and validates the .ipa with App Store Connect, and uploads nothing.
+
+inputs:
+  archive-path:
+    description: The .xcarchive, its app signed ad hoc with the entitlements the .ipa must keep.
+    required: true
+  bundle-id:
+    description: The app's bundle ID.
+    required: true
+  team-id:
+    description: The Apple team ID.
+    required: true
+  marketing-version:
+    description: The build's CFBundleShortVersionString.
+    required: true
+  build-number:
+    description: The build's CFBundleVersion.
+    required: true
+  key-file:
+    description: A file holding the team's App Store Connect API private key, PEM. The key must have Admin access.
+    required: true
+  key-id-file:
+    description: A file holding the key's ID.
+    required: true
+  issuer-id-file:
+    description: A file holding the key's issuer ID.
+    required: true
+  wait-minutes:
+    description: How long to wait for App Store Connect to list an uploaded build.
+    required: false
+    default: '30'
+  dry-run:
+    description: Set "true" to validate the .ipa instead of uploading it.
+    required: false
+    default: 'false'
+
+outputs:
+  result:
+    description: "'held' when the app already held the build, 'uploaded', or 'dry-run'."
+    value: ${{ steps.upload.outputs.result }}
+  build-id:
+    description: App Store Connect's ID for the build; empty on a dry run.
+    value: ${{ steps.upload.outputs.build-id }}
+  state:
+    description: The build's processing state when it was last read; empty on a dry run.
+    value: ${{ steps.upload.outputs.state }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: upload
+      shell: bash
+      env:
+        ARCHIVE_PATH: ${{ inputs.archive-path }}
+        BUNDLE_ID: ${{ inputs.bundle-id }}
+        TEAM_ID: ${{ inputs.team-id }}
+        MARKETING_VERSION: ${{ inputs.marketing-version }}
+        BUILD_NUMBER: ${{ inputs.build-number }}
+        KEY_FILE: ${{ inputs.key-file }}
+        KEY_ID_FILE: ${{ inputs.key-id-file }}
+        ISSUER_ID_FILE: ${{ inputs.issuer-id-file }}
+        WAIT_MINUTES: ${{ inputs.wait-minutes }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+
+        ASC_KEY_ID=$(< "$KEY_ID_FILE")
+        ASC_ISSUER_ID=$(< "$ISSUER_ID_FILE")
+        export ASC_KEY_ID ASC_ISSUER_ID
+
+        umask 077
+        work=$(mktemp -d "$RUNNER_TEMP/n3o-ios-upload.XXXXXX")
+        trap 'rm -rf "$work"' EXIT
+
+        mkdir "$work/keys"
+        ASC_KEY_FILE="$work/keys/AuthKey_$ASC_KEY_ID.p8"
+        export ASC_KEY_FILE
+        cp "$KEY_FILE" "$ASC_KEY_FILE"
+
+        if ! grep -q 'BEGIN PRIVATE KEY' "$ASC_KEY_FILE"; then
+          echo "::error::the App Store Connect key is not a PEM private key"
+          exit 1
+        fi
+
+        store="$GITHUB_ACTION_PATH/app-store-connect.mjs"
+        version="$MARKETING_VERSION ($BUILD_NUMBER)"
+
+        held=$(node "$store" find "$BUNDLE_ID" "$MARKETING_VERSION" "$BUILD_NUMBER")
+
+        if [ "$(jq -r '.id // empty' <<< "$held")" != "" ]; then
+          {
+            echo "result=held"
+            echo "build-id=$(jq -r .id <<< "$held")"
+            echo "state=$(jq -r .state <<< "$held")"
+          } >> "$GITHUB_OUTPUT"
+          echo "$BUNDLE_ID $version: already in App Store Connect, not uploaded" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        cat > "$work/ExportOptions.plist" << PLIST
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>method</key><string>app-store-connect</string>
+          <key>destination</key><string>export</string>
+          <key>signingStyle</key><string>automatic</string>
+          <key>teamID</key><string>$TEAM_ID</string>
+          <key>manageAppVersionAndBuildNumber</key><false/>
+          <key>uploadSymbols</key><true/>
+        </dict>
+        </plist>
+        PLIST
+
+        status=0
+        xcodebuild -exportArchive \
+          -archivePath "$ARCHIVE_PATH" \
+          -exportPath "$work/export" \
+          -exportOptionsPlist "$work/ExportOptions.plist" \
+          -allowProvisioningUpdates \
+          -authenticationKeyPath "$ASC_KEY_FILE" \
+          -authenticationKeyID "$ASC_KEY_ID" \
+          -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+          > "$work/export.log" 2>&1 || status=$?
+
+        distribution_logs=$(sed -n 's/.*Created bundle at path "\(.*\)".*/\1/p' "$work/export.log")
+        [ -z "$distribution_logs" ] || rm -rf "$distribution_logs"
+        rm -f "$work/export/Packaging.log"
+
+        if [ "$status" -ne 0 ]; then
+          grep -E 'error:|\*\* EXPORT FAILED' "$work/export.log" | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo "::error::$BUNDLE_ID $version did not export"
+          exit 1
+        fi
+
+        ipas=("$work"/export/*.ipa)
+
+        if [ "${#ipas[@]}" -ne 1 ]; then
+          echo "::error::the export holds ${#ipas[@]} .ipa files, not one"
+          exit 1
+        fi
+
+        ipa=${ipas[0]}
+        unzip -q "$ipa" -d "$work/ipa"
+        apps=("$work"/ipa/Payload/*.app)
+        archived=("$ARCHIVE_PATH"/Products/Applications/*.app)
+        plist="${apps[0]}/Info.plist"
+
+        identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")
+        exported_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist") ($(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist"))"
+
+        if [ "$identifier" != "$BUNDLE_ID" ] || [ "$exported_version" != "$version" ]; then
+          echo "::error::the .ipa is $identifier $exported_version, not $BUNDLE_ID $version"
+          exit 1
+        fi
+
+        codesign --verify --deep --strict "${apps[0]}"
+
+        entitlements() {
+          codesign -d --entitlements - --xml "$1" 2> /dev/null | plutil -convert json -o - -
+        }
+
+        lost=$(jq -n -r \
+          --argjson archived "$(entitlements "${archived[0]}")" \
+          --argjson exported "$(entitlements "${apps[0]}")" \
+          '$archived | to_entries[] | select($exported[.key] != .value) | .key')
+
+        if [ -n "$lost" ]; then
+          echo "::error::the .ipa lost or changed the entitlements $(tr '\n' ' ' <<< "$lost")"
+          exit 1
+        fi
+
+        if [ "$DRY_RUN" = "true" ]; then
+          action=--validate-app
+        else
+          action=--upload-package
+        fi
+
+        status=0
+        API_PRIVATE_KEYS_DIR="$work/keys" xcrun altool "$action" "$ipa" \
+          --api-key "$ASC_KEY_ID" \
+          --api-issuer "$ASC_ISSUER_ID" \
+          --output-format json \
+          > "$work/altool.json" 2>&1 || status=$?
+
+        if [ "$status" -ne 0 ]; then
+          {
+            echo "$BUNDLE_ID $version: altool $action failed"
+            echo '```'
+            jq -r '.["product-errors"][]? | "\(.code // "") \(.message // "") \(.userInfo.NSLocalizedFailureReason // "")"' "$work/altool.json" 2> /dev/null \
+              || cat "$work/altool.json"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "::error::$BUNDLE_ID $version was refused by App Store Connect"
+          exit 1
+        fi
+
+        if [ "$DRY_RUN" = "true" ]; then
+          echo "result=dry-run" >> "$GITHUB_OUTPUT"
+          echo "$BUNDLE_ID $version: exported and validated, not uploaded" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        build=$(node "$store" wait "$BUNDLE_ID" "$MARKETING_VERSION" "$BUILD_NUMBER" "$WAIT_MINUTES")
+
+        {
+          echo "result=uploaded"
+          echo "build-id=$(jq -r .id <<< "$build")"
+          echo "state=$(jq -r .state <<< "$build")"
+        } >> "$GITHUB_OUTPUT"
+        echo "$BUNDLE_ID $version: uploaded at $(date -u +%FT%TZ), $(jq -r .state <<< "$build")" >> "$GITHUB_STEP_SUMMARY"
