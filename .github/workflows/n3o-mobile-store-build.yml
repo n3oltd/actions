@@ -35,8 +35,9 @@ on:
         description: >-
           A JSON array of the apps to build, each {name, ios?, android?}. ios is {configuration,
           bundleId, teamId, vault, secrets: {key, keyId, issuerId}}; android is {flavour,
-          packageName, vault, secrets: {keystore, password, serviceAccount}}, each secret a Key Vault
-          secret name.
+          packageName, vault, secrets: {keystore, password, serviceAccount},
+          changesNotSentForReview?}, each secret a Key Vault secret name. changesNotSentForReview is
+          true for an app whose Play commits must not be sent for review, and defaults to false.
         type: string
         required: true
       platform:
@@ -170,6 +171,7 @@ jobs:
           GH_TOKEN: ${{ secrets.deployments-read-token }}
           OTA_TARGET: ${{ inputs.ota-target }}
           RUN_SHA: ${{ github.sha }}
+          DRY_RUN: ${{ inputs.dry-run }}
         run: |
           set -euo pipefail
 
@@ -186,12 +188,23 @@ jobs:
             exit 1
           fi
 
-          if [ "$commit" != "$RUN_SHA" ]; then
-            echo "::error::$OTA_TARGET released $version from $commit, not this run's $RUN_SHA"
+          if [ "$DRY_RUN" != true ] && ! git merge-base --is-ancestor "$commit" origin/main 2> /dev/null; then
+            echo "::error::$OTA_TARGET released $version from $commit, which is not on main"
             exit 1
           fi
 
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$commit" = "$RUN_SHA" ]; then
+            source=.
+          else
+            source=n3o-bundle-source
+            echo "$OTA_TARGET released $version from $commit; the bundle is built from that commit" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          {
+            echo "version=$version"
+            echo "commit=$commit"
+            echo "source=$source"
+          } >> "$GITHUB_OUTPUT"
 
       - id: version
         name: number the builds
@@ -244,8 +257,23 @@ jobs:
           CHECK_COMMAND: ${{ inputs.check-command }}
         run: bash -c "$CHECK_COMMAND"
 
+      - if: steps.bundle.outputs.source != '.'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.bundle.outputs.commit }}
+          path: ${{ steps.bundle.outputs.source }}
+          persist-credentials: false
+
+      - name: install the bundle's commit
+        if: steps.bundle.outputs.source != '.'
+        working-directory: ${{ steps.bundle.outputs.source }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.gh-pat }}
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -c "$INSTALL_COMMAND"
+
       - name: build the web bundle
-        working-directory: ${{ inputs.app-path }}
+        working-directory: ${{ steps.bundle.outputs.source }}/${{ inputs.app-path }}
         env:
           BUNDLE_VERSION: ${{ steps.bundle.outputs.version }}
           BUILD_COMMAND: ${{ inputs.build-command }}
@@ -258,7 +286,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: n3o-mobile-store-build-bundle
-          path: ${{ inputs.app-path }}/${{ inputs.output-path }}
+          path: ${{ steps.bundle.outputs.source }}/${{ inputs.app-path }}/${{ inputs.output-path }}
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
@@ -466,6 +494,7 @@ jobs:
           version-code: ${{ env.BUILD_NUMBER }}
           release-name: ${{ env.MARKETING_VERSION }} (${{ env.BUILD_NUMBER }})
           service-account-file: ${{ steps.credentials.outputs.directory }}/service-account
+          changes-not-sent-for-review: ${{ matrix.twin.android.changesNotSentForReview == true }}
           dry-run: ${{ inputs.dry-run }}
 
       - name: record the result
