@@ -1,6 +1,6 @@
 {
   "private": true,
   "dependencies": {
-    "@sentry/cli": "3.8.0"
+    "@sentry/cli": "3.8.2"
   }
 }
