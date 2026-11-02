@@ -1,8 +1,8 @@
 name: n3o blob folder upload
 description: >-
   Signs in to Azure with the job's GitHub OIDC token and uploads every file in a folder to a prefix
-  of a blob container, replacing what is there under the same names, then lists the prefix to prove
-  each file arrived. Signs out of Azure before it ends.
+  of a blob container, then lists the prefix to prove each file arrived. Signs out of Azure before
+  it ends.
 
 inputs:
   client-id:
@@ -18,15 +18,46 @@ inputs:
     description: The blob container.
     required: true
   prefix:
-    description: The path the files are written under, with no leading or trailing slash.
+    description: >-
+      The path the files are written under, of letters, digits, '.', '_', '-' and '/', with no
+      leading or trailing slash.
     required: true
   source:
     description: The folder whose files are uploaded, its subfolders included.
+    required: true
+  if-exists:
+    description: >-
+      What happens when the prefix already holds a file: overwrite replaces what is there under
+      the same names; skip leaves the prefix untouched and uploads nothing.
     required: true
 
 runs:
   using: "composite"
   steps:
+    - id: check
+      shell: bash
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        SOURCE: ${{ inputs.source }}
+        IF_EXISTS: ${{ inputs.if-exists }}
+      run: |
+        set -euo pipefail
+
+        if [[ ! "$PREFIX" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]] || [[ "/$PREFIX/" =~ /\.{1,2}/ ]]; then
+          echo "::error::the prefix '$PREFIX' is not path segments of letters, digits, '.', '_' and '-', none of them '.' or '..'"
+          exit 1
+        fi
+
+        case "$IF_EXISTS" in
+          overwrite|skip) ;;
+          *) echo "::error::if-exists is overwrite or skip, not '$IF_EXISTS'"; exit 1 ;;
+        esac
+
+        if [ ! -d "$SOURCE" ] || [ -z "$(find "$SOURCE" -type f -print -quit)" ]; then
+          echo "::error::$SOURCE holds no file to upload"
+          exit 1
+        fi
+
     - uses: azure/login@v3
       with:
         client-id: ${{ inputs.client-id }}
@@ -39,32 +70,41 @@ runs:
         CONTAINER: ${{ inputs.container }}
         PREFIX: ${{ inputs.prefix }}
         SOURCE: ${{ inputs.source }}
+        IF_EXISTS: ${{ inputs.if-exists }}
       run: |
         set -euo pipefail
 
         trap 'az logout > /dev/null 2>&1 || true' EXIT
 
-        if [ -z "$PREFIX" ] || [[ "$PREFIX" == /* ]] || [[ "$PREFIX" == */ ]]; then
-          echo "::error::the prefix '$PREFIX' is empty or starts or ends with a slash"
-          exit 1
+        list() {
+          az storage blob list --auth-mode login --account-name "$ACCOUNT" --container-name "$CONTAINER" \
+            --prefix "$PREFIX/" --num-results '*' --query '[].name' --output tsv | sort
+        }
+
+        existing=$(list)
+
+        if [ -n "$existing" ] && [ "$IF_EXISTS" = skip ]; then
+          echo "$ACCOUNT/$CONTAINER/$PREFIX/ already holds files, so nothing is uploaded"
+          exit 0
         fi
 
-        if [ ! -d "$SOURCE" ] || [ -z "$(find "$SOURCE" -type f -print -quit)" ]; then
-          echo "::error::$SOURCE holds no file to upload"
-          exit 1
+        args=()
+
+        if [ "$IF_EXISTS" = overwrite ]; then
+          args+=(--overwrite)
         fi
 
         az storage blob upload-batch --auth-mode login --account-name "$ACCOUNT" --destination "$CONTAINER" \
-          --destination-path "$PREFIX" --source "$SOURCE" --overwrite --only-show-errors --output none
+          --destination-path "$PREFIX" --source "$SOURCE" "${args[@]}" --only-show-errors --output none
 
-        expected=$(cd "$SOURCE" && find . -type f | sed "s|^\./|$PREFIX/|" | sort)
-        actual=$(az storage blob list --auth-mode login --account-name "$ACCOUNT" --container-name "$CONTAINER" \
-          --prefix "$PREFIX/" --num-results '*' --query '[].name' --output tsv | sort)
-        missing=$(comm -23 <(echo "$expected") <(echo "$actual"))
+        expected=$(cd "$SOURCE" && find . -type f | while IFS= read -r file; do echo "$PREFIX/${file#./}"; done | sort)
+        missing=$(comm -23 <(echo "$expected") <(list))
 
         if [ -n "$missing" ]; then
           echo "::error::$ACCOUNT/$CONTAINER is missing $(echo "$missing" | tr '\n' ' ')after the upload"
           exit 1
         fi
 
-        echo "$expected" | sed "s|^|wrote $ACCOUNT/$CONTAINER/|"
+        while IFS= read -r name; do
+          echo "wrote $ACCOUNT/$CONTAINER/$name"
+        done <<< "$expected"

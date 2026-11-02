@@ -37,7 +37,8 @@ on:
         description: >-
           An artifact of this run holding the files a build's listing folder carries, written after
           each twin's upload under <bundle ID>/<marketing version>-<build number>/ in the container
-          its twin's listings names; empty writes nothing.
+          its twin's listings names: over what is there after an upload, and only into an empty
+          folder when the store already held the build; empty writes nothing.
         type: string
         default: ''
       native-command:
@@ -437,6 +438,7 @@ jobs:
           container: ${{ matrix.twin.listings.container }}
           prefix: ${{ matrix.twin.ios.bundleId }}/${{ env.MARKETING_VERSION }}-${{ env.BUILD_NUMBER }}
           source: ${{ runner.temp }}/n3o-listings
+          if-exists: ${{ steps.upload.outputs.result == 'uploaded' && 'overwrite' || 'skip' }}
 
       - name: record the result
         env:
@@ -576,6 +578,7 @@ jobs:
           container: ${{ matrix.twin.listings.container }}
           prefix: ${{ matrix.twin.android.packageName }}/${{ env.MARKETING_VERSION }}-${{ env.BUILD_NUMBER }}
           source: ${{ runner.temp }}/n3o-listings
+          if-exists: ${{ steps.upload.outputs.result == 'uploaded' && 'overwrite' || 'skip' }}
 
       - name: record the result
         env:
