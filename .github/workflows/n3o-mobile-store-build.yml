@@ -27,6 +27,18 @@ on:
         description: Prints the oldest marketing version a store build may carry, run in app-path.
         type: string
         required: true
+      native-artifact:
+        description: >-
+          An artifact of this run that native-command reads, downloaded into the folder
+          NATIVE_DIRECTORY names; empty downloads nothing.
+        type: string
+        default: ''
+      native-command:
+        description: >-
+          Prepares the native projects for the apps being built, run in app-path in every iOS and
+          Android job before the platform is synced; empty runs nothing.
+        type: string
+        default: ''
       ota-target:
         description: The deployment target whose latest release names the bundle version and commit the builds embed.
         type: string
@@ -350,6 +362,20 @@ jobs:
           name: n3o-mobile-store-build-bundle
           path: ${{ inputs.app-path }}/${{ inputs.output-path }}
 
+      - if: inputs.native-artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.native-artifact }}
+          path: ${{ runner.temp }}/n3o-native
+
+      - name: prepare the native project
+        if: inputs.native-command != ''
+        working-directory: ${{ inputs.app-path }}
+        env:
+          NATIVE_COMMAND: ${{ inputs.native-command }}
+          NATIVE_DIRECTORY: ${{ runner.temp }}/n3o-native
+        run: bash -c "$NATIVE_COMMAND"
+
       - name: sync the iOS project
         working-directory: ${{ inputs.app-path }}
         run: npx --no-install cap sync ios
@@ -460,6 +486,20 @@ jobs:
         with:
           name: n3o-mobile-store-build-bundle
           path: ${{ inputs.app-path }}/${{ inputs.output-path }}
+
+      - if: inputs.native-artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.native-artifact }}
+          path: ${{ runner.temp }}/n3o-native
+
+      - name: prepare the native project
+        if: inputs.native-command != ''
+        working-directory: ${{ inputs.app-path }}
+        env:
+          NATIVE_COMMAND: ${{ inputs.native-command }}
+          NATIVE_DIRECTORY: ${{ runner.temp }}/n3o-native
+        run: bash -c "$NATIVE_COMMAND"
 
       - name: sync the Android project
         working-directory: ${{ inputs.app-path }}
