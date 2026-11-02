@@ -33,6 +33,14 @@ on:
           NATIVE_DIRECTORY names; empty downloads nothing.
         type: string
         default: ''
+      listings-artifact:
+        description: >-
+          An artifact of this run holding the files a build's listing folder carries, written after
+          each twin's upload under <bundle ID>/<marketing version>-<build number>/ in the container
+          its twin's listings names: over what is there after an upload, and only into an empty
+          folder when the store already held the build; empty writes nothing.
+        type: string
+        default: ''
       native-command:
         description: >-
           Prepares the native projects for the apps being built, run in app-path in every iOS and
@@ -45,7 +53,8 @@ on:
         required: true
       twins:
         description: >-
-          A JSON array of the apps to build, each {name, ios?, android?}. ios is {configuration,
+          A JSON array of the apps to build, each {name, listings?, ios?, android?}. listings is
+          {storageAccount, container}, where the twin's listing folder is written. ios is {configuration,
           bundleId, teamId, vault, secrets: {key, keyId, issuerId}}; android is {flavour,
           packageName, vault, secrets: {keystore, password, serviceAccount},
           changesNotSentForReview?}, each secret a Key Vault secret name. changesNotSentForReview is
@@ -414,6 +423,23 @@ jobs:
           issuer-id-file: ${{ steps.credentials.outputs.directory }}/issuer-id
           dry-run: ${{ inputs.dry-run }}
 
+      - if: inputs.listings-artifact != '' && matrix.twin.listings && steps.upload.outputs.result != 'dry-run'
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.listings-artifact }}
+          path: ${{ runner.temp }}/n3o-listings
+
+      - if: inputs.listings-artifact != '' && matrix.twin.listings && steps.upload.outputs.result != 'dry-run'
+        uses: n3oltd/actions/.github/actions/n3o-blob-folder-upload@main
+        with:
+          client-id: ${{ inputs.azure-client-id }}
+          tenant-id: ${{ inputs.azure-tenant-id }}
+          storage-account: ${{ matrix.twin.listings.storageAccount }}
+          container: ${{ matrix.twin.listings.container }}
+          prefix: ${{ matrix.twin.ios.bundleId }}/${{ env.MARKETING_VERSION }}-${{ env.BUILD_NUMBER }}
+          source: ${{ runner.temp }}/n3o-listings
+          if-exists: ${{ steps.upload.outputs.result == 'uploaded' && 'overwrite' || 'skip' }}
+
       - name: record the result
         env:
           BUNDLE_ID: ${{ matrix.twin.ios.bundleId }}
@@ -536,6 +562,23 @@ jobs:
           service-account-file: ${{ steps.credentials.outputs.directory }}/service-account
           changes-not-sent-for-review: ${{ matrix.twin.android.changesNotSentForReview == true }}
           dry-run: ${{ inputs.dry-run }}
+
+      - if: inputs.listings-artifact != '' && matrix.twin.listings && steps.upload.outputs.result != 'dry-run'
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.listings-artifact }}
+          path: ${{ runner.temp }}/n3o-listings
+
+      - if: inputs.listings-artifact != '' && matrix.twin.listings && steps.upload.outputs.result != 'dry-run'
+        uses: n3oltd/actions/.github/actions/n3o-blob-folder-upload@main
+        with:
+          client-id: ${{ inputs.azure-client-id }}
+          tenant-id: ${{ inputs.azure-tenant-id }}
+          storage-account: ${{ matrix.twin.listings.storageAccount }}
+          container: ${{ matrix.twin.listings.container }}
+          prefix: ${{ matrix.twin.android.packageName }}/${{ env.MARKETING_VERSION }}-${{ env.BUILD_NUMBER }}
+          source: ${{ runner.temp }}/n3o-listings
+          if-exists: ${{ steps.upload.outputs.result == 'uploaded' && 'overwrite' || 'skip' }}
 
       - name: record the result
         env:
