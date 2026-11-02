@@ -1,0 +1,70 @@
+name: n3o blob folder upload
+description: >-
+  Signs in to Azure with the job's GitHub OIDC token and uploads every file in a folder to a prefix
+  of a blob container, replacing what is there under the same names, then lists the prefix to prove
+  each file arrived. Signs out of Azure before it ends.
+
+inputs:
+  client-id:
+    description: The client ID of the identity the job's OIDC token is federated with.
+    required: true
+  tenant-id:
+    description: The identity's tenant ID.
+    required: true
+  storage-account:
+    description: The storage account's name.
+    required: true
+  container:
+    description: The blob container.
+    required: true
+  prefix:
+    description: The path the files are written under, with no leading or trailing slash.
+    required: true
+  source:
+    description: The folder whose files are uploaded, its subfolders included.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.client-id }}
+        tenant-id: ${{ inputs.tenant-id }}
+        allow-no-subscriptions: true
+
+    - shell: bash
+      env:
+        ACCOUNT: ${{ inputs.storage-account }}
+        CONTAINER: ${{ inputs.container }}
+        PREFIX: ${{ inputs.prefix }}
+        SOURCE: ${{ inputs.source }}
+      run: |
+        set -euo pipefail
+
+        trap 'az logout > /dev/null 2>&1 || true' EXIT
+
+        if [ -z "$PREFIX" ] || [[ "$PREFIX" == /* ]] || [[ "$PREFIX" == */ ]]; then
+          echo "::error::the prefix '$PREFIX' is empty or starts or ends with a slash"
+          exit 1
+        fi
+
+        if [ ! -d "$SOURCE" ] || [ -z "$(find "$SOURCE" -type f -print -quit)" ]; then
+          echo "::error::$SOURCE holds no file to upload"
+          exit 1
+        fi
+
+        az storage blob upload-batch --auth-mode login --account-name "$ACCOUNT" --destination "$CONTAINER" \
+          --destination-path "$PREFIX" --source "$SOURCE" --overwrite --only-show-errors --output none
+
+        expected=$(cd "$SOURCE" && find . -type f | sed "s|^\./|$PREFIX/|" | sort)
+        actual=$(az storage blob list --auth-mode login --account-name "$ACCOUNT" --container-name "$CONTAINER" \
+          --prefix "$PREFIX/" --num-results '*' --query '[].name' --output tsv | sort)
+        missing=$(comm -23 <(echo "$expected") <(echo "$actual"))
+
+        if [ -n "$missing" ]; then
+          echo "::error::$ACCOUNT/$CONTAINER is missing $(echo "$missing" | tr '\n' ' ')after the upload"
+          exit 1
+        fi
+
+        echo "$expected" | sed "s|^|wrote $ACCOUNT/$CONTAINER/|"
