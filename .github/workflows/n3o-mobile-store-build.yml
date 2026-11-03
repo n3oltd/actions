@@ -618,6 +618,10 @@ jobs:
           shopt -s nullglob
 
           results=("$RUNNER_TEMP"/results/*/result.json)
+          # download-artifact unpacks a lone matching artifact straight into the path, not a subfolder.
+          if [ -f "$RUNNER_TEMP/results/result.json" ]; then
+            results+=("$RUNNER_TEMP/results/result.json")
+          fi
 
           if [ "${#results[@]}" -eq 0 ]; then
             uploads='[]'
