@@ -27,11 +27,11 @@
   },
   "packageRules": [
     {
-      "description": "The npm lockfiles pin the CLIs the mobile release actions run beside a signing key, so a release waits the seven days n3oltd/frontend gives every third-party package.",
-      "matchManagers": [
-        "npm"
+      "description": "Default to one PR per package: neutralise the grouping config:recommended inherits (group:monorepos / group:recommended); the groupName rules below re-batch co-versioned families.",
+      "matchPackageNames": [
+        "*"
       ],
-      "minimumReleaseAge": "7 days"
+      "groupName": null
     },
     {
       "matchManagers": [
@@ -66,13 +66,6 @@
         "patch"
       ],
       "enabled": true
-    },
-    {
-      "description": "One PR per base image: neutralise the grouping config:recommended inherits, so a fleet-wide image bump is reviewed on its own.",
-      "matchManagers": [
-        "dockerfile"
-      ],
-      "groupName": null
     },
     {
       "description": "Debian publishes dated snapshots, which the docker versioning cannot read at all; parsing the date makes a newer snapshot of the same release an upgrade, and leaves a new release alone.",
