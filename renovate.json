@@ -10,7 +10,7 @@
     "npm",
     "pip_requirements"
   ],
-  "dependencyDashboard": true,
+  "dependencyDashboard": false,
   "prConcurrentLimit": 10,
   "prHourlyLimit": 0,
   "commitMessageExtra": "{{#unless isGroup}}from {{displayFrom}} to {{displayTo}}{{/unless}}",
