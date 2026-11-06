@@ -42,7 +42,7 @@ jobs:
           fetch-depth: 0   # full history is required for the subtree split
 
       - id: ssh
-        uses: n3oltd/actions/.github/actions/n3o-ssh-key@mirror-snapshot
+        uses: n3oltd/actions/.github/actions/n3o-ssh-key@main
         with:
           private-key: ${{ secrets.ssh-key }}
 

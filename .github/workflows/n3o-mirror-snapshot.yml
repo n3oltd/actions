@@ -49,14 +49,14 @@ jobs:
             echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
           fi
 
-      - uses: n3oltd/actions/.github/actions/n3o-secret-scan@mirror-snapshot
+      - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
         with:
           path: ${{ inputs.subtree-path }}
 
       - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
 
       - id: ssh
-        uses: n3oltd/actions/.github/actions/n3o-ssh-key@mirror-snapshot
+        uses: n3oltd/actions/.github/actions/n3o-ssh-key@main
         with:
           private-key: ${{ secrets.ssh-key }}
 
