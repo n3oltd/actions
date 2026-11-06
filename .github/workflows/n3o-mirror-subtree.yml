@@ -41,18 +41,14 @@ jobs:
         with:
           fetch-depth: 0   # full history is required for the subtree split
 
-      - name: configure ssh
-        env:
-          SSH_KEY: ${{ secrets.ssh-key }}   # via env: a multi-line key inlined into the script breaks it
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_mirror
-          chmod 600 ~/.ssh/id_mirror
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+      - id: ssh
+        uses: n3oltd/actions/.github/actions/n3o-ssh-key@main
+        with:
+          private-key: ${{ secrets.ssh-key }}
 
       - name: split and push subtree
         env:
-          GIT_SSH_COMMAND: "ssh -i ~/.ssh/id_mirror -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          GIT_SSH_COMMAND: ${{ steps.ssh.outputs.git-ssh-command }}
         run: |
           set -euo pipefail
 
