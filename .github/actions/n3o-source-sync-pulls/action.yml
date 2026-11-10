@@ -34,6 +34,7 @@ runs:
       uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
       with:
         path: ${{ inputs.subtree-path }}
+        scan: false
 
     - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
 

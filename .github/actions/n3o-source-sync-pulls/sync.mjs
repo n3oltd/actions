@@ -94,7 +94,7 @@ const quote = (text) =>
   (text ?? "")
     .replace(/<!--/g, "&lt;!--")
     .replace(/(^|\W)@(?=[A-Za-z0-9])/g, "$1@\u2060")
-    .replace(/#(?=\d)/g, "#\u2060")
+    .replace(/(#|\bGH-)(?=\d)/gi, "$1\u2060")
     .replace(/\b(?=(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b)(\w)/gi, "$1\u2060");
 
 const draftBody = (pull, marker) =>
@@ -108,7 +108,10 @@ const draftBody = (pull, marker) =>
     .join("\n\n");
 
 async function writeDraft(draft, pull, marker) {
-  await request(monorepo, "PATCH", `pulls/${draft.number}`, { title: pull.title, body: draftBody(pull, marker) });
+  await request(monorepo, "PATCH", `pulls/${draft.number}`, {
+    title: quote(pull.title),
+    body: draftBody(pull, marker),
+  });
 }
 
 async function notice(side, number, key, text) {
@@ -139,38 +142,69 @@ function fetchClientRefs(pull) {
     `+refs/heads/${pull.head.ref}:refs/n3o-source-sync/client-head`,
   ]);
   const head = git(monorepo, ["rev-parse", "refs/n3o-source-sync/client-head"]);
+
   if (head !== pull.head.sha)
     throw new Error(`${pull.head.ref} moved to ${head} during this run; it is picked up next run`);
 }
 
-// Fetches the draft's commits since `base` and returns them, or null when the draft is not ahead of it.
-async function fetchDraftSince(draft, base) {
-  const comparison = await request(monorepo, "GET", `compare/${base}...${draft.head.sha}`);
-  if (comparison?.status !== "ahead") return null;
+function fetchDraft(draft, depth) {
   git(monorepo, [
     "fetch",
     "-q",
     "--no-tags",
-    `--depth=${comparison.ahead_by + 1}`,
+    `--depth=${depth}`,
     url(monorepo),
     `+refs/heads/${draft.head.ref}:refs/n3o-source-sync/draft`,
   ]);
+
+  if (git(monorepo, ["rev-parse", "refs/n3o-source-sync/draft"]) !== draft.head.sha)
+    throw new Error(`${draft.head.ref} moved during this run; it is picked up next run`);
+}
+
+async function fetchDraftSince(draft, base) {
+  const comparison = await request(monorepo, "GET", `compare/${base}...${draft.head.sha}`);
+  if (comparison?.status !== "ahead") return null;
+  fetchDraft(draft, comparison.ahead_by + 1);
   return comparison.commits;
+}
+
+// Commit messages cross too, so they are quoted like any other copied text; authors are kept.
+function quoteMessages(side, base, { cwd, env } = {}) {
+  let parent = base;
+  for (const line of git(side, ["log", "--reverse", "--format=%H %P", `${base}..HEAD`], { cwd }).split("\n")) {
+    if (!line) continue;
+    const [commit, original] = line.split(" ");
+    const message = git(side, ["log", "-1", "--format=%B", commit], { cwd });
+    if (quote(message) === message && original === parent) {
+      parent = commit;
+      continue;
+    }
+    const [name, email, date] = git(side, ["log", "-1", "--format=%an%n%ae%n%aD", commit], { cwd }).split("\n");
+    parent = git(side, ["commit-tree", `${commit}^{tree}`, "-p", parent], {
+      cwd,
+      input: `${quote(message)}\n`,
+      env: { ...env, GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date },
+    });
+  }
+  git(side, ["reset", "-q", "--soft", parent], { cwd });
 }
 
 function applyClientCommits(from, to) {
   const patches = git(monorepo, ["format-patch", "--stdout", `${from}..${to}`], { raw: true });
   if (!patches.length) return true;
+  const base = git(monorepo, ["rev-parse", "HEAD"]);
   try {
     git(monorepo, ["am", "-q", "-3", `--directory=${subtree}`], { input: patches });
-    return true;
   } catch (error) {
     console.log(`::warning::git am of ${from}..${to} failed: ${error.message}`);
     git(monorepo, ["am", "--abort"]);
     return false;
   }
+  quoteMessages(monorepo, base);
+  return true;
 }
 
+// A lease replaces the branch only while it is still at that commit; an empty lease means it must not exist yet.
 function pushDraftBranch(number, lease) {
   const ref = `refs/heads/${prefix}${number}`;
   const force = lease === undefined ? [] : [`--force-with-lease=${ref}:${lease}`];
@@ -214,7 +248,16 @@ async function importPull(pull, draft) {
     "refs/n3o-source-sync/client-base",
     "refs/n3o-source-sync/client-head",
   ]);
+  if (draft) {
+    // Changes outside the subtree never reach the client's branch, so a rebuild from it would drop them. A compare
+    // lists at most 300 files, so a full list may hide one.
+    const files = (await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`))?.files ?? [];
+    if (files.length >= 300 || files.some((file) => !file.filename.startsWith(`${subtree}/`))) {
+      return reportStuck(pull, draft, "rebuilding the draft from the client's branch would drop N3O's other changes");
+    }
+  }
   git(monorepo, ["checkout", "-q", "--force", "--detach", mainHead]);
+
   if (!applyClientCommits(forkPoint, pull.head.sha)) {
     await notice(
       client,
@@ -224,7 +267,18 @@ async function importPull(pull, draft) {
     );
     return false;
   }
-  const draftHead = pushDraftBranch(pull.number, draft?.head.sha ?? "");
+  if (git(monorepo, ["rev-parse", "HEAD"]) === mainHead) {
+    await notice(
+      client,
+      pull.number,
+      `empty-${pull.head.sha}`,
+      `This change is already in \`${copyBranch}\`, so there is nothing to review.`,
+    );
+    return false;
+  }
+  // A branch without a draft is left by a run whose draft creation failed after the push.
+  const orphan = draft ? undefined : git(monorepo, ["ls-remote", url(monorepo), `refs/heads/${prefix}${pull.number}`]);
+  const draftHead = pushDraftBranch(pull.number, draft?.head.sha ?? orphan.split("\t")[0]);
   const marker = { client: pull.head.sha, draft: draftHead };
   if (draft) {
     await writeDraft(draft, pull, marker);
@@ -232,7 +286,7 @@ async function importPull(pull, draft) {
     return true;
   }
   const created = await request(monorepo, "POST", "pulls", {
-    title: pull.title,
+    title: quote(pull.title),
     head: `${prefix}${pull.number}`,
     base: "main",
     body: draftBody(pull, marker),
@@ -246,14 +300,7 @@ async function applyClient(pull, draft, marker) {
   fetchClientRefs(pull);
   // A merge brings the client's copy commits into the range, so the draft is rebuilt from the fork point instead.
   if (git(monorepo, ["rev-list", "--merges", `${marker.client}..${pull.head.sha}`])) return importPull(pull, draft);
-  git(monorepo, [
-    "fetch",
-    "-q",
-    "--no-tags",
-    "--depth=1",
-    url(monorepo),
-    `+refs/heads/${draft.head.ref}:refs/n3o-source-sync/draft`,
-  ]);
+  fetchDraft(draft, 1);
   git(monorepo, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
   if (!applyClientCommits(marker.client, pull.head.sha)) {
     await reportStuck(pull, draft, "the client's new commits no longer apply to the draft");
@@ -295,6 +342,7 @@ async function pushToClient(pull, draft, marker) {
   git(client, ["init", "-q", work]);
   git(client, ["fetch", "-q", "--no-tags", "--depth=1", url(client), `refs/heads/${pull.head.ref}`], { cwd: work });
   git(client, ["checkout", "-q", "--detach", "FETCH_HEAD"], { cwd: work });
+
   if (git(client, ["rev-parse", "HEAD"], { cwd: work }) !== pull.head.sha) {
     throw new Error(`${pull.head.ref} moved during this run; it is picked up next run`);
   }
@@ -305,6 +353,7 @@ async function pushToClient(pull, draft, marker) {
     console.log(`::warning::git am onto ${pull.head.ref} failed: ${error.message}`);
     return reportStuck(pull, draft, "N3O's commits don't apply to the client's branch");
   }
+  quoteMessages(client, pull.head.sha, { cwd: work, env: committer });
   git(client, ["push", "-q", url(client), `HEAD:refs/heads/${pull.head.ref}`], { cwd: work });
   const clientHead = git(client, ["rev-parse", "HEAD"], { cwd: work });
   await writeDraft(draft, pull, { client: clientHead, draft: draft.head.sha });
@@ -323,6 +372,7 @@ async function recordIfInStep(pull, draft, marker) {
     "--",
     subtree,
   ]);
+
   if (!clientIds.length || clientIds.join() !== draftIds.join()) return false;
   await writeDraft(draft, pull, { client: pull.head.sha, draft: draft.head.sha });
   console.log(`${CLIENT_REPO}#${pull.number}: both sides already have the same changes; recorded them as in step`);
@@ -559,7 +609,7 @@ async function syncPull(number) {
     written =
       (await recordIfInStep(pull, draft, marker)) || (await reportStuck(pull, draft, "both sides have new commits"));
   }
-  if (!written && (draft.title !== pull.title || draft.body !== draftBody(pull, marker))) {
+  if (!written && (draft.title !== quote(pull.title) || draft.body !== draftBody(pull, marker))) {
     await writeDraft(draft, pull, marker);
   }
 }

@@ -10,10 +10,16 @@ inputs:
   path:
     description: Directory to scan.
     required: true
+  scan:
+    description: >-
+      Whether to scan the directory. With false, only checks its .gitleaks.toml and installs gitleaks,
+      for a caller that scans with the gitleaks output itself.
+    required: false
+    default: "true"
 
 outputs:
   gitleaks:
-    description: Path of the gitleaks binary the scan ran, for a later step to scan with the same version.
+    description: Path of the gitleaks binary this action installed, for a later step to scan with the same version.
     value: ${{ steps.install.outputs.gitleaks }}
 
 runs:
@@ -59,7 +65,9 @@ runs:
         echo "gitleaks=$dir/gitleaks" >> "$GITHUB_OUTPUT"
 
     - name: scan
+      if: ${{ inputs.scan == 'true' }}
       shell: bash
       env:
+        GITLEAKS: ${{ steps.install.outputs.gitleaks }}
         SCAN_PATH: ${{ inputs.path }}
-      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'
+      run: '"$GITLEAKS" dir --no-banner --redact --max-archive-depth 3 --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'

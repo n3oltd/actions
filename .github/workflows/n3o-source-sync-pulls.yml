@@ -22,12 +22,10 @@ permissions:
   pull-requests: write
 
 jobs:
-  pick:
-    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
-
+  # A schedule has nobody waiting on it, so it skips n3o-pick-runner's GitHub-hosted pick job, which
+  # would bill a minute every run. The self-hosted runners serve private repositories only.
   sync:
-    needs: pick
-    runs-on: ${{ needs.pick.outputs.runs-on }}
+    runs-on: n3o-github-runner
     timeout-minutes: 15
     concurrency:
       group: n3o-source-sync-pulls-${{ inputs.client-repo }}
