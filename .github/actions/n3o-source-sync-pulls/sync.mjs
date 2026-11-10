@@ -18,7 +18,6 @@ const {
 const apiUrl = process.env.GITHUB_API_URL ?? "https://api.github.com";
 const copyBranch = "main";
 const markerTag = "n3o-source-sync";
-const clientMembers = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
 const client = { repo: CLIENT_REPO, token: CLIENT_TOKEN, bot: CLIENT_BOT_NAME };
 const monorepo = { repo: GITHUB_REPOSITORY, token: MONOREPO_TOKEN, bot: "github-actions[bot]" };
@@ -464,6 +463,17 @@ async function lineText(side, path, commit, line) {
   return Buffer.from(file.content, "base64").toString("utf8").split("\n")[line - 1] ?? null;
 }
 
+// author_association depends on what the token may see: to the App, a private org membership reads as CONTRIBUTOR.
+const permissions = new Map();
+
+async function canWrite(login) {
+  if (!permissions.has(login)) {
+    const result = await request(client, "GET", `collaborators/${encodeURIComponent(login)}/permission`);
+    permissions.set(login, result?.permission);
+  }
+  return ["admin", "write"].includes(permissions.get(login));
+}
+
 function counterpartPath(from, path) {
   if (from === client) return `${subtree}/${path}`;
   return path.startsWith(`${subtree}/`) ? path.slice(subtree.length + 1) : null;
@@ -494,12 +504,18 @@ async function syncComments(pull, draft) {
     [ends[0], ends[1]],
     [ends[1], ends[0]],
   ]) {
-    const byPerson = (item) =>
-      item.user?.type !== "Bot" && (from.side !== client || clientMembers.has(item.author_association));
-    const hasText = (item) => Boolean(item.body?.trim());
-    for (const item of from.side === client ? [...from.issue, ...from.lines] : []) {
-      console.log(`DEBUG ${item.id} ${item.user?.login} ${item.user?.type} ${item.author_association}`);
+    const people = [...from.issue, ...from.lines, ...from.reviews].filter((item) => item.user?.type !== "Bot");
+    const writers = new Set();
+    for (const login of new Set(people.map((item) => item.user.login))) {
+      if (from.side !== client || (await canWrite(login))) writers.add(login);
     }
+    for (const item of people.filter((item) => !writers.has(item.user.login))) {
+      console.log(
+        `${CLIENT_REPO}#${from.number}: ${item.user.login} can't write to the repository; ${item.id} not copied`,
+      );
+    }
+    const byPerson = (item) => writers.has(item.user?.login);
+    const hasText = (item) => Boolean(item.body?.trim());
     for (const review of from.reviews.filter((review) => byPerson(review) && !verbs[review.state])) {
       console.log(`${from.side.repo}#${from.number}: review ${review.id} is ${review.state}; not copied`);
     }
