@@ -11,11 +11,6 @@ on:
         description: 'Client repo as owner/name (e.g. example-client/website)'
         required: true
         type: string
-      target-branch:
-        description: 'Branch to update on the client repo; it must not exist yet, or end in a commit this mirror made'
-        required: false
-        default: main
-        type: string
 
 permissions:
   contents: read
@@ -29,7 +24,7 @@ jobs:
     runs-on: ${{ needs.pick.outputs.runs-on }}
     timeout-minutes: 15
     concurrency:
-      group: n3o-mirror-snapshot-${{ inputs.target-repo }}-${{ inputs.target-branch }}
+      group: n3o-mirror-snapshot-${{ inputs.target-repo }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
@@ -41,6 +36,5 @@ jobs:
         with:
           subtree-path: ${{ inputs.subtree-path }}
           target-repo: ${{ inputs.target-repo }}
-          target-branch: ${{ inputs.target-branch }}
           app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
           private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}

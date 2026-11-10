@@ -65,7 +65,6 @@ runs:
       with:
         subtree-path: ${{ inputs.subtree-path }}
         target-repo: ${{ inputs.client-repo }}
-        target-branch: main
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         merge-heads: ${{ steps.sync.outputs.merge-heads }}
