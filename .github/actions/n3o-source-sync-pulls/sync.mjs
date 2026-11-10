@@ -143,7 +143,7 @@ function fetchClientRefs(pull) {
     throw new Error(`${pull.head.ref} moved to ${head} during this run; it is picked up next run`);
 }
 
-// Fetches the draft's commits since `base` and returns how many there are, or null when the draft is not ahead of it.
+// Fetches the draft's commits since `base` and returns them, or null when the draft is not ahead of it.
 async function fetchDraftSince(draft, base) {
   const comparison = await request(monorepo, "GET", `compare/${base}...${draft.head.sha}`);
   if (comparison?.status !== "ahead") return null;
