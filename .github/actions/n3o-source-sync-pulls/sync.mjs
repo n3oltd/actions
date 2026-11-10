@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdtempSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const {
@@ -8,18 +8,20 @@ const {
   BRANCH_PREFIX: prefix,
   GITHUB_REPOSITORY,
   CLIENT_TOKEN,
-  SITES_TOKEN,
+  CLIENT_BOT_NAME,
+  CLIENT_BOT_EMAIL,
+  MONOREPO_TOKEN,
+  GITLEAKS,
   RUNNER_TEMP,
   GITHUB_OUTPUT,
 } = process.env;
 const apiUrl = process.env.GITHUB_API_URL ?? "https://api.github.com";
 const copyBranch = "main";
-const tag = "n3o-source-sync";
-const sitesBot = "github-actions[bot]";
-const clientBot = { name: "n3o-source-sync[bot]", email: "354428725+n3o-source-sync[bot]@users.noreply.github.com" };
+const markerTag = "n3o-source-sync";
+const clientMembers = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
-const client = { repo: CLIENT_REPO, token: CLIENT_TOKEN };
-const sites = { repo: GITHUB_REPOSITORY, token: SITES_TOKEN };
+const client = { repo: CLIENT_REPO, token: CLIENT_TOKEN, bot: CLIENT_BOT_NAME };
+const monorepo = { repo: GITHUB_REPOSITORY, token: MONOREPO_TOKEN, bot: "github-actions[bot]" };
 
 async function request(side, method, path, body) {
   const response = await fetch(`${apiUrl}/repos/${side.repo}/${path}`, {
@@ -40,7 +42,9 @@ async function request(side, method, path, body) {
 async function list(side, path) {
   const items = [];
   for (let page = 1; ; page++) {
-    const batch = await request(side, "GET", `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`);
+    const pagePath = `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`;
+    const batch = await request(side, "GET", pagePath);
+    if (!batch) throw new Error(`GET ${side.repo}/${pagePath}: 404`);
     items.push(...batch);
     if (batch.length < 100) return items;
   }
@@ -60,37 +64,57 @@ function auth(side) {
   };
 }
 
-function git(side, args, { cwd, input, env } = {}) {
-  return execFileSync("git", args, {
+function git(side, args, { cwd, input, env, raw } = {}) {
+  const output = execFileSync("git", args, {
     cwd,
     input,
-    encoding: "utf8",
+    encoding: raw ? "buffer" : "utf8",
     maxBuffer: 256 * 1024 * 1024,
     env: { ...auth(side), ...env },
     stdio: ["pipe", "pipe", "inherit"],
-  }).trim();
+  });
+  return raw ? output : output.trim();
 }
 
 const url = (side) => `https://github.com/${side.repo}.git`;
-const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const stateMarker = (number, clientHead, draftHead) =>
-  `<!-- ${tag}: ${CLIENT_REPO}#${number} client=${clientHead} draft=${draftHead} -->`;
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const stateMarker = (number, marker) =>
+  `<!-- ${markerTag}: ${CLIENT_REPO}#${number} client=${marker.client} draft=${marker.draft} -->`;
 const statePattern = (number) =>
-  new RegExp(`<!-- ${escape(tag)}: ${escape(CLIENT_REPO)}#${number} client=([0-9a-f]{40}) draft=([0-9a-f]{40}) -->`);
-const copyPattern = new RegExp(`<!-- ${escape(tag)}: copy of (\\S+ \\w+:\\d+) -->`, "g");
+  new RegExp(`<!-- ${escapeRegExp(markerTag)}: ${escapeRegExp(CLIENT_REPO)}#${number} client=([0-9a-f]{40}) draft=([0-9a-f]{40}) -->`);
+const copyPattern = new RegExp(`<!-- ${escapeRegExp(markerTag)}: copy of (\\S+ \\w+:\\d+) -->`, "g");
 
-function readState(draft, number) {
+function readMarker(draft, number) {
   const match = statePattern(number).exec(draft.body ?? "");
   return match && { client: match[1], draft: match[2] };
 }
 
-// A mention copied to the other repository would notify whoever holds that login there.
-const unmention = (text) => (text ?? "").replace(/(^|[^\w`])@(?=[A-Za-z0-9])/g, "$1@\u2060");
+// Copied text must not notify anyone, link or close an issue, or carry a marker this check would trust.
+const quote = (text) =>
+  (text ?? "")
+    .replace(/<!--/g, "&lt;!--")
+    .replace(/(^|\W)@(?=[A-Za-z0-9])/g, "$1@\u2060")
+    .replace(/#(?=\d)/g, "#\u2060")
+    .replace(/\b(?=(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b)(\w)/gi, "$1\u2060");
+
+const draftBody = (pull, marker) =>
+  [
+    `Imported from \`${CLIENT_REPO}#${pull.number}\`, opened by \`${pull.user.login}\`.`,
+    quote(pull.body),
+    "no-work-issue: imported from a client pull request",
+    stateMarker(pull.number, marker),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+async function writeDraft(draft, pull, marker) {
+  await request(monorepo, "PATCH", `pulls/${draft.number}`, { title: pull.title, body: draftBody(pull, marker) });
+}
 
 async function notice(side, number, key, text) {
-  const marker = `<!-- ${tag}: notice ${key} -->`;
+  const marker = `<!-- ${markerTag}: notice ${key} -->`;
   const comments = await list(side, `issues/${number}/comments`);
-  if (comments.some((comment) => comment.body?.includes(marker))) return;
+  if (comments.some((comment) => comment.user?.login === side.bot && comment.body?.includes(marker))) return;
   await request(side, "POST", `issues/${number}/comments`, { body: `${text}\n\n${marker}` });
 }
 
@@ -100,12 +124,12 @@ async function isAncestor(side, base, head) {
 }
 
 async function findDraft(number) {
-  const owner = sites.repo.split("/")[0];
-  const drafts = await list(sites, `pulls?state=all&head=${owner}:${encodeURIComponent(`${prefix}${number}`)}`);
+  const owner = monorepo.repo.split("/")[0];
+  const drafts = await list(monorepo, `pulls?state=all&head=${owner}:${encodeURIComponent(`${prefix}${number}`)}`);
   return drafts.sort((a, b) => b.number - a.number)[0];
 }
 
-function fetchClientHead(pull) {
+function fetchClientRefs(pull) {
   git(client, [
     "fetch",
     "-q",
@@ -114,37 +138,83 @@ function fetchClientHead(pull) {
     `+refs/heads/${copyBranch}:refs/n3o-source-sync/client-base`,
     `+refs/heads/${pull.head.ref}:refs/n3o-source-sync/client-head`,
   ]);
-  const head = git(sites, ["rev-parse", "refs/n3o-source-sync/client-head"]);
+  const head = git(monorepo, ["rev-parse", "refs/n3o-source-sync/client-head"]);
   if (head !== pull.head.sha)
     throw new Error(`${pull.head.ref} moved to ${head} during this run; it is picked up next run`);
 }
 
+// Fetches the draft's commits since `base` and returns how many there are, or null when the draft is not ahead of it.
+async function fetchDraftSince(draft, base) {
+  const comparison = await request(monorepo, "GET", `compare/${base}...${draft.head.sha}`);
+  if (comparison?.status !== "ahead") return null;
+  git(monorepo, [
+    "fetch",
+    "-q",
+    "--no-tags",
+    `--depth=${comparison.ahead_by + 1}`,
+    url(monorepo),
+    `+refs/heads/${draft.head.ref}:refs/n3o-source-sync/draft`,
+  ]);
+  return comparison.commits;
+}
+
 function applyClientCommits(from, to) {
-  const patches = git(sites, ["format-patch", "--stdout", `${from}..${to}`]);
-  if (!patches) return true;
+  const patches = git(monorepo, ["format-patch", "--stdout", `${from}..${to}`], { raw: true });
+  if (!patches.length) return true;
   try {
-    git(sites, ["am", "-q", "-3", `--directory=${subtree}`], { input: `${patches}\n` });
+    git(monorepo, ["am", "-q", "-3", `--directory=${subtree}`], { input: patches });
     return true;
-  } catch {
-    git(sites, ["am", "--abort"]);
+  } catch (error) {
+    console.log(`::warning::git am of ${from}..${to} failed: ${error.message}`);
+    git(monorepo, ["am", "--abort"]);
     return false;
   }
 }
 
-function pushDraftBranch(number, force) {
-  git(sites, ["push", "-q", ...(force ? ["--force"] : []), url(sites), `HEAD:refs/heads/${prefix}${number}`]);
-  return git(sites, ["rev-parse", "HEAD"]);
+function pushDraftBranch(number, lease) {
+  const ref = `refs/heads/${prefix}${number}`;
+  const force = lease === undefined ? [] : [`--force-with-lease=${ref}:${lease}`];
+  git(monorepo, ["push", "-q", ...force, url(monorepo), `HEAD:${ref}`]);
+  return git(monorepo, ["rev-parse", "HEAD"]);
 }
 
-async function writeState(draft, number, clientHead, draftHead) {
-  const body = draft.body.replace(statePattern(number), stateMarker(number, clientHead, draftHead));
-  await request(sites, "PATCH", `pulls/${draft.number}`, { body });
+function findsSecrets(range) {
+  let config = join(subtree, ".gitleaks.toml");
+  if (!existsSync(config)) {
+    config = join(mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-")), "gitleaks.toml");
+    writeFileSync(config, "[extend]\nuseDefault = true\n");
+  }
+  const args = ["git", "--no-banner", "--redact", "--exit-code", "2", "--config", config];
+  try {
+    execFileSync(GITLEAKS, [...args, "--gitleaks-ignore-path", subtree, `--log-opts=${range} -- ${subtree}`, "."], {
+      env: auth(monorepo),
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+    return false;
+  } catch (error) {
+    if (error.status === 2) return true;
+    throw error;
+  }
+}
+
+function patchIds(side, args) {
+  const log = git(side, ["log", "-p", "--no-merges", "--no-color", ...args], { raw: true });
+  if (!log.length) return [];
+  return git(side, ["patch-id", "--stable"], { input: log })
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.split(" ")[0])
+    .sort();
 }
 
 async function importPull(pull, draft) {
-  fetchClientHead(pull);
-  const forkPoint = git(sites, ["merge-base", "refs/n3o-source-sync/client-base", "refs/n3o-source-sync/client-head"]);
-  git(sites, ["checkout", "-q", "--force", "--detach", mainHead]);
+  fetchClientRefs(pull);
+  const forkPoint = git(monorepo, [
+    "merge-base",
+    "refs/n3o-source-sync/client-base",
+    "refs/n3o-source-sync/client-head",
+  ]);
+  git(monorepo, ["checkout", "-q", "--force", "--detach", mainHead]);
   if (!applyClientCommits(forkPoint, pull.head.sha)) {
     await notice(
       client,
@@ -152,124 +222,145 @@ async function importPull(pull, draft) {
       `stale-${pull.head.sha}`,
       `This change no longer applies to the latest \`${copyBranch}\`. Please update the branch from \`${copyBranch}\` and push again.`,
     );
-    return;
+    return false;
   }
-  const draftHead = pushDraftBranch(pull.number, true);
+  const draftHead = pushDraftBranch(pull.number, draft?.head.sha ?? "");
+  const marker = { client: pull.head.sha, draft: draftHead };
   if (draft) {
-    await writeState(draft, pull.number, pull.head.sha, draftHead);
-    console.log(`${CLIENT_REPO}#${pull.number}: rebuilt draft #${draft.number} from the rewritten branch`);
-    return;
+    await writeDraft(draft, pull, marker);
+    console.log(`${CLIENT_REPO}#${pull.number}: rebuilt draft #${draft.number}`);
+    return true;
   }
-  const body = [
-    `Imported from \`${CLIENT_REPO}#${pull.number}\`, opened by \`${pull.user.login}\`.`,
-    unmention(pull.body),
-    "no-work-issue: imported from a client pull request",
-    stateMarker(pull.number, pull.head.sha, draftHead),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-  const created = await request(sites, "POST", "pulls", {
+  const created = await request(monorepo, "POST", "pulls", {
     title: pull.title,
     head: `${prefix}${pull.number}`,
     base: "main",
-    body,
+    body: draftBody(pull, marker),
     draft: true,
   });
   console.log(`${CLIENT_REPO}#${pull.number}: imported as draft #${created.number}`);
+  return true;
 }
 
-async function applyClient(pull, draft, state) {
-  fetchClientHead(pull);
-  git(sites, [
+async function applyClient(pull, draft, marker) {
+  fetchClientRefs(pull);
+  // A merge brings the client's copy commits into the range, so the draft is rebuilt from the fork point instead.
+  if (git(monorepo, ["rev-list", "--merges", `${marker.client}..${pull.head.sha}`])) return importPull(pull, draft);
+  git(monorepo, [
     "fetch",
     "-q",
     "--no-tags",
     "--depth=1",
-    url(sites),
+    url(monorepo),
     `+refs/heads/${draft.head.ref}:refs/n3o-source-sync/draft`,
   ]);
-  git(sites, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
-  if (!applyClientCommits(state.client, pull.head.sha)) {
-    await bothMoved(pull, draft, "the client's new commits no longer apply to the draft");
-    return;
+  git(monorepo, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
+  if (!applyClientCommits(marker.client, pull.head.sha)) {
+    await reportStuck(pull, draft, "the client's new commits no longer apply to the draft");
+    return false;
   }
-  const draftHead = pushDraftBranch(pull.number, false);
-  await writeState(draft, pull.number, pull.head.sha, draftHead);
+  const draftHead = pushDraftBranch(pull.number);
+  await writeDraft(draft, pull, { client: pull.head.sha, draft: draftHead });
   console.log(`${CLIENT_REPO}#${pull.number}: applied the client's new commits to draft #${draft.number}`);
+  return true;
 }
 
-async function pushToClient(pull, draft, state) {
-  const comparison = await request(sites, "GET", `compare/${state.draft}...${draft.head.sha}`);
-  if (comparison?.status !== "ahead") return bothMoved(pull, draft, "the draft branch was rewritten");
-  if (comparison.commits.some((commit) => commit.parents.length > 1)) {
-    return bothMoved(pull, draft, "the draft has a merge commit, which can't be sent to the client's branch");
+async function pushToClient(pull, draft, marker) {
+  const commits = await fetchDraftSince(draft, marker.draft);
+  if (!commits) return reportStuck(pull, draft, "the draft branch was rewritten");
+  if (commits.some((commit) => commit.parents.length > 1)) {
+    return reportStuck(pull, draft, "the draft has a merge commit, which can't be sent to the client's branch");
   }
-  git(sites, [
-    "fetch",
-    "-q",
-    "--no-tags",
-    `--depth=${comparison.ahead_by + 1}`,
-    url(sites),
-    `+refs/heads/${draft.head.ref}:refs/n3o-source-sync/draft`,
-  ]);
-  const patches = git(sites, [
-    "format-patch",
-    "--stdout",
+  const range = `${marker.draft}..refs/n3o-source-sync/draft`;
+  if (findsSecrets(range)) {
+    await notice(
+      monorepo,
+      draft.number,
+      `secret-${draft.head.sha}`,
+      "The new commits on this draft contain something that looks like a secret, so they were not sent to the client. Someone at N3O needs to remove it from the branch and bring the two back in step by hand.",
+    );
+    console.log(`::error::${CLIENT_REPO}#${pull.number}: draft #${draft.number} has a possible secret; not sent`);
+    return false;
+  }
+  const patches = git(
+    monorepo,
+    ["format-patch", "--stdout", `--relative=${subtree}`, range, "--", subtree],
+    { raw: true },
+  );
+  if (!patches.length) {
+    await writeDraft(draft, pull, { client: marker.client, draft: draft.head.sha });
+    return true;
+  }
+  const work = mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-"));
+  git(client, ["init", "-q", work]);
+  git(client, ["fetch", "-q", "--no-tags", "--depth=1", url(client), `refs/heads/${pull.head.ref}`], { cwd: work });
+  git(client, ["checkout", "-q", "--detach", "FETCH_HEAD"], { cwd: work });
+  if (git(client, ["rev-parse", "HEAD"], { cwd: work }) !== pull.head.sha) {
+    throw new Error(`${pull.head.ref} moved during this run; it is picked up next run`);
+  }
+  const committer = { GIT_COMMITTER_NAME: CLIENT_BOT_NAME, GIT_COMMITTER_EMAIL: CLIENT_BOT_EMAIL };
+  try {
+    git(client, ["am", "-q"], { cwd: work, input: patches, env: committer });
+  } catch (error) {
+    console.log(`::warning::git am onto ${pull.head.ref} failed: ${error.message}`);
+    return reportStuck(pull, draft, "N3O's commits don't apply to the client's branch");
+  }
+  git(client, ["push", "-q", url(client), `HEAD:refs/heads/${pull.head.ref}`], { cwd: work });
+  const clientHead = git(client, ["rev-parse", "HEAD"], { cwd: work });
+  await writeDraft(draft, pull, { client: clientHead, draft: draft.head.sha });
+  console.log(`${CLIENT_REPO}#${pull.number}: pushed N3O's commits from draft #${draft.number}`);
+  return true;
+}
+
+// A run that pushed one side but failed to record the new heads leaves both moved by the same changes.
+async function recordIfInStep(pull, draft, marker) {
+  fetchClientRefs(pull);
+  if (!(await fetchDraftSince(draft, marker.draft))) return false;
+  const clientIds = patchIds(monorepo, [`${marker.client}..refs/n3o-source-sync/client-head`]);
+  const draftIds = patchIds(monorepo, [
     `--relative=${subtree}`,
-    `${state.draft}..refs/n3o-source-sync/draft`,
+    `${marker.draft}..refs/n3o-source-sync/draft`,
     "--",
     subtree,
   ]);
-  if (patches) {
-    const work = mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-"));
-    git(client, ["init", "-q", work]);
-    git(client, ["fetch", "-q", "--no-tags", "--depth=1", url(client), `refs/heads/${pull.head.ref}`], { cwd: work });
-    git(client, ["checkout", "-q", "--detach", "FETCH_HEAD"], { cwd: work });
-    if (git(client, ["rev-parse", "HEAD"], { cwd: work }) !== pull.head.sha) {
-      throw new Error(`${pull.head.ref} moved during this run; it is picked up next run`);
-    }
-    const committer = { GIT_COMMITTER_NAME: clientBot.name, GIT_COMMITTER_EMAIL: clientBot.email };
-    try {
-      git(client, ["am", "-q"], { cwd: work, input: `${patches}\n`, env: committer });
-    } catch {
-      return bothMoved(pull, draft, "N3O's commits don't apply to the client's branch");
-    }
-    git(client, ["push", "-q", url(client), `HEAD:refs/heads/${pull.head.ref}`], { cwd: work });
-    const clientHead = git(client, ["rev-parse", "HEAD"], { cwd: work });
-    await writeState(draft, pull.number, clientHead, draft.head.sha);
-    console.log(`${CLIENT_REPO}#${pull.number}: pushed N3O's commits from draft #${draft.number}`);
-    return;
-  }
-  await writeState(draft, pull.number, state.client, draft.head.sha);
+  if (!clientIds.length || clientIds.join() !== draftIds.join()) return false;
+  await writeDraft(draft, pull, { client: pull.head.sha, draft: draft.head.sha });
+  console.log(`${CLIENT_REPO}#${pull.number}: both sides already have the same changes; recorded them as in step`);
+  return true;
 }
 
-async function bothMoved(pull, draft, reason) {
+async function reportStuck(pull, draft, reason) {
   const key = `stuck-${pull.head.sha}-${draft.head.sha}`;
   const text = `This pull request and its copy have both changed since they were last in step (${reason}), so neither was updated. Someone at N3O needs to bring them back in step by hand.`;
   await notice(client, pull.number, key, text);
-  await notice(sites, draft.number, key, text);
+  await notice(monorepo, draft.number, key, text);
   console.log(`::warning::${CLIENT_REPO}#${pull.number}: ${reason}; left for N3O`);
+  return false;
 }
 
-async function closedDraft(pull, draft, state) {
+async function handleClosedDraft(pull, draft, marker) {
   if (draft.merged_at) {
-    if (pull.head.sha === state.client) {
-      mergeHeads.push(pull.head.sha);
-      console.log(`${CLIENT_REPO}#${pull.number}: draft #${draft.number} merged; the next copy marks it merged`);
+    if (pull.head.sha !== marker.client) {
+      await notice(
+        client,
+        pull.number,
+        "merged-early",
+        `N3O merged this change as of ${marker.client.slice(0, 7)}, without the commits pushed after it, so this pull request has been closed. Please raise the rest as a new pull request.`,
+      );
+      await request(client, "PATCH", `pulls/${pull.number}`, { state: "closed" });
       return;
     }
-    await notice(
-      client,
-      pull.number,
-      "merged-early",
-      `N3O merged this change as of ${state.client.slice(0, 7)}, without the commits pushed after it, so this pull request has been closed. Please raise the rest as a new pull request.`,
-    );
-    await request(client, "PATCH", `pulls/${pull.number}`, { state: "closed" });
+    if (!(await isAncestor(monorepo, draft.merge_commit_sha, mainHead))) {
+      console.log(`${CLIENT_REPO}#${pull.number}: draft #${draft.number} was merged after this run's checkout`);
+      return;
+    }
+    mergeHeads.push(pull.head.sha);
+    console.log(`${CLIENT_REPO}#${pull.number}: draft #${draft.number} merged; the next copy marks it merged`);
     return;
   }
-  const issue = await request(sites, "GET", `issues/${draft.number}`);
-  if (issue?.closed_by?.login === sitesBot) {
-    await request(sites, "PATCH", `pulls/${draft.number}`, { state: "open" });
+  const issue = await request(monorepo, "GET", `issues/${draft.number}`);
+  if (issue?.closed_by?.login === monorepo.bot) {
+    await request(monorepo, "PATCH", `pulls/${draft.number}`, { state: "open" });
     console.log(`${CLIENT_REPO}#${pull.number}: reopened, so draft #${draft.number} is reopened too`);
     return;
   }
@@ -297,19 +388,19 @@ function counterpartPath(from, path) {
   return path.startsWith(`${subtree}/`) ? path.slice(subtree.length + 1) : null;
 }
 
-async function syncComments(number, draftNumber) {
+async function syncComments(pull, draft) {
   const ends = [
-    { side: client, number, pull: await request(client, "GET", `pulls/${number}`) },
-    { side: sites, number: draftNumber, pull: await request(sites, "GET", `pulls/${draftNumber}`) },
+    { side: client, number: pull.number, pull },
+    { side: monorepo, number: draft.number, pull: draft },
   ];
   for (const end of ends) {
     end.issue = await list(end.side, `issues/${end.number}/comments`);
     end.lines = await list(end.side, `pulls/${end.number}/comments`);
     end.reviews = await list(end.side, `pulls/${end.number}/reviews`);
     end.copied = new Set(
-      [...end.issue, ...end.lines, ...end.reviews].flatMap((item) =>
-        [...(item.body ?? "").matchAll(copyPattern)].map((match) => match[1]),
-      ),
+      [...end.issue, ...end.lines, ...end.reviews]
+        .filter((item) => item.user?.login === end.side.bot)
+        .flatMap((item) => [...(item.body ?? "").matchAll(copyPattern)].map((match) => match[1])),
     );
   }
   const verbs = { APPROVED: "approved", CHANGES_REQUESTED: "requested changes", COMMENTED: "reviewed" };
@@ -317,34 +408,50 @@ async function syncComments(number, draftNumber) {
     [ends[0], ends[1]],
     [ends[1], ends[0]],
   ]) {
-    const human = (item) => item.user?.type !== "Bot" && item.body?.trim() && !item.body.includes(`<!-- ${tag}:`);
+    const byPerson = (item) =>
+      item.user?.type !== "Bot" && (from.side !== client || clientMembers.has(item.author_association));
+    const hasText = (item) => Boolean(item.body?.trim());
+    for (const review of from.reviews.filter((review) => byPerson(review) && !verbs[review.state])) {
+      console.log(`${from.side.repo}#${from.number}: review ${review.id} is ${review.state}; not copied`);
+    }
     const items = [
-      ...from.issue.filter(human).map((item) => ({ kind: "issue", item, at: item.created_at })),
+      ...from.issue
+        .filter((item) => byPerson(item) && hasText(item))
+        .map((item) => ({ kind: "issue", item, at: item.created_at })),
       ...from.reviews
-        .filter((review) => human(review) && verbs[review.state])
+        .filter((review) => byPerson(review) && verbs[review.state])
+        .filter((review) => hasText(review) || review.state !== "COMMENTED")
         .map((item) => ({ kind: "review", item, at: item.submitted_at })),
-      ...from.lines.filter(human).map((item) => ({ kind: "line", item, at: item.created_at })),
+      ...from.lines
+        .filter((item) => byPerson(item) && hasText(item))
+        .filter((item) => counterpartPath(from.side, item.path) !== null)
+        .map((item) => ({ kind: "line", item, at: item.created_at })),
     ].sort((a, b) => a.at.localeCompare(b.at));
     for (const { kind, item } of items) {
       const key = `${from.side.repo}#${from.number} ${kind}:${item.id}`;
       if (to.copied.has(key)) continue;
-      const marker = `<!-- ${tag}: copy of ${key} -->`;
+      const marker = `<!-- ${markerTag}: copy of ${key} -->`;
       const author = `\`${item.user.login}\``;
-      const text = unmention(item.body);
-      if (kind === "line") {
-        const placed = await copyLine(from, to, item, `${author} commented:\n\n${text}\n\n${marker}`);
-        if (!placed) {
+      const text = quote(item.body);
+      try {
+        if (kind === "line") {
+          const placed = await copyLine(from, to, item, `${author} commented:\n\n${text}\n\n${marker}`);
+          if (!placed) {
+            const where = `${quote(item.path.replace(/`/g, "'"))}${item.line ? ` line ${item.line}` : ""}`;
+            await request(to.side, "POST", `issues/${to.number}/comments`, {
+              body: `${author} commented on \`${where}\`:\n\n${text}\n\n${marker}`,
+            });
+          }
+        } else {
+          const verb = kind === "review" ? verbs[item.state] : "commented";
           await request(to.side, "POST", `issues/${to.number}/comments`, {
-            body: `${author} commented on \`${item.path}\`${item.line ? ` line ${item.line}` : ""}:\n\n${text}\n\n${marker}`,
+            body: text ? `${author} ${verb}:\n\n${text}\n\n${marker}` : `${author} ${verb}.\n\n${marker}`,
           });
         }
-      } else {
-        const verb = kind === "review" ? verbs[item.state] : "commented";
-        await request(to.side, "POST", `issues/${to.number}/comments`, {
-          body: `${author} ${verb}:\n\n${text}\n\n${marker}`,
-        });
+        to.copied.add(key);
+      } catch (error) {
+        console.log(`::warning::${key} was not copied (${error.message}); next run`);
       }
-      to.copied.add(key);
     }
   }
 }
@@ -353,32 +460,36 @@ async function copyLine(from, to, comment, body) {
   if (comment.in_reply_to_id) {
     // The parent is either a copy of a comment on the other side, or an original whose copy is there.
     const parent = from.lines.find((item) => item.id === comment.in_reply_to_id);
-    const original = [...(parent?.body ?? "").matchAll(copyPattern)]
-      .map((match) => match[1])
-      .find((key) => key.startsWith(`${to.side.repo}#${to.number} line:`));
+    const original =
+      parent?.user?.login === from.side.bot &&
+      [...(parent.body ?? "").matchAll(copyPattern)]
+        .map((match) => match[1])
+        .find((key) => key.startsWith(`${to.side.repo}#${to.number} line:`));
     let target = original && Number(original.split("line:")[1]);
     if (!target) {
       const parentKey = `${from.side.repo}#${from.number} line:${comment.in_reply_to_id}`;
-      const lines = await list(to.side, `pulls/${to.number}/comments`);
-      target = lines.find((item) => item.body?.includes(`copy of ${parentKey} -->`))?.id;
+      target = to.lines.find(
+        (item) => item.user?.login === to.side.bot && item.body?.includes(`copy of ${parentKey} -->`),
+      )?.id;
     }
     if (!target) return false;
     await request(to.side, "POST", `pulls/${to.number}/comments/${target}/replies`, { body });
     return true;
   }
   const path = counterpartPath(from.side, comment.path);
-  if (!path || !comment.line || comment.side !== "RIGHT" || comment.subject_type === "file") return false;
+  if (!comment.line || comment.side !== "RIGHT" || comment.subject_type === "file") return false;
   const source = await lineText(from.side, comment.path, comment.commit_id, comment.line);
   const target = await lineText(to.side, path, to.pull.head.sha, comment.line);
   if (source === null || source !== target) return false;
   try {
-    await request(to.side, "POST", `pulls/${to.number}/comments`, {
+    const placed = await request(to.side, "POST", `pulls/${to.number}/comments`, {
       body,
       commit_id: to.pull.head.sha,
       path,
       line: comment.line,
       side: "RIGHT",
     });
+    to.lines.push(placed);
     return true;
   } catch (error) {
     console.log(`::warning::line comment ${comment.id} could not be placed (${error.message}); copied as a comment`);
@@ -389,26 +500,8 @@ async function copyLine(from, to, comment, body) {
 async function syncPull(number) {
   const pull = await request(client, "GET", `pulls/${number}`);
   const draft = await findDraft(number);
-  const state = draft && readState(draft, number);
 
-  if (pull.state === "closed") {
-    if (draft?.state !== "open") return;
-    if (pull.merged_at) {
-      console.log(
-        `::warning::${CLIENT_REPO}#${number} was merged in the client repository; draft #${draft.number} is left for N3O`,
-      );
-      return;
-    }
-    await notice(
-      sites,
-      draft.number,
-      "client-closed",
-      "The client closed their pull request, so this one is closed too.",
-    );
-    await request(sites, "PATCH", `pulls/${draft.number}`, { state: "closed" });
-    return;
-  }
-  if (pull.head.repo?.full_name !== CLIENT_REPO) {
+  if (pull.state === "open" && pull.head.repo?.full_name?.toLowerCase() !== CLIENT_REPO.toLowerCase()) {
     await notice(
       client,
       number,
@@ -417,7 +510,7 @@ async function syncPull(number) {
     );
     return;
   }
-  if (pull.base.ref !== copyBranch) {
+  if (pull.state === "open" && pull.base.ref !== copyBranch) {
     await notice(
       client,
       number,
@@ -426,30 +519,58 @@ async function syncPull(number) {
     );
     return;
   }
-  if (!draft) return importPull(pull);
-  if (!state) throw new Error(`draft #${draft.number} has no ${tag} marker`);
-  if (draft.state === "closed") return closedDraft(pull, draft, state);
-
-  const clientMoved = pull.head.sha !== state.client;
-  const n3oMoved = draft.head.sha !== state.draft;
-  if (clientMoved && !n3oMoved) {
-    if (await isAncestor(client, state.client, pull.head.sha)) await applyClient(pull, draft, state);
-    else await importPull(pull, draft);
-  } else if (n3oMoved && !clientMoved) {
-    await pushToClient(pull, draft, state);
-  } else if (clientMoved && n3oMoved) {
-    await bothMoved(pull, draft, "both sides have new commits");
+  if (!draft) {
+    if (pull.state === "open") await importPull(pull);
+    return;
   }
-  if (pull.title !== draft.title) await request(sites, "PATCH", `pulls/${draft.number}`, { title: pull.title });
-  await syncComments(number, draft.number);
+  const marker = readMarker(draft, number);
+  if (!marker) throw new Error(`draft #${draft.number} has no ${markerTag} marker`);
+  if (pull.state === "open" || draft.state === "open") await syncComments(pull, draft);
+
+  if (pull.state === "closed") {
+    if (draft.state !== "open") return;
+    if (pull.merged_at) {
+      console.log(
+        `::warning::${CLIENT_REPO}#${number} was merged in the client repository; draft #${draft.number} is left for N3O`,
+      );
+      return;
+    }
+    await notice(
+      monorepo,
+      draft.number,
+      "client-closed",
+      "The client closed their pull request, so this one is closed too.",
+    );
+    await request(monorepo, "PATCH", `pulls/${draft.number}`, { state: "closed" });
+    return;
+  }
+  if (draft.state === "closed") return handleClosedDraft(pull, draft, marker);
+
+  const clientMoved = pull.head.sha !== marker.client;
+  const n3oMoved = draft.head.sha !== marker.draft;
+  let written = false;
+  if (clientMoved && !n3oMoved) {
+    written = (await isAncestor(client, marker.client, pull.head.sha))
+      ? await applyClient(pull, draft, marker)
+      : await importPull(pull, draft);
+  } else if (n3oMoved && !clientMoved) {
+    written = await pushToClient(pull, draft, marker);
+  } else if (clientMoved && n3oMoved) {
+    written =
+      (await recordIfInStep(pull, draft, marker)) || (await reportStuck(pull, draft, "both sides have new commits"));
+  }
+  if (!written && (draft.title !== pull.title || draft.body !== draftBody(pull, marker))) {
+    await writeDraft(draft, pull, marker);
+  }
 }
 
-const mainHead = git(sites, ["rev-parse", "HEAD"]);
+const mainHead = git(monorepo, ["rev-parse", "HEAD"]);
 const mergeHeads = [];
 const failed = [];
 const openPulls = await list(client, "pulls?state=open");
-const openDrafts = (await list(sites, "pulls?state=open")).filter(
-  (pull) => pull.head.repo?.full_name === sites.repo && new RegExp(`^${escape(prefix)}\\d+$`).test(pull.head.ref),
+const openDrafts = (await list(monorepo, "pulls?state=open")).filter(
+  (pull) =>
+    pull.head.repo?.full_name === monorepo.repo && new RegExp(`^${escapeRegExp(prefix)}\\d+$`).test(pull.head.ref),
 );
 const numbers = [
   ...new Set([
@@ -465,8 +586,7 @@ for (const number of numbers) {
     failed.push(number);
     console.log(`::error::${CLIENT_REPO}#${number}: ${error.message}`);
   } finally {
-    if (existsSync(git(sites, ["rev-parse", "--git-path", "rebase-apply"]))) git(sites, ["am", "--abort"]);
-    git(sites, ["checkout", "-q", "--force", "--detach", mainHead]);
+    git(monorepo, ["checkout", "-q", "--force", "--detach", mainHead]);
   }
 }
 

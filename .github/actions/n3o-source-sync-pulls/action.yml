@@ -2,8 +2,8 @@ name: n3o source sync pulls
 description: >-
   Keeps each pull request on a client's copy repository in step with a draft pull request on this
   repository, as the n3o-source-sync App: imports the client's commits under the subtree, sends
-  N3O's commits back to the client's branch, copies comments both ways, and mirrors merging and
-  closing. Run it after a checkout of main.
+  N3O's commits back to the client's branch after a secret scan, copies comments both ways, and
+  mirrors merging and closing. Run it after a checkout of main.
 
 inputs:
   subtree-path:
@@ -21,24 +21,19 @@ inputs:
   private-key:
     description: n3o-source-sync GitHub App private key.
     required: true
-  token:
-    description: Opens and updates the draft pull requests and pushes their branches.
-    required: false
-    default: ${{ github.token }}
 
 runs:
   using: "composite"
   steps:
-    - name: check inputs
-      id: client
-      shell: bash
-      env:
-        CLIENT_REPO: ${{ inputs.client-repo }}
-      run: |
-        if [[ ! "$CLIENT_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
-          echo "::error::client-repo '$CLIENT_REPO' is not owner/name"; exit 1
-        fi
-        echo "owner=${CLIENT_REPO%%/*}" >> "$GITHUB_OUTPUT"
+    - id: client
+      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@main
+      with:
+        repo: ${{ inputs.client-repo }}
+
+    - id: scan
+      uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
+      with:
+        path: ${{ inputs.subtree-path }}
 
     - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
 
@@ -57,10 +52,14 @@ runs:
         CLIENT_REPO: ${{ inputs.client-repo }}
         BRANCH_PREFIX: ${{ inputs.branch-prefix }}
         CLIENT_TOKEN: ${{ steps.app.outputs.token }}
-        SITES_TOKEN: ${{ inputs.token }}
+        CLIENT_BOT_NAME: ${{ steps.client.outputs.name }}
+        CLIENT_BOT_EMAIL: ${{ steps.client.outputs.email }}
+        MONOREPO_TOKEN: ${{ github.token }}
+        GITLEAKS: ${{ steps.scan.outputs.gitleaks }}
       run: node "$GITHUB_ACTION_PATH/sync.mjs"
 
-    - if: steps.sync.outputs.merge-heads != ''
+    # A pull request that failed must not hold back the ones merged in the same run.
+    - if: ${{ !cancelled() && steps.sync.outputs.merge-heads != '' }}
       uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
       with:
         subtree-path: ${{ inputs.subtree-path }}

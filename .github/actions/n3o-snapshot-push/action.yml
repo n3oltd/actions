@@ -3,7 +3,7 @@ description: >-
   Pushes the checked-out tree of a subtree to main of another repository as one commit without
   history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
   main's head, so the push is never forced. main must not exist yet, or its head must be a commit
-  this action made; any other head is refused.
+  this action made; any other head is refused. A copy of a newer source commit is never replaced.
 
 inputs:
   subtree-path:
@@ -29,20 +29,19 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: check inputs
-      id: target
+    - name: check subtree
       shell: bash
       env:
         SUBTREE_PATH: ${{ inputs.subtree-path }}
-        TARGET_REPO: ${{ inputs.target-repo }}
       run: |
         if [ ! -d "$SUBTREE_PATH" ]; then
           echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
         fi
-        if [[ ! "$TARGET_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
-          echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
-        fi
-        echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
+
+    - id: target
+      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@main
+      with:
+        repo: ${{ inputs.target-repo }}
 
     - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
       with:
@@ -53,8 +52,8 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         owner: ${{ steps.target.outputs.owner }}
-        name: n3o-source-sync[bot]
-        email: 354428725+n3o-source-sync[bot]@users.noreply.github.com
+        name: ${{ steps.target.outputs.name }}
+        email: ${{ steps.target.outputs.email }}
 
     - name: commit and push
       shell: bash
@@ -62,6 +61,7 @@ runs:
         SUBTREE_PATH: ${{ inputs.subtree-path }}
         TARGET_REPO: ${{ inputs.target-repo }}
         MERGE_HEADS: ${{ inputs.merge-heads }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         url="https://github.com/${TARGET_REPO}.git"
@@ -78,6 +78,10 @@ runs:
           if [[ "$subject" != "$prefix"* ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
             echo "::error::$TARGET_REPO main is at $head, which this action did not make; refusing to push over it. main must not exist, or its head must be a commit this action made."
             exit 1
+          fi
+          copied=${subject#"$prefix"}
+          if [ "$copied" != "$source" ] && [ "$(gh api "repos/$GITHUB_REPOSITORY/compare/$copied...$source" --jq .status)" = behind ]; then
+            echo "main already holds a copy of $copied, which is newer than $source"; exit 0
           fi
           if [ -z "$MERGE_HEADS" ] && [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
             echo "main already matches $SUBTREE_PATH"; exit 0
