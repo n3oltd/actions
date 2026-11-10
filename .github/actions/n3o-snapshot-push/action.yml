@@ -22,6 +22,13 @@ inputs:
   private-key:
     description: n3o-source-sync GitHub App private key.
     required: true
+  merge-heads:
+    description: >-
+      Space-separated heads of client pull requests merged on this side. Each becomes an extra parent,
+      so the client repository shows those pull requests as merged; a commit is made even when the
+      tree already matches.
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -59,6 +66,7 @@ runs:
         SUBTREE_PATH: ${{ inputs.subtree-path }}
         TARGET_REPO: ${{ inputs.target-repo }}
         TARGET_BRANCH: ${{ inputs.target-branch }}
+        MERGE_HEADS: ${{ inputs.merge-heads }}
       run: |
         set -euo pipefail
         url="https://github.com/${TARGET_REPO}.git"
@@ -76,13 +84,17 @@ runs:
             echo "::error::$TARGET_REPO $TARGET_BRANCH is at $head, which this action did not make; refusing to push over it. The branch must not exist, or its head must be a commit this action made."
             exit 1
           fi
-          if [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
+          if [ -z "$MERGE_HEADS" ] && [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
             echo "$TARGET_BRANCH already matches $SUBTREE_PATH"; exit 0
           fi
           parents=(-p "$head")
         else
           echo "$TARGET_BRANCH does not exist yet; creating it"
         fi
+        for merged in $MERGE_HEADS; do
+          git fetch --no-tags "$url" "$merged"
+          parents+=(-p "$merged")
+        done
 
         commit=$(git commit-tree "$tree" "${parents[@]}" -m "${prefix}${source}")
         echo "Pushing $SUBTREE_PATH ($commit) -> $TARGET_REPO ($TARGET_BRANCH)"
