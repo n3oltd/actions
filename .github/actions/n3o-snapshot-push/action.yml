@@ -48,7 +48,7 @@ runs:
         fi
         echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
 
-    - uses: n3oltd/actions/.github/actions/n3o-secret-scan@source-sync-pulls
+    - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
       with:
         path: ${{ inputs.subtree-path }}
 
