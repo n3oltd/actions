@@ -1,10 +1,3 @@
-# Reusable workflow that mirrors one subtree of a monorepo to an external client repo as a
-# snapshot, without the monorepo's history. A monorepo enables it with a thin per-client caller on
-# push to main, path-filtered to that client's subtree.
-#
-# Each run appends one commit whose tree is the subtree's current tree and whose parent is the
-# client branch's current head, then pushes it as a fast-forward over SSH with a per-client deploy
-# key. The subtree is scanned for secrets first, and nothing is pushed if one is found.
 name: n3o mirror snapshot
 
 on:
@@ -14,8 +7,8 @@ on:
         description: 'Monorepo path of the subtree to mirror (e.g. src/site-example)'
         required: true
         type: string
-      target-repo-url:
-        description: 'SSH URL of the client repo (e.g. ssh://git@github.com/example-client/website.git)'
+      target-repo:
+        description: 'Client repo as owner/name (e.g. example-client/website)'
         required: true
         type: string
       target-branch:
@@ -23,10 +16,6 @@ on:
         required: false
         default: main
         type: string
-    secrets:
-      ssh-key:
-        description: 'SSH deploy key (private) with write access to the client repo'
-        required: true
 
 permissions:
   contents: read
@@ -36,48 +25,65 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
     timeout-minutes: 15
     concurrency:
-      group: n3o-mirror-snapshot-${{ inputs.target-repo-url }}-${{ inputs.target-branch }}
+      group: n3o-mirror-snapshot-${{ inputs.target-repo }}-${{ inputs.target-branch }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
 
-      - name: check subtree
+      - name: check inputs
+        id: target
         env:
           SUBTREE_PATH: ${{ inputs.subtree-path }}
+          TARGET_REPO: ${{ inputs.target-repo }}
         run: |
           if [ ! -d "$SUBTREE_PATH" ]; then
             echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
           fi
+          if [[ ! "$TARGET_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
+          fi
+          echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
 
       - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
         with:
           path: ${{ inputs.subtree-path }}
 
       - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
-
-      - id: ssh
-        uses: n3oltd/actions/.github/actions/n3o-ssh-key@main
         with:
-          private-key: ${{ secrets.ssh-key }}
+          app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
+          private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ steps.target.outputs.owner }}
 
       - name: commit and push snapshot
         env:
-          GIT_SSH_COMMAND: ${{ steps.ssh.outputs.git-ssh-command }}
           SUBTREE_PATH: ${{ inputs.subtree-path }}
-          TARGET_URL: ${{ inputs.target-repo-url }}
+          TARGET_REPO: ${{ inputs.target-repo }}
           TARGET_BRANCH: ${{ inputs.target-branch }}
         run: |
           set -euo pipefail
+          url="https://github.com/${TARGET_REPO}.git"
+          source=$(git rev-parse HEAD)
           tree=$(git rev-parse "HEAD:$SUBTREE_PATH")
           parents=()
 
-          # --exit-code returns 2 when the branch does not exist; anything else non-zero is a failure.
           status=0
-          git ls-remote --exit-code --heads "$TARGET_URL" "$TARGET_BRANCH" > /dev/null || status=$?
+          git ls-remote --exit-code "$url" "refs/heads/$TARGET_BRANCH" > /dev/null || status=$?
           case "$status" in
             0)
-              git fetch --no-tags --depth=1 "$TARGET_URL" "refs/heads/$TARGET_BRANCH"
+              git fetch --no-tags --depth=1 "$url" "refs/heads/$TARGET_BRANCH"
               head=$(git rev-parse FETCH_HEAD)
+              # Only the head needs checking: every commit below it was a head that this check passed.
+              subject=$(git log -1 --format=%s "$head")
+              committer=$(git log -1 --format=%ce "$head")
+              prefix="Sync from ${GITHUB_REPOSITORY}@"
+              if [[ "$subject" != "$prefix"* ]] || [[ ! "${subject#"$prefix"}" =~ ^[0-9a-f]{40}$ ]] \
+                || [ "$committer" != "$(git config user.email)" ]; then
+                echo "::error::$TARGET_REPO $TARGET_BRANCH is at $head (\"$subject\", committed by $committer), which this mirror did not make; refusing to push over it"
+                exit 1
+              fi
               if [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
                 echo "$TARGET_BRANCH already matches $SUBTREE_PATH"; exit 0
               fi
@@ -87,6 +93,6 @@ jobs:
             *) exit "$status" ;;
           esac
 
-          commit=$(git commit-tree "$tree" "${parents[@]}" -m "Sync from ${GITHUB_REPOSITORY}@${GITHUB_SHA}")
-          echo "Mirroring $SUBTREE_PATH ($commit) -> $TARGET_URL ($TARGET_BRANCH)"
-          git push "$TARGET_URL" "$commit:refs/heads/$TARGET_BRANCH"
+          commit=$(git commit-tree "$tree" "${parents[@]}" -m "Sync from ${GITHUB_REPOSITORY}@${source}")
+          echo "Mirroring $SUBTREE_PATH ($commit) -> $TARGET_REPO ($TARGET_BRANCH)"
+          git push "$url" "$commit:refs/heads/$TARGET_BRANCH"
