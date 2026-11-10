@@ -1,17 +1,14 @@
 name: n3o secret scan
 description: >-
-  Fails when gitleaks finds a secret in the files under a directory, including inside archives. It
-  scans the files as they are, not git history, and redacts what it finds in the log. A
-  .gitleaks.toml in that directory must extend the default rules.
+  Fails when gitleaks finds a secret in the files under a directory, including inside archives up to
+  three levels deep. It scans the files as they are, not git history, skips the paths gitleaks
+  allowlists by default (such as node_modules, lock files and images), and redacts what it finds in
+  the log. A .gitleaks.toml in that directory must set useDefault = true under [extend].
 
 inputs:
   path:
     description: Directory to scan.
     required: true
-  gitleaks-version:
-    description: gitleaks release to install.
-    required: false
-    default: 8.30.1
 
 runs:
   using: "composite"
@@ -25,10 +22,15 @@ runs:
         if [ -f "$CONFIG" ]; then
           python3 - "$CONFIG" <<'EOF'
         import sys, tomllib
-        with open(sys.argv[1], "rb") as f:
-            config = tomllib.load(f)
-        if config.get("extend", {}).get("useDefault") is not True:
-            print(f"::error file={sys.argv[1]}::.gitleaks.toml must set useDefault = true under [extend]; without it every default rule is off")
+        path = sys.argv[1]
+        try:
+            with open(path, "rb") as f:
+                extend = tomllib.load(f).get("extend", {})
+        except tomllib.TOMLDecodeError as error:
+            print(f"::error file={path}::.gitleaks.toml is not valid TOML: {error}")
+            sys.exit(1)
+        if not isinstance(extend, dict) or extend.get("useDefault") is not True:
+            print(f"::error file={path}::.gitleaks.toml must set useDefault = true under [extend], or its rules replace the default rules instead of adding to them")
             sys.exit(1)
         EOF
         fi
@@ -36,26 +38,19 @@ runs:
     - name: install gitleaks
       shell: bash
       env:
-        VERSION: ${{ inputs.gitleaks-version }}
+        GITLEAKS_VERSION: v8.30.1
+        GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
       run: |
         set -euo pipefail
-        case "$RUNNER_ARCH" in
-          X64) arch=x64 ;;
-          ARM64) arch=arm64 ;;
-          *) echo "::error::no gitleaks build for runner architecture $RUNNER_ARCH"; exit 1 ;;
-        esac
         dir="$RUNNER_TEMP/gitleaks"
-        archive="gitleaks_${VERSION}_linux_${arch}.tar.gz"
-        base="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}"
+        archive="gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz"
         mkdir -p "$dir"
-        curl -fsSL -o "$dir/$archive" "$base/$archive"
-        curl -fsSL -o "$dir/checksums.txt" "$base/gitleaks_${VERSION}_checksums.txt"
-        (cd "$dir" && grep " ${archive}\$" checksums.txt | sha256sum -c -)
+        curl -fsSL -o "$dir/$archive" "https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/${archive}"
+        echo "$GITLEAKS_SHA256  $dir/$archive" | sha256sum -c -
         tar -xzf "$dir/$archive" -C "$dir" gitleaks
-        echo "$dir" >> "$GITHUB_PATH"
 
     - name: scan
       shell: bash
       env:
         SCAN_PATH: ${{ inputs.path }}
-      run: gitleaks dir --no-banner --redact --max-archive-depth 3 "$SCAN_PATH"
+      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 "$SCAN_PATH"'

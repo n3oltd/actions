@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       target-branch:
-        description: 'Branch to update on the client repo'
+        description: 'Branch to update on the client repo; it must not exist yet, or end in a commit this mirror made'
         required: false
         default: main
         type: string
@@ -33,66 +33,10 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: check inputs
-        id: target
-        env:
-          SUBTREE_PATH: ${{ inputs.subtree-path }}
-          TARGET_REPO: ${{ inputs.target-repo }}
-        run: |
-          if [ ! -d "$SUBTREE_PATH" ]; then
-            echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
-          fi
-          if [[ ! "$TARGET_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
-            echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
-          fi
-          echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
-
-      - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
+      - uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
         with:
-          path: ${{ inputs.subtree-path }}
-
-      - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
-        with:
+          subtree-path: ${{ inputs.subtree-path }}
+          target-repo: ${{ inputs.target-repo }}
+          target-branch: ${{ inputs.target-branch }}
           app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
           private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}
-          owner: ${{ steps.target.outputs.owner }}
-
-      - name: commit and push snapshot
-        env:
-          SUBTREE_PATH: ${{ inputs.subtree-path }}
-          TARGET_REPO: ${{ inputs.target-repo }}
-          TARGET_BRANCH: ${{ inputs.target-branch }}
-        run: |
-          set -euo pipefail
-          url="https://github.com/${TARGET_REPO}.git"
-          source=$(git rev-parse HEAD)
-          tree=$(git rev-parse "HEAD:$SUBTREE_PATH")
-          parents=()
-
-          status=0
-          git ls-remote --exit-code "$url" "refs/heads/$TARGET_BRANCH" > /dev/null || status=$?
-          case "$status" in
-            0)
-              git fetch --no-tags --depth=1 "$url" "refs/heads/$TARGET_BRANCH"
-              head=$(git rev-parse FETCH_HEAD)
-              # Only the head needs checking: every commit below it was a head that this check passed.
-              subject=$(git log -1 --format=%s "$head")
-              committer=$(git log -1 --format=%ce "$head")
-              prefix="Sync from ${GITHUB_REPOSITORY}@"
-              if [[ "$subject" != "$prefix"* ]] || [[ ! "${subject#"$prefix"}" =~ ^[0-9a-f]{40}$ ]] \
-                || [ "$committer" != "$(git config user.email)" ]; then
-                echo "::error::$TARGET_REPO $TARGET_BRANCH is at $head (\"$subject\", committed by $committer), which this mirror did not make; refusing to push over it"
-                exit 1
-              fi
-              if [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
-                echo "$TARGET_BRANCH already matches $SUBTREE_PATH"; exit 0
-              fi
-              parents=(-p "$head")
-              ;;
-            2) echo "$TARGET_BRANCH does not exist yet; creating it" ;;
-            *) exit "$status" ;;
-          esac
-
-          commit=$(git commit-tree "$tree" "${parents[@]}" -m "Sync from ${GITHUB_REPOSITORY}@${source}")
-          echo "Mirroring $SUBTREE_PATH ($commit) -> $TARGET_REPO ($TARGET_BRANCH)"
-          git push "$url" "$commit:refs/heads/$TARGET_BRANCH"

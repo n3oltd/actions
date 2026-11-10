@@ -1,16 +1,17 @@
 name: n3o-git-identity
 description: >-
   Configures git for N3O automation commits: sets the canonical N3O Babar
-  identity and, when App credentials are supplied, mints an n3o-babar App token
-  and configures authenticated github.com pushes (so the commits are verified).
+  identity, or the one given, and, when App credentials are supplied, mints a
+  token for that App (n3o-babar unless another is passed) and configures
+  authenticated github.com pushes (so the commits are verified).
 
 inputs:
   app-id:
-    description: n3o-babar GitHub App id. When set (with private-key), an App token is minted for verified, authenticated pushes.
+    description: GitHub App id, n3o-babar's unless another App's identity is passed in name and email. When set (with private-key), an App token is minted for verified, authenticated pushes.
     required: false
     default: ""
   private-key:
-    description: n3o-babar GitHub App private key.
+    description: That GitHub App's private key.
     required: false
     default: ""
   owner:
