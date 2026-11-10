@@ -55,6 +55,8 @@ runs:
         CLIENT_TOKEN: ${{ steps.app.outputs.token }}
         CLIENT_BOT_NAME: ${{ steps.client.outputs.name }}
         CLIENT_BOT_EMAIL: ${{ steps.client.outputs.email }}
+        # Deliberately the workflow token: what it pushes starts no workflow, so the client's code reaches
+        # this repository's CI, and its secrets, only when someone at N3O pushes to the draft.
         MONOREPO_TOKEN: ${{ github.token }}
         GITLEAKS: ${{ steps.scan.outputs.gitleaks }}
       run: node "$GITHUB_ACTION_PATH/sync.mjs"

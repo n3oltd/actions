@@ -13,7 +13,7 @@ outputs:
     description: The repository's owner.
     value: ${{ steps.check.outputs.owner }}
   name:
-    description: The App's commit name.
+    description: The App's GitHub login, which its commits also carry as their name.
     value: n3o-source-sync[bot]
   email:
     description: The App's commit email.

@@ -90,26 +90,36 @@ function readMarker(draft, number) {
 }
 
 // Copied text must not notify anyone, link or close an issue, or carry a marker this check would trust.
-const quote = (text) =>
+const neutralise = (text) =>
   (text ?? "")
     .replace(/<!--/g, "&lt;!--")
     .replace(/(^|\W)@(?=[A-Za-z0-9])/g, "$1@\u2060")
-    .replace(/(#|\bGH-)(?=\d)/gi, "$1\u2060")
+    .replace(/(#|\bGH-|\/(?:issues|pull|discussions)\/)(?=\d)/gi, "$1\u2060")
     .replace(/\b(?=(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b)(\w)/gi, "$1\u2060");
 
-const draftBody = (pull, marker) =>
-  [
-    `Imported from \`${CLIENT_REPO}#${pull.number}\`, opened by \`${pull.user.login}\`.`,
-    quote(pull.body),
-    "no-work-issue: imported from a client pull request",
-    stateMarker(pull.number, marker),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+// GitHub refuses a body over 65,536 characters, and neutralising lengthens the copied text.
+const bodyLimit = 65536;
+const truncated = "\n\n(truncated)";
+
+function withText(before, text, after) {
+  const room = bodyLimit - before.length - after.length;
+  if (text.length <= room) return `${before}${text}${after}`;
+  let end = room - truncated.length;
+  if (/[\ud800-\udbff]/.test(text[end - 1])) end--;
+  return `${before}${text.slice(0, end)}${truncated}${after}`;
+}
+
+function draftBody(pull, marker) {
+  const text = neutralise(pull.body);
+  const origin = `Imported from \`${CLIENT_REPO}#${pull.number}\`, opened by \`${pull.user.login}\`.`;
+  const before = text ? `${origin}\n\n` : origin;
+  const after = `\n\nno-work-issue: imported from a client pull request\n\n${stateMarker(pull.number, marker)}`;
+  return withText(before, text, after);
+}
 
 async function writeDraft(draft, pull, marker) {
   await request(monorepo, "PATCH", `pulls/${draft.number}`, {
-    title: quote(pull.title),
+    title: neutralise(pull.title),
     body: draftBody(pull, marker),
   });
 }
@@ -132,6 +142,12 @@ async function findDraft(number) {
   return drafts.sort((a, b) => b.number - a.number)[0];
 }
 
+function expectAt(side, ref, branch, sha, cwd) {
+  if (git(side, ["rev-parse", ref], { cwd }) !== sha) {
+    throw new Error(`${branch} moved during this run; it is picked up next run`);
+  }
+}
+
 function fetchClientRefs(pull) {
   git(client, [
     "fetch",
@@ -141,11 +157,11 @@ function fetchClientRefs(pull) {
     `+refs/heads/${copyBranch}:refs/n3o-source-sync/client-base`,
     `+refs/heads/${pull.head.ref}:refs/n3o-source-sync/client-head`,
   ]);
-  const head = git(monorepo, ["rev-parse", "refs/n3o-source-sync/client-head"]);
-
-  if (head !== pull.head.sha)
-    throw new Error(`${pull.head.ref} moved to ${head} during this run; it is picked up next run`);
+  expectAt(monorepo, "refs/n3o-source-sync/client-head", pull.head.ref, pull.head.sha);
 }
+
+const clientForkPoint = () =>
+  git(monorepo, ["merge-base", "refs/n3o-source-sync/client-base", "refs/n3o-source-sync/client-head"]);
 
 function fetchDraft(draft, depth) {
   git(monorepo, [
@@ -156,9 +172,7 @@ function fetchDraft(draft, depth) {
     url(monorepo),
     `+refs/heads/${draft.head.ref}:refs/n3o-source-sync/draft`,
   ]);
-
-  if (git(monorepo, ["rev-parse", "refs/n3o-source-sync/draft"]) !== draft.head.sha)
-    throw new Error(`${draft.head.ref} moved during this run; it is picked up next run`);
+  expectAt(monorepo, "refs/n3o-source-sync/draft", draft.head.ref, draft.head.sha);
 }
 
 async function fetchDraftSince(draft, base) {
@@ -168,39 +182,41 @@ async function fetchDraftSince(draft, base) {
   return comparison.commits;
 }
 
-// Commit messages cross too, so they are quoted like any other copied text; authors are kept.
-function quoteMessages(side, base, { cwd, env } = {}) {
+function neutraliseMessages(side, base, { cwd, env } = {}) {
   let parent = base;
   for (const line of git(side, ["log", "--reverse", "--format=%H %P", `${base}..HEAD`], { cwd }).split("\n")) {
     if (!line) continue;
     const [commit, original] = line.split(" ");
     const message = git(side, ["log", "-1", "--format=%B", commit], { cwd });
-    if (quote(message) === message && original === parent) {
+    if (neutralise(message) === message && original === parent) {
       parent = commit;
       continue;
     }
     const [name, email, date] = git(side, ["log", "-1", "--format=%an%n%ae%n%aD", commit], { cwd }).split("\n");
     parent = git(side, ["commit-tree", `${commit}^{tree}`, "-p", parent], {
       cwd,
-      input: `${quote(message)}\n`,
+      input: `${neutralise(message)}\n`,
       env: { ...env, GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date },
     });
   }
   git(side, ["reset", "-q", "--soft", parent], { cwd });
 }
 
+// -k on both ends keeps a subject such as "[WIP] header" whole; without it git am strips the brackets.
 function applyClientCommits(from, to) {
-  const patches = git(monorepo, ["format-patch", "--stdout", `${from}..${to}`], { raw: true });
+  const patches = git(monorepo, ["format-patch", "-k", "--stdout", `${from}..${to}`], { raw: true });
+
   if (!patches.length) return true;
   const base = git(monorepo, ["rev-parse", "HEAD"]);
+
   try {
-    git(monorepo, ["am", "-q", "-3", `--directory=${subtree}`], { input: patches });
+    git(monorepo, ["am", "-q", "-k", "-3", `--directory=${subtree}`], { input: patches });
   } catch (error) {
     console.log(`::warning::git am of ${from}..${to} failed: ${error.message}`);
     git(monorepo, ["am", "--abort"]);
     return false;
   }
-  quoteMessages(monorepo, base);
+  neutraliseMessages(monorepo, base);
   return true;
 }
 
@@ -212,18 +228,20 @@ function pushDraftBranch(number, lease) {
   return git(monorepo, ["rev-parse", "HEAD"]);
 }
 
-function findsSecrets(range) {
-  let config = join(subtree, ".gitleaks.toml");
-  if (!existsSync(config)) {
-    config = join(mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-")), "gitleaks.toml");
-    writeFileSync(config, "[extend]\nuseDefault = true\n");
-  }
-  const args = ["git", "--no-banner", "--redact", "--exit-code", "2", "--config", config];
+// Without --config gitleaks reads the .gitleaks.toml of what it scans, here the monorepo root, not the subtree.
+let gitleaksConfig = join(subtree, ".gitleaks.toml");
+if (!existsSync(gitleaksConfig)) {
+  gitleaksConfig = join(mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-")), "gitleaks.toml");
+  writeFileSync(gitleaksConfig, "[extend]\nuseDefault = true\n");
+}
+
+function findsSecrets(command, args, input) {
   try {
-    execFileSync(GITLEAKS, [...args, "--gitleaks-ignore-path", subtree, `--log-opts=${range} -- ${subtree}`, "."], {
-      env: auth(monorepo),
-      stdio: ["ignore", "inherit", "inherit"],
-    });
+    execFileSync(
+      GITLEAKS,
+      [command, "--no-banner", "--redact", "--exit-code", "2", "--config", gitleaksConfig, ...args],
+      { input, env: auth(monorepo), stdio: [input === undefined ? "ignore" : "pipe", "inherit", "inherit"] },
+    );
     return false;
   } catch (error) {
     if (error.status === 2) return true;
@@ -233,6 +251,7 @@ function findsSecrets(range) {
 
 function patchIds(side, args) {
   const log = git(side, ["log", "-p", "--no-merges", "--no-color", ...args], { raw: true });
+
   if (!log.length) return [];
   return git(side, ["patch-id", "--stable"], { input: log })
     .split("\n")
@@ -243,11 +262,8 @@ function patchIds(side, args) {
 
 async function importPull(pull, draft) {
   fetchClientRefs(pull);
-  const forkPoint = git(monorepo, [
-    "merge-base",
-    "refs/n3o-source-sync/client-base",
-    "refs/n3o-source-sync/client-head",
-  ]);
+  const forkPoint = clientForkPoint();
+
   if (draft) {
     // Changes outside the subtree never reach the client's branch, so a rebuild from it would drop them. A compare
     // lists at most 300 files, so a full list may hide one.
@@ -286,7 +302,7 @@ async function importPull(pull, draft) {
     return true;
   }
   const created = await request(monorepo, "POST", "pulls", {
-    title: quote(pull.title),
+    title: neutralise(pull.title),
     head: `${prefix}${pull.number}`,
     base: "main",
     body: draftBody(pull, marker),
@@ -319,7 +335,7 @@ async function pushToClient(pull, draft, marker) {
     return reportStuck(pull, draft, "the draft has a merge commit, which can't be sent to the client's branch");
   }
   const range = `${marker.draft}..refs/n3o-source-sync/draft`;
-  if (findsSecrets(range)) {
+  if (findsSecrets("git", ["--gitleaks-ignore-path", subtree, `--log-opts=${range} -- ${subtree}`, "."])) {
     await notice(
       monorepo,
       draft.number,
@@ -331,9 +347,10 @@ async function pushToClient(pull, draft, marker) {
   }
   const patches = git(
     monorepo,
-    ["format-patch", "--stdout", `--relative=${subtree}`, range, "--", subtree],
+    ["format-patch", "-k", "--stdout", `--relative=${subtree}`, range, "--", subtree],
     { raw: true },
   );
+
   if (!patches.length) {
     await writeDraft(draft, pull, { client: marker.client, draft: draft.head.sha });
     return true;
@@ -342,18 +359,16 @@ async function pushToClient(pull, draft, marker) {
   git(client, ["init", "-q", work]);
   git(client, ["fetch", "-q", "--no-tags", "--depth=1", url(client), `refs/heads/${pull.head.ref}`], { cwd: work });
   git(client, ["checkout", "-q", "--detach", "FETCH_HEAD"], { cwd: work });
-
-  if (git(client, ["rev-parse", "HEAD"], { cwd: work }) !== pull.head.sha) {
-    throw new Error(`${pull.head.ref} moved during this run; it is picked up next run`);
-  }
+  expectAt(client, "HEAD", pull.head.ref, pull.head.sha, work);
   const committer = { GIT_COMMITTER_NAME: CLIENT_BOT_NAME, GIT_COMMITTER_EMAIL: CLIENT_BOT_EMAIL };
+
   try {
-    git(client, ["am", "-q"], { cwd: work, input: patches, env: committer });
+    git(client, ["am", "-q", "-k"], { cwd: work, input: patches, env: committer });
   } catch (error) {
     console.log(`::warning::git am onto ${pull.head.ref} failed: ${error.message}`);
     return reportStuck(pull, draft, "N3O's commits don't apply to the client's branch");
   }
-  quoteMessages(client, pull.head.sha, { cwd: work, env: committer });
+  neutraliseMessages(client, pull.head.sha, { cwd: work, env: committer });
   git(client, ["push", "-q", url(client), `HEAD:refs/heads/${pull.head.ref}`], { cwd: work });
   const clientHead = git(client, ["rev-parse", "HEAD"], { cwd: work });
   await writeDraft(draft, pull, { client: clientHead, draft: draft.head.sha });
@@ -364,11 +379,20 @@ async function pushToClient(pull, draft, marker) {
 // A run that pushed one side but failed to record the new heads leaves both moved by the same changes.
 async function recordIfInStep(pull, draft, marker) {
   fetchClientRefs(pull);
-  if (!(await fetchDraftSince(draft, marker.draft))) return false;
-  const clientIds = patchIds(monorepo, [`${marker.client}..refs/n3o-source-sync/client-head`]);
+  const since = { ...marker };
+
+  if (!(await fetchDraftSince(draft, marker.draft))) {
+    // A rebuilt draft starts again from main, so each side is compared from where it left main.
+    const comparison = await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`);
+    if (!comparison?.ahead_by) return false;
+    fetchDraft(draft, comparison.ahead_by + 1);
+    since.client = clientForkPoint();
+    since.draft = comparison.merge_base_commit.sha;
+  }
+  const clientIds = patchIds(monorepo, [`${since.client}..refs/n3o-source-sync/client-head`]);
   const draftIds = patchIds(monorepo, [
     `--relative=${subtree}`,
-    `${marker.draft}..refs/n3o-source-sync/draft`,
+    `${since.draft}..refs/n3o-source-sync/draft`,
     "--",
     subtree,
   ]);
@@ -388,9 +412,16 @@ async function reportStuck(pull, draft, reason) {
   return false;
 }
 
+// GitHub offers the client "Update branch" once the copy holds the merge, which adds only a merge of main.
+function onlyMergedMain(pull, marker) {
+  fetchClientRefs(pull);
+  const own = ["rev-list", "--no-merges", `${marker.client}..${pull.head.sha}`, "^refs/n3o-source-sync/client-base"];
+  return !git(monorepo, ["rev-list", `${pull.head.sha}..${marker.client}`]) && !git(monorepo, own);
+}
+
 async function handleClosedDraft(pull, draft, marker) {
   if (draft.merged_at) {
-    if (pull.head.sha !== marker.client) {
+    if (pull.head.sha !== marker.client && !onlyMergedMain(pull, marker)) {
       await notice(
         client,
         pull.number,
@@ -447,10 +478,15 @@ async function syncComments(pull, draft) {
     end.issue = await list(end.side, `issues/${end.number}/comments`);
     end.lines = await list(end.side, `pulls/${end.number}/comments`);
     end.reviews = await list(end.side, `pulls/${end.number}/reviews`);
-    end.copied = new Set(
-      [...end.issue, ...end.lines, ...end.reviews]
+    end.copies = [
+      ["issue", end.issue],
+      ["line", end.lines],
+    ].flatMap(([kind, items]) =>
+      items
         .filter((item) => item.user?.login === end.side.bot)
-        .flatMap((item) => [...(item.body ?? "").matchAll(copyPattern)].map((match) => match[1])),
+        .flatMap((item) =>
+          [...(item.body ?? "").matchAll(copyPattern)].map((match) => ({ key: match[1], kind, id: item.id })),
+        ),
     );
   }
   const verbs = { APPROVED: "approved", CHANGES_REQUESTED: "requested changes", COMMENTED: "reviewed" };
@@ -479,26 +515,39 @@ async function syncComments(pull, draft) {
     ].sort((a, b) => a.at.localeCompare(b.at));
     for (const { kind, item } of items) {
       const key = `${from.side.repo}#${from.number} ${kind}:${item.id}`;
-      if (to.copied.has(key)) continue;
-      const marker = `<!-- ${markerTag}: copy of ${key} -->`;
+      if (to.copies.some((copy) => copy.key === key)) continue;
+      const marker = `\n\n<!-- ${markerTag}: copy of ${key} -->`;
       const author = `\`${item.user.login}\``;
-      const text = quote(item.body);
+      const text = neutralise(item.body);
+
       try {
+        const scanned = from.side === monorepo && hasText(item);
+        if (scanned && findsSecrets("stdin", ["--gitleaks-ignore-path", subtree], item.body)) {
+          await notice(
+            monorepo,
+            from.number,
+            `secret-comment-${item.id}`,
+            `A comment by ${author} looks like it contains a secret, so it was not copied to the client. It is copied once the secret is edited out.`,
+          );
+          console.log(`::warning::${key} has a possible secret; not copied`);
+          continue;
+        }
+        const placed =
+          kind === "line" && (await copyLine(from, to, item, withText(`${author} commented:\n\n`, text, marker)));
+        if (placed) {
+          to.copies.push({ key, kind: "line", id: placed.id });
+          continue;
+        }
+        let body;
         if (kind === "line") {
-          const placed = await copyLine(from, to, item, `${author} commented:\n\n${text}\n\n${marker}`);
-          if (!placed) {
-            const where = `${quote(item.path.replace(/`/g, "'"))}${item.line ? ` line ${item.line}` : ""}`;
-            await request(to.side, "POST", `issues/${to.number}/comments`, {
-              body: `${author} commented on \`${where}\`:\n\n${text}\n\n${marker}`,
-            });
-          }
+          const where = `${neutralise(item.path.replace(/`/g, "'"))}${item.line ? ` line ${item.line}` : ""}`;
+          body = withText(`${author} commented on \`${where}\`:\n\n`, text, marker);
         } else {
           const verb = kind === "review" ? verbs[item.state] : "commented";
-          await request(to.side, "POST", `issues/${to.number}/comments`, {
-            body: text ? `${author} ${verb}:\n\n${text}\n\n${marker}` : `${author} ${verb}.\n\n${marker}`,
-          });
+          body = text ? withText(`${author} ${verb}:\n\n`, text, marker) : `${author} ${verb}.${marker}`;
         }
-        to.copied.add(key);
+        const posted = await request(to.side, "POST", `issues/${to.number}/comments`, { body });
+        to.copies.push({ key, kind: "issue", id: posted.id });
       } catch (error) {
         console.log(`::warning::${key} was not copied (${error.message}); next run`);
       }
@@ -509,41 +558,32 @@ async function syncComments(pull, draft) {
 async function copyLine(from, to, comment, body) {
   if (comment.in_reply_to_id) {
     // The parent is either a copy of a comment on the other side, or an original whose copy is there.
-    const parent = from.lines.find((item) => item.id === comment.in_reply_to_id);
-    const original =
-      parent?.user?.login === from.side.bot &&
-      [...(parent.body ?? "").matchAll(copyPattern)]
-        .map((match) => match[1])
-        .find((key) => key.startsWith(`${to.side.repo}#${to.number} line:`));
-    let target = original && Number(original.split("line:")[1]);
-    if (!target) {
-      const parentKey = `${from.side.repo}#${from.number} line:${comment.in_reply_to_id}`;
-      target = to.lines.find(
-        (item) => item.user?.login === to.side.bot && item.body?.includes(`copy of ${parentKey} -->`),
-      )?.id;
-    }
-    if (!target) return false;
-    await request(to.side, "POST", `pulls/${to.number}/comments/${target}/replies`, { body });
-    return true;
+    const isLine = (copy) => copy.kind === "line";
+    const original = from.copies.find((copy) => isLine(copy) && copy.id === comment.in_reply_to_id)?.key;
+    const parentKey = `${from.side.repo}#${from.number} line:${comment.in_reply_to_id}`;
+    const target = original?.startsWith(`${to.side.repo}#${to.number} line:`)
+      ? Number(original.split("line:")[1])
+      : to.copies.find((copy) => isLine(copy) && copy.key === parentKey)?.id;
+    if (!target) return null;
+    return request(to.side, "POST", `pulls/${to.number}/comments/${target}/replies`, { body });
   }
   const path = counterpartPath(from.side, comment.path);
-  if (!comment.line || comment.side !== "RIGHT" || comment.subject_type === "file") return false;
+  if (!comment.line || comment.side !== "RIGHT" || comment.subject_type === "file") return null;
   const source = await lineText(from.side, comment.path, comment.commit_id, comment.line);
   const target = await lineText(to.side, path, to.pull.head.sha, comment.line);
-  if (source === null || source !== target) return false;
+  if (source === null || source !== target) return null;
+
   try {
-    const placed = await request(to.side, "POST", `pulls/${to.number}/comments`, {
+    return await request(to.side, "POST", `pulls/${to.number}/comments`, {
       body,
       commit_id: to.pull.head.sha,
       path,
       line: comment.line,
       side: "RIGHT",
     });
-    to.lines.push(placed);
-    return true;
   } catch (error) {
     console.log(`::warning::line comment ${comment.id} could not be placed (${error.message}); copied as a comment`);
-    return false;
+    return null;
   }
 }
 
@@ -574,7 +614,17 @@ async function syncPull(number) {
     return;
   }
   const marker = readMarker(draft, number);
-  if (!marker) throw new Error(`draft #${draft.number} has no ${markerTag} marker`);
+
+  if (!marker) {
+    await notice(
+      monorepo,
+      draft.number,
+      "no-marker",
+      `This description has lost the hidden \`${markerTag}\` marker, so this pull request is no longer kept in step with the client's. Restore the marker from the description's edit history.`,
+    );
+    console.log(`::warning::${CLIENT_REPO}#${number}: draft #${draft.number} has no ${markerTag} marker; skipped`);
+    return;
+  }
   if (pull.state === "open" || draft.state === "open") await syncComments(pull, draft);
 
   if (pull.state === "closed") {
@@ -609,7 +659,7 @@ async function syncPull(number) {
     written =
       (await recordIfInStep(pull, draft, marker)) || (await reportStuck(pull, draft, "both sides have new commits"));
   }
-  if (!written && (draft.title !== quote(pull.title) || draft.body !== draftBody(pull, marker))) {
+  if (!written && (draft.title !== neutralise(pull.title) || draft.body !== draftBody(pull, marker))) {
     await writeDraft(draft, pull, marker);
   }
 }

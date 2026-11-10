@@ -22,8 +22,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  # A schedule has nobody waiting on it, so it skips n3o-pick-runner's GitHub-hosted pick job, which
-  # would bill a minute every run. The self-hosted runners serve private repositories only.
+  # The self-hosted runners serve private repositories only.
   sync:
     runs-on: n3o-github-runner
     timeout-minutes: 15
