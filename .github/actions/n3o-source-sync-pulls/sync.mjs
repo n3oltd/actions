@@ -497,6 +497,9 @@ async function syncComments(pull, draft) {
     const byPerson = (item) =>
       item.user?.type !== "Bot" && (from.side !== client || clientMembers.has(item.author_association));
     const hasText = (item) => Boolean(item.body?.trim());
+    for (const item of from.side === client ? [...from.issue, ...from.lines] : []) {
+      console.log(`DEBUG ${item.id} ${item.user?.login} ${item.user?.type} ${item.author_association}`);
+    }
     for (const review of from.reviews.filter((review) => byPerson(review) && !verbs[review.state])) {
       console.log(`${from.side.repo}#${from.number}: review ${review.id} is ${review.state}; not copied`);
     }
