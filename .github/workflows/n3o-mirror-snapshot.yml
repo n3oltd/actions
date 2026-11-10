@@ -21,8 +21,12 @@ permissions:
   contents: read
 
 jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+
   mirror:
-    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
     timeout-minutes: 15
     concurrency:
       group: n3o-mirror-snapshot-${{ inputs.target-repo }}-${{ inputs.target-branch }}

@@ -72,8 +72,7 @@ runs:
           git fetch --no-tags --depth=1 "$url" "refs/heads/$TARGET_BRANCH"
           head=$(git rev-parse FETCH_HEAD)
           subject=$(git log -1 --format=%s "$head")
-          if [[ "$subject" != "$prefix"* ]] || [[ ! "${subject#"$prefix"}" =~ ^[0-9a-f]{40}$ ]] \
-            || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
+          if [[ "$subject" != "$prefix"* ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
             echo "::error::$TARGET_REPO $TARGET_BRANCH is at $head, which this action did not make; refusing to push over it. The branch must not exist, or its head must be a commit this action made."
             exit 1
           fi

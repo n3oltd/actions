@@ -3,7 +3,8 @@ description: >-
   Fails when gitleaks finds a secret in the files under a directory, including inside archives up to
   three levels deep. It scans the files as they are, not git history, skips the paths gitleaks
   allowlists by default (such as node_modules, lock files and images), and redacts what it finds in
-  the log. A .gitleaks.toml in that directory must set useDefault = true under [extend].
+  the log. It reads .gitleaks.toml and .gitleaksignore only from that directory, and a .gitleaks.toml
+  must set useDefault = true under [extend].
 
 inputs:
   path:
@@ -38,6 +39,7 @@ runs:
     - name: install gitleaks
       shell: bash
       env:
+        # Renovate updates these two lines together, so they stay adjacent and in this order.
         GITLEAKS_VERSION: v8.30.1
         GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
       run: |
@@ -53,4 +55,4 @@ runs:
       shell: bash
       env:
         SCAN_PATH: ${{ inputs.path }}
-      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 "$SCAN_PATH"'
+      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'
