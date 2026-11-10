@@ -34,10 +34,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: afh-source-sync
+          ref: main
           persist-credentials: false
 
-      - uses: n3oltd/actions/.github/actions/n3o-snapshot-push@mirror-snapshot
+      - uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
         with:
           subtree-path: ${{ inputs.subtree-path }}
           target-repo: ${{ inputs.target-repo }}
