@@ -1,7 +1,8 @@
 name: n3o secret scan
 description: >-
-  Fails when gitleaks finds a secret in the files under a directory. It scans the files as they
-  are, not git history, and redacts what it finds in the log.
+  Fails when gitleaks finds a secret in the files under a directory, including inside archives. It
+  scans the files as they are, not git history, and redacts what it finds in the log. A
+  .gitleaks.toml in that directory must extend the default rules.
 
 inputs:
   path:
@@ -15,6 +16,23 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: check config
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.path }}/.gitleaks.toml
+      run: |
+        set -euo pipefail
+        if [ -f "$CONFIG" ]; then
+          python3 - "$CONFIG" <<'EOF'
+        import sys, tomllib
+        with open(sys.argv[1], "rb") as f:
+            config = tomllib.load(f)
+        if config.get("extend", {}).get("useDefault") is not True:
+            print(f"::error file={sys.argv[1]}::.gitleaks.toml must set useDefault = true under [extend]; without it every default rule is off")
+            sys.exit(1)
+        EOF
+        fi
+
     - name: install gitleaks
       shell: bash
       env:
@@ -40,4 +58,4 @@ runs:
       shell: bash
       env:
         SCAN_PATH: ${{ inputs.path }}
-      run: gitleaks dir --no-banner --redact "$SCAN_PATH"
+      run: gitleaks dir --no-banner --redact --max-archive-depth 3 "$SCAN_PATH"

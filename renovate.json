@@ -232,6 +232,19 @@
       "depNameTemplate": "resourcespace",
       "datasourceTemplate": "custom.resourcespace",
       "versioningTemplate": "docker"
+    },
+    {
+      "description": "The secret scan installs gitleaks from the default of its gitleaks-version input, which no packaged manager reads. The release tags carry a v prefix that the input leaves off.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        ".github/actions/n3o-secret-scan/action.yml"
+      ],
+      "matchStrings": [
+        "gitleaks-version:\\n(?:.*\\n)*?\\s+default: (?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "gitleaks/gitleaks",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ]
 }
