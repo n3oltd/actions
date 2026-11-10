@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: main
+          ref: afh-source-sync
           persist-credentials: false
 
       - name: check inputs
@@ -47,7 +47,7 @@ jobs:
           fi
           echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
 
-      - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
+      - uses: n3oltd/actions/.github/actions/n3o-secret-scan@mirror-snapshot
         with:
           path: ${{ inputs.subtree-path }}
 
