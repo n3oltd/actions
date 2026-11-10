@@ -61,7 +61,7 @@ runs:
       run: node "$GITHUB_ACTION_PATH/sync.mjs"
 
     - if: steps.sync.outputs.merge-heads != ''
-      uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
+      uses: n3oltd/actions/.github/actions/n3o-snapshot-push@source-sync-pulls
       with:
         subtree-path: ${{ inputs.subtree-path }}
         target-repo: ${{ inputs.client-repo }}
