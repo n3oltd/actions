@@ -1,0 +1,49 @@
+name: n3o source sync pulls
+
+on:
+  workflow_call:
+    inputs:
+      subtree-path:
+        description: 'Monorepo path of the subtree the client repo copies (e.g. src/site-example)'
+        required: true
+        type: string
+      client-repo:
+        description: 'Client copy repo as owner/name (e.g. example-client/website)'
+        required: true
+        type: string
+      branch-prefix:
+        description: 'Prefix of the draft pull requests branches (e.g. example/pr-)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+
+  sync:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    timeout-minutes: 15
+    concurrency:
+      group: n3o-source-sync-pulls-${{ inputs.client-repo }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: ${{ inputs.subtree-path }}
+          persist-credentials: false
+
+      - uses: n3oltd/actions/.github/actions/n3o-source-sync-pulls@main
+        with:
+          subtree-path: ${{ inputs.subtree-path }}
+          client-repo: ${{ inputs.client-repo }}
+          branch-prefix: ${{ inputs.branch-prefix }}
+          app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
+          private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}
