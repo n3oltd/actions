@@ -1,0 +1,82 @@
+name: n3o source sync pulls
+description: >-
+  Keeps each pull request on a client's copy repository in step with a draft pull request on this
+  repository, as the n3o-source-sync App: imports the client's commits under the subtree, sends
+  N3O's commits back to the client's branch after a secret scan, copies comments both ways, and
+  mirrors merging and closing. Run it after a checkout of main.
+
+inputs:
+  subtree-path:
+    description: Path of the subtree the client repository copies (e.g. src/site-example).
+    required: true
+  client-repo:
+    description: The client's copy repository, as owner/name (e.g. example-client/website).
+    required: true
+  branch-prefix:
+    description: Prefix of the draft pull requests' branches; the client pull request's number is appended.
+    required: true
+  assignees:
+    description: Comma-separated logins assigned to each draft.
+    required: true
+  app-id:
+    description: n3o-source-sync GitHub App id.
+    required: true
+  private-key:
+    description: n3o-source-sync GitHub App private key.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: client
+      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@main
+      with:
+        repo: ${{ inputs.client-repo }}
+
+    - id: scan
+      uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
+      with:
+        path: ${{ inputs.subtree-path }}
+        scan: false
+
+    - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+      with:
+        name: ${{ steps.client.outputs.bot-name }}
+        email: ${{ steps.client.outputs.email }}
+
+    - id: app
+      uses: n3oltd/actions/.github/actions/n3o-app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ steps.client.outputs.owner }}
+        repositories: ${{ steps.client.outputs.name }}
+
+    - name: sync pull requests
+      id: sync
+      shell: bash
+      env:
+        SUBTREE_PATH: ${{ inputs.subtree-path }}
+        CLIENT_REPO: ${{ inputs.client-repo }}
+        BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+        ASSIGNEES: ${{ inputs.assignees }}
+        CLIENT_TOKEN: ${{ steps.app.outputs.token }}
+        CLIENT_BOT_NAME: ${{ steps.client.outputs.bot-name }}
+        CLIENT_BOT_EMAIL: ${{ steps.client.outputs.email }}
+        COPY_PATTERN: ${{ steps.client.outputs.copy-pattern }}
+        # This token's pushes start no workflow, so a draft's checks run the client's code only after
+        # someone at N3O pushes to it.
+        MONOREPO_TOKEN: ${{ github.token }}
+        GITLEAKS: ${{ steps.scan.outputs.gitleaks }}
+        SCAN_CONFIG: ${{ steps.scan.outputs.config }}
+      run: node "$GITHUB_ACTION_PATH/sync.mjs"
+
+    - if: ${{ !cancelled() && (steps.sync.outputs.merge-heads != '' || steps.sync.outputs.adopt-head != '') }}
+      uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
+      with:
+        subtree-path: ${{ inputs.subtree-path }}
+        target-repo: ${{ inputs.client-repo }}
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        merge-heads: ${{ steps.sync.outputs.merge-heads }}
+        adopt-head: ${{ steps.sync.outputs.adopt-head }}

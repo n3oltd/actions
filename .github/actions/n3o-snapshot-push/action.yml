@@ -1,10 +1,11 @@
 name: n3o snapshot push
 description: >-
-  Pushes the checked-out tree of a subtree to main of another repository as one commit without
-  history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
-  main's head, so the push is never forced. main must not exist yet, or its head must be a commit
-  this action made; any other head is refused. The subtree must not hold .github/workflows, which the
-  App cannot write.
+  Pushes the checked-out tree of a subtree to main of another repository as one commit that carries
+  none of this repository's history, as the n3o-source-sync App, after scanning the subtree for
+  secrets. The commit's first parent is main's head, so the push is never forced. main must not
+  exist yet, or its head must be a commit this action made or adopt-head; any other head is refused.
+  A copy is never replaced from a source commit older than the one it was made from. The subtree
+  must not hold .github/workflows, which the App cannot write.
 
 inputs:
   subtree-path:
@@ -19,16 +20,28 @@ inputs:
   private-key:
     description: n3o-source-sync GitHub App private key.
     required: true
+  merge-heads:
+    description: >-
+      Space-separated heads of client pull requests merged on this side. Each becomes an extra parent,
+      so the client repository shows those pull requests as merged; a commit is made even when the
+      tree already matches.
+    required: false
+    default: ""
+  adopt-head:
+    description: >-
+      A head of main this action did not make, which N3O has read: the client's own merges, each now
+      reviewed on this side, or a commit pushed straight to main. The copy is committed on top of it
+      instead of being refused, so those commits stay in main's history but not in its files.
+    required: false
+    default: ""
 
 runs:
   using: "composite"
   steps:
-    - name: check inputs
-      id: target
+    - name: check subtree
       shell: bash
       env:
         SUBTREE_PATH: ${{ inputs.subtree-path }}
-        TARGET_REPO: ${{ inputs.target-repo }}
       run: |
         if [ ! -d "$SUBTREE_PATH" ]; then
           echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
@@ -36,11 +49,11 @@ runs:
         if [ -d "$SUBTREE_PATH/.github/workflows" ]; then
           echo "::error::$SUBTREE_PATH/.github/workflows exists, and the n3o-source-sync App cannot write workflow files"; exit 1
         fi
-        if [[ ! "$TARGET_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
-          echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
-        fi
-        echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
-        echo "name=${TARGET_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+    - id: target
+      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@main
+      with:
+        repo: ${{ inputs.target-repo }}
 
     - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
       with:
@@ -52,39 +65,76 @@ runs:
         private-key: ${{ inputs.private-key }}
         owner: ${{ steps.target.outputs.owner }}
         repositories: ${{ steps.target.outputs.name }}
-        name: n3o-source-sync[bot]
-        email: 354428725+n3o-source-sync[bot]@users.noreply.github.com
+        name: ${{ steps.target.outputs.bot-name }}
+        email: ${{ steps.target.outputs.email }}
 
     - name: commit and push
       shell: bash
       env:
         SUBTREE_PATH: ${{ inputs.subtree-path }}
         TARGET_REPO: ${{ inputs.target-repo }}
+        MERGE_HEADS: ${{ inputs.merge-heads }}
+        ADOPT_HEAD: ${{ inputs.adopt-head }}
+        COPY_PREFIX: ${{ steps.target.outputs.copy-prefix }}
+        COPY_PATTERN: ${{ steps.target.outputs.copy-pattern }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         url="https://github.com/${TARGET_REPO}.git"
-        prefix="Sync from ${GITHUB_REPOSITORY}@"
+        prefix=$COPY_PREFIX
         source=$(git rev-parse HEAD)
         tree=$(git rev-parse "HEAD:$SUBTREE_PATH")
-        parents=()
+        # No --depth here: a shallow fetch of a merged head gets the push refused as a shallow update.
+        for merged in $MERGE_HEADS; do
+          git fetch --no-tags "$url" "$merged"
+        done
 
-        refs=$(git ls-remote "$url" refs/heads/main)
-        if awk '$2 == "refs/heads/main" { found = 1 } END { exit !found }' <<< "$refs"; then
-          git fetch --no-tags --depth=1 "$url" refs/heads/main
-          head=$(git rev-parse FETCH_HEAD)
-          subject=$(git log -1 --format=%s "$head")
-          if [[ "$subject" != "$prefix"* ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
-            echo "::error::$TARGET_REPO main is at $head, which this action did not make; refusing to push over it. main must not exist, or its head must be a commit this action made."
-            exit 1
+        copy() {
+          local refs head subject copied status commit parents=()
+          refs=$(git ls-remote "$url" refs/heads/main)
+          if awk '$2 == "refs/heads/main" { found = 1 } END { exit !found }' <<< "$refs"; then
+            git fetch --no-tags --depth=1 "$url" refs/heads/main
+            head=$(git rev-parse FETCH_HEAD)
+            subject=$(git log -1 --format=%s "$head")
+            if [ "$head" = "$ADOPT_HEAD" ]; then
+              if git cat-file -e "$head:.github/workflows" 2>/dev/null; then
+                echo "::error::$TARGET_REPO main at $head holds .github/workflows, which the n3o-source-sync App cannot remove; someone with write access to $TARGET_REPO must delete it first"
+                exit 1
+              fi
+              echo "main is at $head, the client's own merges; committing the copy on top of it"
+            else
+              if [[ ! "$subject" =~ $COPY_PATTERN ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
+                echo "::error::$TARGET_REPO main is at $head, which this action did not make; refusing to push over it. main must not exist, or its head must be a commit this action made."
+                exit 1
+              fi
+              copied=${BASH_REMATCH[1]}
+              if [ "$copied" != "$source" ]; then
+                status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$copied...$source" --jq .status)
+                if [ "$status" = behind ]; then
+                  echo "main already holds a copy of $copied, which is newer than $source"; finished=true; return
+                fi
+              fi
+            fi
+            if [ -z "$MERGE_HEADS" ] && [ "$head" != "$ADOPT_HEAD" ] && [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
+              echo "main already matches $SUBTREE_PATH"; finished=true; return
+            fi
+            parents=(-p "$head")
+          else
+            echo "main does not exist yet; creating it"
           fi
-          if [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
-            echo "main already matches $SUBTREE_PATH"; exit 0
-          fi
-          parents=(-p "$head")
-        else
-          echo "main does not exist yet; creating it"
-        fi
+          for merged in $MERGE_HEADS; do
+            parents+=(-p "$merged")
+          done
+          commit=$(git commit-tree "$tree" "${parents[@]}" -m "${prefix}${source}")
+          echo "Pushing $SUBTREE_PATH ($commit) -> $TARGET_REPO (main)"
+          if git push "$url" "$commit:refs/heads/main"; then finished=true; fi
+        }
 
-        commit=$(git commit-tree "$tree" "${parents[@]}" -m "${prefix}${source}")
-        echo "Pushing $SUBTREE_PATH ($commit) -> $TARGET_REPO (main)"
-        git push "$url" "$commit:refs/heads/main"
+        finished=false
+        for attempt in 1 2 3; do
+          copy
+          if $finished; then exit 0; fi
+          echo "::warning::push to $TARGET_REPO main failed (attempt $attempt of 3); reading main again"
+        done
+        echo "::error::could not push to $TARGET_REPO main after 3 attempts"
+        exit 1
