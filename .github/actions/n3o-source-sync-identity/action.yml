@@ -1,8 +1,8 @@
 name: n3o source sync identity
 description: >-
   Checks a client repository's name and gives what writing to it as the n3o-source-sync App needs:
-  the owner to mint the App's token for, the name and email its commits carry, and the subject prefix
-  that marks a commit as a copy of this repository.
+  the owner and name to limit the App's token to, the login and email its commits carry, and the
+  subject prefix and pattern that mark a commit as a copy of this repository.
 
 inputs:
   repo:
