@@ -98,7 +98,7 @@ runs:
             subject=$(git log -1 --format=%s "$head")
             if [ "$head" = "$ADOPT_HEAD" ]; then
               if git cat-file -e "$head:.github/workflows" 2>/dev/null; then
-                echo "::error::$TARGET_REPO main at $head holds .github/workflows, which the n3o-source-sync App cannot remove; someone with admin access to $TARGET_REPO must delete it first"
+                echo "::error::$TARGET_REPO main at $head holds .github/workflows, which the n3o-source-sync App cannot remove; someone with write access to $TARGET_REPO must delete it first"
                 exit 1
               fi
               echo "main is at $head, the client's own merges; committing the copy on top of it"

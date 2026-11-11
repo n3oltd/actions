@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const {
   SUBTREE_PATH: subtree,
@@ -156,10 +156,15 @@ const assignees = (ASSIGNEES ?? "")
 const unassigned = (draft) => assignees.some((login) => !draft.assignees?.some((assignee) => assignee.login === login));
 
 // GitHub drops an assignee who can't see the repository without an error.
-async function assign(number) {
-  const issue = await request(monorepo, "POST", `issues/${number}/assignees`, { assignees });
-  const missing = assignees.filter((login) => !issue.assignees.some((assignee) => assignee.login === login));
-  if (missing.length) throw new Error(`#${number}: ${missing.join(", ")} could not be assigned`);
+async function assign(number, draftNumber) {
+  try {
+    const issue = await request(monorepo, "POST", `issues/${draftNumber}/assignees`, { assignees });
+    const missing = assignees.filter((login) => !issue.assignees.some((assignee) => assignee.login === login));
+    if (missing.length) throw new Error(`#${draftNumber}: ${missing.join(", ")} could not be assigned`);
+  } catch (error) {
+    failed.push(number);
+    console.log(`::error::${CLIENT_REPO}#${number}: ${error.message}`);
+  }
 }
 
 async function dismissApprovals(draft, head) {
@@ -256,18 +261,7 @@ function neutraliseMessages(side, base, { cwd, env } = {}) {
   git(side, ["reset", "-q", "--soft", parent], { cwd });
 }
 
-function hasLinks(from, to) {
-  const raw = [
-    git(monorepo, ["log", "--raw", "--no-abbrev", "--format=", `${from}..${to}`]),
-    git(monorepo, ["diff", "--raw", "--no-abbrev", from, to]),
-  ].join("\n");
-  return /^:\d{6} (?:120000|160000) /m.test(raw);
-}
-
 function applyClientCommits(from, to) {
-  if (hasLinks(from, to)) {
-    throw new Error(`${from.slice(0, 7)}..${to.slice(0, 7)} adds a symlink or submodule, which is not imported`);
-  }
   if (git(monorepo, ["rev-list", "--merges", `${from}..${to}`])) return applyNetChange(from, to);
   // -k on both format-patch and am keeps a bracketed prefix on each subject, which git otherwise strips.
   const patches = git(monorepo, ["format-patch", "-k", "--stdout", `${from}..${to}`], { raw: true });
@@ -305,6 +299,9 @@ function applyNetChange(from, to) {
   return true;
 }
 
+const selfMergedRefused = (reason) =>
+  `This pull request was merged here, but ${reason}, so N3O can't review it. \`${copyBranch}\` goes back to N3O's copy once someone at N3O has read it; please raise the change again from the latest \`${copyBranch}\`.`;
+
 async function changesGuardedFiles(pull, from) {
   const guarded = [".github/workflows", ".gitleaks.toml", ".gitleaksignore"];
   if (!git(monorepo, ["diff", "--name-only", from, pull.head.sha, "--", ...guarded])) return false;
@@ -312,18 +309,28 @@ async function changesGuardedFiles(pull, from) {
     client,
     pull.number,
     `workflows-${pull.head.sha}`,
-    "Changes under `.github/workflows`, or to `.gitleaks.toml` or `.gitleaksignore`, can't be taken into the copy. Please remove them from this pull request.",
+    pull.merged_at
+      ? selfMergedRefused(
+          "it changes `.github/workflows`, `.gitleaks.toml` or `.gitleaksignore`, which can't be taken into N3O's copy",
+        )
+      : "Changes under `.github/workflows`, or to `.gitleaks.toml` or `.gitleaksignore`, can't be taken into the copy. Please remove them from this pull request.",
   );
   return true;
 }
 
 async function addsLinks(pull, from) {
-  if (!hasLinks(from, pull.head.sha)) return false;
+  const raw = [
+    git(monorepo, ["log", "--raw", "--no-abbrev", "--format=", `${from}..${pull.head.sha}`]),
+    git(monorepo, ["diff", "--raw", "--no-abbrev", from, pull.head.sha]),
+  ].join("\n");
+  if (!/^:\d{6} (?:120000|160000) /m.test(raw)) return false;
   await notice(
     client,
     pull.number,
     `links-${pull.head.sha}`,
-    "Symbolic links and submodules can't be taken into the copy. Please remove them from every commit of this pull request, for example by squashing it, and push again.",
+    pull.merged_at
+      ? selfMergedRefused("it holds a symbolic link or submodule, which can't be taken into N3O's copy")
+      : "Symbolic links and submodules can't be taken into the copy. Please remove them from every commit of this pull request, for example by squashing it, and push again.",
   );
   return true;
 }
@@ -336,12 +343,12 @@ function pushDraftBranch(number, lease) {
   return git(monorepo, ["rev-parse", "HEAD"]);
 }
 
-function findsSecrets(command, args, input) {
+function findsSecrets(command, args, input, cwd) {
   try {
     execFileSync(
       GITLEAKS,
       [command, "--no-banner", "--redact", "--exit-code", "2", "--config", gitleaksConfig, ...args],
-      { input, env: auth(monorepo), stdio: [input === undefined ? "ignore" : "pipe", "inherit", "inherit"] },
+      { cwd, input, env: auth(monorepo), stdio: [input === undefined ? "ignore" : "pipe", "inherit", "inherit"] },
     );
     return false;
   } catch (error) {
@@ -370,8 +377,8 @@ function commitFilesHaveSecrets(range) {
       mkdirSync(dirname(join(dir, file)), { recursive: true });
       writeFileSync(join(dir, file), git(monorepo, ["cat-file", "blob", `${commit}:${file}`], { raw: true }));
     }
-    const args = ["--max-archive-depth", "3", "--gitleaks-ignore-path", subtree, join(dir, subtree)];
-    if (files.length && findsSecrets("dir", args)) return true;
+    const args = ["--max-archive-depth", "3", "--gitleaks-ignore-path", resolve(subtree), subtree];
+    if (files.length && findsSecrets("dir", args, undefined, dir)) return true;
   }
   return false;
 }
@@ -394,9 +401,7 @@ async function importPull(pull, draft) {
   const forkPoint = clientForkPoint(pull);
 
   if (await changesGuardedFiles(pull, forkPoint)) return false;
-  if (await addsLinks(pull, forkPoint)) {
-    throw new Error(`${CLIENT_REPO}#${pull.number} adds a symlink or submodule, which is not imported`);
-  }
+  if (await addsLinks(pull, forkPoint)) return false;
   if (draft) {
     // A compare lists at most 300 files, so a full list may hide one outside the subtree.
     const files = (await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`))?.files ?? [];
@@ -413,7 +418,9 @@ async function importPull(pull, draft) {
         client,
         pull.number,
         "self-merged-stale",
-        `This pull request was merged here, but changes reach \`${copyBranch}\` only through N3O, and this one no longer applies to N3O's copy, so N3O can't review it. \`${copyBranch}\` goes back to N3O's copy once someone at N3O has read it; please raise the change again from the latest \`${copyBranch}\`.`,
+        selfMergedRefused(
+          `changes reach \`${copyBranch}\` only through N3O, and this one no longer applies to N3O's copy`,
+        ),
       );
       return false;
     }
@@ -453,7 +460,7 @@ async function importPull(pull, draft) {
     draft: true,
   });
   console.log(`${CLIENT_REPO}#${pull.number}: imported as draft #${created.number}`);
-  await assign(created.number);
+  await assign(pull.number, created.number);
   return { draft: created.number };
 }
 
@@ -462,9 +469,7 @@ async function applyClient(pull, draft, marker) {
   // A merge brings the client's copy commits into the range, so the draft is rebuilt from the fork point instead.
   if (git(monorepo, ["rev-list", "--merges", `${marker.client}..${pull.head.sha}`])) return importPull(pull, draft);
   if (await changesGuardedFiles(pull, marker.client)) return false;
-  if (await addsLinks(pull, marker.client)) {
-    throw new Error(`${CLIENT_REPO}#${pull.number} adds a symlink or submodule, which is not imported`);
-  }
+  if (await addsLinks(pull, marker.client)) return false;
   fetchDraft(draft, 1);
   git(monorepo, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
 
@@ -793,14 +798,7 @@ async function syncPull(number) {
     if (imported && pull.merged_at) selfMerges.ready.set(number, imported.draft);
     return;
   }
-  if (draft.state === "open" && unassigned(draft)) {
-    try {
-      await assign(draft.number);
-    } catch (error) {
-      failed.push(number);
-      console.log(`::error::${CLIENT_REPO}#${number}: ${error.message}`);
-    }
-  }
+  if (draft.state === "open" && unassigned(draft)) await assign(number, draft.number);
   const marker = readMarker(draft, number);
 
   if (!marker) {
