@@ -15,8 +15,8 @@ inputs:
     required: true
   scan:
     description: >-
-      Whether to scan the directory. With false, only checks its .gitleaks.toml and installs gitleaks,
-      for a caller that scans with the gitleaks output itself.
+      Whether to scan the directory. With false, only checks its .gitleaks.toml, composes the config
+      and installs gitleaks, for a caller that scans with the config and gitleaks outputs itself.
     required: false
     default: "true"
 
