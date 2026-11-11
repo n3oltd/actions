@@ -1,18 +1,20 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 
 const {
   SUBTREE_PATH: subtree,
   CLIENT_REPO,
   BRANCH_PREFIX: prefix,
+  ASSIGNEES,
   GITHUB_REPOSITORY,
   CLIENT_TOKEN,
   CLIENT_BOT_NAME,
   CLIENT_BOT_EMAIL,
-  COPY_PREFIX,
+  COPY_PATTERN,
   MONOREPO_TOKEN,
   GITLEAKS,
+  SCAN_CONFIG: gitleaksConfig,
   RUNNER_TEMP,
   GITHUB_OUTPUT,
 } = process.env;
@@ -65,15 +67,22 @@ function auth(side) {
 }
 
 function git(side, args, { cwd, input, env, raw } = {}) {
-  const output = execFileSync("git", args, {
-    cwd,
-    input,
-    encoding: raw ? "buffer" : "utf8",
-    maxBuffer: 256 * 1024 * 1024,
-    env: { ...auth(side), ...env },
-    stdio: ["pipe", "pipe", "inherit"],
-  });
-  return raw ? output : output.trim();
+  try {
+    const output = execFileSync("git", args, {
+      cwd,
+      input,
+      encoding: raw ? "buffer" : "utf8",
+      maxBuffer: 256 * 1024 * 1024,
+      env: { ...auth(side), ...env },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return raw ? output : output.trim();
+  } catch (error) {
+    // git's errors name the client's files; the runner reads :: or ##[ anywhere in a line as a workflow command.
+    process.stdout.write(String(error.stderr ?? "").replace(/::/g, ": :").replace(/##\[/g, "## ["));
+    error.message = `git ${args[0]} failed (status ${error.status})`;
+    throw error;
+  }
 }
 
 const url = (side) => `https://github.com/${side.repo}.git`;
@@ -121,19 +130,44 @@ function draftTitle(pull) {
   return title;
 }
 
-function draftBody(pull, marker) {
+function draftBody(pull, marker, draft) {
   const text = neutralise(pull.body);
   const origin = `Imported from \`${CLIENT_REPO}#${pull.number}\`, opened by \`${pull.user.login}\`.`;
   const before = text ? `${origin}\n\n` : origin;
-  const after = `\n\nno-work-issue: imported from a client pull request\n\n${stateMarker(pull.number, marker)}`;
-  return withText(before, text, after);
+  const found = draft && statePattern(pull.number).exec(draft.body ?? "");
+  const kept = found
+    ? draft.body.slice(found.index + found[0].length)
+    : "\n\nno-work-issue: imported from a client pull request";
+  return withText(before, text, `\n\n${stateMarker(pull.number, marker)}${kept}`);
 }
 
 async function writeDraft(draft, pull, marker) {
   await request(monorepo, "PATCH", `pulls/${draft.number}`, {
     title: draftTitle(pull),
-    body: draftBody(pull, marker),
+    body: draftBody(pull, marker, draft),
   });
+}
+
+const assignees = (ASSIGNEES ?? "")
+  .split(",")
+  .map((login) => login.trim())
+  .filter(Boolean);
+
+// GitHub drops an assignee who can't see the repository without an error.
+async function assign(number) {
+  const issue = await request(monorepo, "POST", `issues/${number}/assignees`, { assignees });
+  const missing = assignees.filter((login) => !issue.assignees.some((assignee) => assignee.login === login));
+  if (missing.length) throw new Error(`#${number}: ${missing.join(", ")} could not be assigned`);
+}
+
+async function dismissApprovals(draft) {
+  for (const review of await list(monorepo, `pulls/${draft.number}/reviews`)) {
+    if (review.state !== "APPROVED") continue;
+    await request(monorepo, "PUT", `pulls/${draft.number}/reviews/${review.id}/dismissals`, {
+      message: "The client pushed commits after this approval; review the new head before merging.",
+      event: "DISMISS",
+    });
+  }
 }
 
 async function notice(side, number, key, text) {
@@ -174,7 +208,6 @@ function fetchClientRefs(pull) {
   expectAt(monorepo, "refs/n3o-source-sync/client-head", pull.head.ref, pull.head.sha);
 }
 
-// A pull request the client merged themselves is in their main, so it is measured from main as it was before the merge.
 const clientForkPoint = (pull) =>
   git(monorepo, [
     "merge-base",
@@ -221,8 +254,16 @@ function neutraliseMessages(side, base, { cwd, env } = {}) {
   git(side, ["reset", "-q", "--soft", parent], { cwd });
 }
 
-// -k on both ends keeps a subject such as "[WIP] header" whole; without it git am strips the brackets.
 function applyClientCommits(from, to) {
+  const raw = [
+    git(monorepo, ["log", "--raw", "--no-abbrev", "--format=", `${from}..${to}`]),
+    git(monorepo, ["diff", "--raw", "--no-abbrev", from, to]),
+  ].join("\n");
+  if (/^:\d{6} (?:120000|160000) /m.test(raw)) {
+    throw new Error(`${from.slice(0, 7)}..${to.slice(0, 7)} adds a symlink or submodule, which is not imported`);
+  }
+  if (git(monorepo, ["rev-list", "--merges", `${from}..${to}`])) return applyNetChange(from, to);
+  // -k on both format-patch and am keeps a bracketed prefix on each subject, which git otherwise strips.
   const patches = git(monorepo, ["format-patch", "-k", "--stdout", `${from}..${to}`], { raw: true });
 
   if (!patches.length) return true;
@@ -239,19 +280,42 @@ function applyClientCommits(from, to) {
   return true;
 }
 
-// A lease replaces the branch only while it is still at that commit; an empty lease means it must not exist yet.
+function applyNetChange(from, to) {
+  const diff = git(monorepo, ["diff", "--binary", "--full-index", from, to], { raw: true });
+
+  if (!diff.length) return true;
+  try {
+    git(monorepo, ["apply", "-3", "--index", `--directory=${subtree}`], { input: diff });
+  } catch (error) {
+    console.log(`::warning::git apply of ${from}..${to} failed: ${error.message}`);
+    git(monorepo, ["reset", "-q", "--hard"]);
+    return false;
+  }
+  if (!git(monorepo, ["diff", "--cached", "--name-only"])) return true;
+  const [name, email, date] = git(monorepo, ["log", "-1", "--format=%an%n%ae%n%aD", to]).split("\n");
+  git(monorepo, ["commit", "-q", "-m", `Changes from ${CLIENT_REPO} up to ${to}`], {
+    env: { GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date },
+  });
+  return true;
+}
+
+async function addsWorkflows(pull, from) {
+  if (!git(monorepo, ["diff", "--name-only", from, pull.head.sha, "--", ".github/workflows"])) return false;
+  await notice(
+    client,
+    pull.number,
+    `workflows-${pull.head.sha}`,
+    "Changes under `.github/workflows` can't be taken into the copy. Please remove them from this pull request.",
+  );
+  return true;
+}
+
+// An empty lease requires the branch not to exist yet; no lease pushes without force.
 function pushDraftBranch(number, lease) {
   const ref = `refs/heads/${prefix}${number}`;
   const force = lease === undefined ? [] : [`--force-with-lease=${ref}:${lease}`];
   git(monorepo, ["push", "-q", ...force, url(monorepo), `HEAD:${ref}`]);
   return git(monorepo, ["rev-parse", "HEAD"]);
-}
-
-// Without --config gitleaks reads the .gitleaks.toml of what it scans, here the monorepo root, not the subtree.
-let gitleaksConfig = join(subtree, ".gitleaks.toml");
-if (!existsSync(gitleaksConfig)) {
-  gitleaksConfig = join(mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-")), "gitleaks.toml");
-  writeFileSync(gitleaksConfig, "[extend]\nuseDefault = true\n");
 }
 
 function findsSecrets(command, args, input) {
@@ -279,14 +343,15 @@ function patchIds(side, args) {
     .sort();
 }
 
-// Returns the number of the draft now holding the client's commits (null when main already holds them), or false.
+// Resolves to { draft } for the draft now holding the client's commits, { draft: null } when main
+// already holds a self-merged change, or false.
 async function importPull(pull, draft) {
   fetchClientRefs(pull);
   const forkPoint = clientForkPoint(pull);
 
+  if (await addsWorkflows(pull, forkPoint)) return false;
   if (draft) {
-    // Changes outside the subtree never reach the client's branch, so a rebuild from it would drop them. A compare
-    // lists at most 300 files, so a full list may hide one.
+    // A compare lists at most 300 files, so a full list may hide one outside the subtree.
     const files = (await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`))?.files ?? [];
     if (files.length >= 300 || files.some((file) => !file.filename.startsWith(`${subtree}/`))) {
       return reportStuck(pull, draft, "rebuilding the draft from the client's branch would drop N3O's other changes");
@@ -314,10 +379,9 @@ async function importPull(pull, draft) {
       `empty-${pull.head.sha}`,
       `This change is already in \`${copyBranch}\`, so there is nothing to review.`,
     );
-    // Nothing is lost if a client's own merge of it leaves their main.
     return pull.merged_at ? { draft: null } : false;
   }
-  // A branch without a draft is left by a run whose draft creation failed after the push.
+  if (draft) await dismissApprovals(draft);
   const orphan = draft ? undefined : git(monorepo, ["ls-remote", url(monorepo), `refs/heads/${prefix}${pull.number}`]);
   const draftHead = pushDraftBranch(pull.number, draft?.head.sha ?? orphan.split("\t")[0]);
   const marker = { client: pull.head.sha, draft: draftHead };
@@ -335,6 +399,7 @@ async function importPull(pull, draft) {
     draft: true,
   });
   console.log(`${CLIENT_REPO}#${pull.number}: imported as draft #${created.number}`);
+  await assign(created.number);
   return { draft: created.number };
 }
 
@@ -342,6 +407,7 @@ async function applyClient(pull, draft, marker) {
   fetchClientRefs(pull);
   // A merge brings the client's copy commits into the range, so the draft is rebuilt from the fork point instead.
   if (git(monorepo, ["rev-list", "--merges", `${marker.client}..${pull.head.sha}`])) return importPull(pull, draft);
+  if (await addsWorkflows(pull, marker.client)) return false;
   fetchDraft(draft, 1);
   git(monorepo, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
 
@@ -349,6 +415,7 @@ async function applyClient(pull, draft, marker) {
     await reportStuck(pull, draft, "the client's new commits no longer apply to the draft");
     return false;
   }
+  await dismissApprovals(draft);
   const draftHead = pushDraftBranch(pull.number);
   await writeDraft(draft, pull, { client: pull.head.sha, draft: draftHead });
   console.log(`${CLIENT_REPO}#${pull.number}: applied the client's new commits to draft #${draft.number}`);
@@ -362,8 +429,12 @@ async function pushToClient(pull, draft, marker) {
     return reportStuck(pull, draft, "the draft has a merge commit, which can't be sent to the client's branch");
   }
   const range = `${marker.draft}..refs/n3o-source-sync/draft`;
+  const messages = git(monorepo, ["log", "--format=%B", range, "--", subtree]);
 
-  if (findsSecrets("git", ["--gitleaks-ignore-path", subtree, `--log-opts=${range} -- ${subtree}`, "."])) {
+  if (
+    findsSecrets("git", ["--gitleaks-ignore-path", subtree, `--log-opts=${range} -- ${subtree}`, "."]) ||
+    findsSecrets("stdin", ["--gitleaks-ignore-path", subtree], messages)
+  ) {
     await notice(
       monorepo,
       draft.number,
@@ -404,20 +475,17 @@ async function pushToClient(pull, draft, marker) {
   return true;
 }
 
-// A run that pushed one side but failed to record the new heads leaves both moved by the same changes.
 async function recordIfInStep(pull, draft, marker) {
   fetchClientRefs(pull);
   const since = { ...marker };
 
   if (!(await fetchDraftSince(draft, marker.draft))) {
-    // A rebuilt draft starts again from main, so each side is compared from where it left main.
     const comparison = await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`);
     if (!comparison?.ahead_by) return false;
     fetchDraft(draft, comparison.ahead_by + 1);
     since.client = clientForkPoint(pull);
     since.draft = comparison.merge_base_commit.sha;
   } else if (!(await isAncestor(client, marker.client, pull.head.sha))) {
-    // A rewritten client branch can't be in step, and this checkout never fetched its old head.
     return false;
   }
   const clientIds = patchIds(monorepo, [`${since.client}..refs/n3o-source-sync/client-head`]);
@@ -443,7 +511,6 @@ async function reportStuck(pull, draft, reason) {
   return false;
 }
 
-// GitHub offers the client "Update branch" once the copy holds the merge, which adds only a merge of main.
 async function onlyMergedMain(pull, marker) {
   if (!(await isAncestor(client, marker.client, pull.head.sha))) return false;
   fetchClientRefs(pull);
@@ -538,7 +605,6 @@ async function syncComments(pull, draft) {
     [ends[0], ends[1]],
     [ends[1], ends[0]],
   ]) {
-    // A deleted account's comments and reviews come with no user.
     const people = [...from.issue, ...from.lines, ...from.reviews].filter((item) => item.user && item.user.type !== "Bot");
     const writers = new Set();
     for (const login of new Set(people.map((item) => item.user.login))) {
@@ -664,8 +730,7 @@ async function syncPull(number) {
   }
   if (!draft) {
     const imported = await importPull(pull);
-    // Only a pull request the client merged themselves gets here closed.
-    if (imported && pull.state !== "open") selfMerges.ready.set(number, imported.draft);
+    if (imported && pull.merged_at) selfMerges.ready.set(number, imported.draft);
     return;
   }
   const marker = readMarker(draft, number);
@@ -709,20 +774,17 @@ async function syncCommits(pull, draft, marker) {
       ? await applyClient(pull, draft, marker)
       : await importPull(pull, draft);
   } else if (n3oMoved && !clientMoved) {
-    // A merged pull request's branch takes no more commits.
     if (!pull.merged_at) written = await pushToClient(pull, draft, marker);
   } else if (clientMoved && n3oMoved) {
     written =
       (await recordIfInStep(pull, draft, marker)) || (await reportStuck(pull, draft, "both sides have new commits"));
   }
-  if (!written && (draft.title !== draftTitle(pull) || draft.body !== draftBody(pull, marker))) {
+  if (!written && (draft.title !== draftTitle(pull) || draft.body !== draftBody(pull, marker, draft))) {
     await writeDraft(draft, pull, marker);
   }
   return !clientMoved || Boolean(written);
 }
 
-// The client merged this pull request themselves. Their main may build on the merge once the draft holds all of it,
-// and only comments cross after that, because their branch is merged.
 async function syncSelfMerged(pull, draft, marker) {
   if (draft.state === "open") {
     if (await syncCommits(pull, draft, marker)) selfMerges.ready.set(pull.number, draft.number);
@@ -733,16 +795,12 @@ async function syncSelfMerged(pull, draft, marker) {
   if (merged && (await isAncestor(monorepo, draft.merge_commit_sha, mainHead))) selfMerges.ready.set(pull.number, null);
 }
 
-// The client writes their commits' subjects and committers, so a copy's source must be a sha before it is trusted.
-const copySubject = new RegExp(`^${escapeRegExp(COPY_PREFIX)}([0-9a-f]{40})$`);
+const copySubject = new RegExp(COPY_PATTERN);
 const noSelfMerges = () => ({ commits: [], numbers: new Set(), forkPoints: new Map(), ready: new Map() });
 
-// A client who merges their own pull request leaves their main ending in commits the copy did not make. Each must have
-// come from a merged pull request, found by asking GitHub which one brought it in.
 async function findSelfMerges() {
   const found = noSelfMerges();
   const heads = git(client, ["ls-remote", url(client), `refs/heads/${copyBranch}`]);
-  // A client repository has no main until its first copy.
   if (!heads.split("\n").some((line) => line.endsWith(`\trefs/heads/${copyBranch}`))) return found;
   git(client, ["fetch", "-q", "--no-tags", url(client), `+refs/heads/${copyBranch}:refs/n3o-source-sync/client-main`]);
   found.head = git(monorepo, ["rev-parse", "refs/n3o-source-sync/client-main"]);
@@ -764,22 +822,21 @@ async function findSelfMerges() {
     commit.number = pulls.find((pull) => pull.merged_at && pull.base.ref === copyBranch)?.number;
     if (!commit.number) continue;
     found.numbers.add(commit.number);
-    // Newest first, so the last commit seen of a pull request's merge sits on main as it was before that merge.
+    // The log runs newest first, so the last write per pull request is its oldest commit's parent: main
+    // before the merge.
     found.forkPoints.set(commit.number, commit.parent);
   }
   return found;
 }
 
-// The copy builds on the client's main only when nothing there would be lost, and not from a checkout older than the
-// copy it builds on.
 async function adoptHead() {
   const missing = selfMerges.commits.filter((commit) => !selfMerges.ready.has(commit.number));
   if (missing.length) {
-    const shas = missing.map((commit) => commit.sha.slice(0, 7)).join(", ");
-    console.log(
-      `::warning::${CLIENT_REPO} ${copyBranch} has commits the copy did not make that no draft here holds (${shas}); it is left for N3O`,
-    );
-    return "";
+    const shas = missing
+      .slice(0, 5)
+      .map((commit) => commit.sha.slice(0, 7))
+      .join(", ");
+    throw new Error(`${missing.length} commits the copy did not make that no draft here holds (newest ${shas})`);
   }
   const comparison = await request(monorepo, "GET", `compare/${selfMerges.copied}...${mainHead}`);
 
@@ -803,7 +860,6 @@ const mainHead = git(monorepo, ["rev-parse", "HEAD"]);
 const mergeHeads = [];
 const failed = [];
 
-// Like a failed pull request, a failure on the client's main must not hold back the rest of the run.
 function mainFailed(error) {
   failed.push(copyBranch);
   console.log(`::error::${CLIENT_REPO} ${copyBranch}: ${error.message}`);

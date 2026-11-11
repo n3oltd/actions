@@ -15,6 +15,9 @@ inputs:
   branch-prefix:
     description: Prefix of the draft pull requests' branches; the client pull request's number is appended.
     required: true
+  assignees:
+    description: Comma-separated logins assigned to each draft.
+    required: true
   app-id:
     description: n3o-source-sync GitHub App id.
     required: true
@@ -37,6 +40,9 @@ runs:
         scan: false
 
     - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+      with:
+        name: ${{ steps.client.outputs.bot-name }}
+        email: ${{ steps.client.outputs.email }}
 
     - id: app
       uses: n3oltd/actions/.github/actions/n3o-app-token@main
@@ -53,17 +59,18 @@ runs:
         SUBTREE_PATH: ${{ inputs.subtree-path }}
         CLIENT_REPO: ${{ inputs.client-repo }}
         BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+        ASSIGNEES: ${{ inputs.assignees }}
         CLIENT_TOKEN: ${{ steps.app.outputs.token }}
         CLIENT_BOT_NAME: ${{ steps.client.outputs.bot-name }}
         CLIENT_BOT_EMAIL: ${{ steps.client.outputs.email }}
-        COPY_PREFIX: ${{ steps.client.outputs.copy-prefix }}
-        # Deliberately the workflow token: what it pushes starts no workflow, so the client's code reaches
-        # this repository's CI, and its secrets, only when someone at N3O pushes to the draft.
+        COPY_PATTERN: ${{ steps.client.outputs.copy-pattern }}
+        # This token's pushes start no workflow, so client code runs this repository's CI, with its
+        # secrets, only after someone at N3O pushes to the draft.
         MONOREPO_TOKEN: ${{ github.token }}
         GITLEAKS: ${{ steps.scan.outputs.gitleaks }}
+        SCAN_CONFIG: ${{ steps.scan.outputs.config }}
       run: node "$GITHUB_ACTION_PATH/sync.mjs"
 
-    # A pull request that failed must not hold back the ones merged in the same run.
     - if: ${{ !cancelled() && (steps.sync.outputs.merge-heads != '' || steps.sync.outputs.adopt-head != '') }}
       uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
       with:

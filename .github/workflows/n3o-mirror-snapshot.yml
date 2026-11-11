@@ -11,6 +11,11 @@ on:
         description: 'Client repo as owner/name (e.g. example-client/website)'
         required: true
         type: string
+      adopt-head:
+        description: 'A head of the client main this workflow did not make, read and accepted by N3O; the copy is committed on top of it'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -36,5 +41,6 @@ jobs:
         with:
           subtree-path: ${{ inputs.subtree-path }}
           target-repo: ${{ inputs.target-repo }}
+          adopt-head: ${{ inputs.adopt-head }}
           app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
           private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}

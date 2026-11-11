@@ -15,6 +15,15 @@ on:
         description: "Prefix of the draft pull requests' branches; the client pull request's number is appended (e.g. example/pr-)"
         required: true
         type: string
+      assignees:
+        description: 'Comma-separated logins assigned to each draft'
+        required: true
+        type: string
+    secrets:
+      N3O_SOURCE_SYNC_APP_ID:
+        required: true
+      N3O_SOURCE_SYNC_APP_PRIVATE_KEY:
+        required: true
 
 permissions:
   contents: write
@@ -22,9 +31,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  # The self-hosted runners serve private repositories only.
   sync:
-    runs-on: n3o-github-runner
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
     timeout-minutes: 15
     concurrency:
       group: n3o-source-sync-pulls-${{ inputs.client-repo }}
@@ -43,5 +51,6 @@ jobs:
           subtree-path: ${{ inputs.subtree-path }}
           client-repo: ${{ inputs.client-repo }}
           branch-prefix: ${{ inputs.branch-prefix }}
+          assignees: ${{ inputs.assignees }}
           app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
           private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}

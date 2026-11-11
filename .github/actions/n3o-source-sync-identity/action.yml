@@ -25,6 +25,9 @@ outputs:
   copy-prefix:
     description: The start of a copy commit's subject; the source commit's sha follows it.
     value: ${{ steps.check.outputs.copy-prefix }}
+  copy-pattern:
+    description: Matches a copy commit's whole subject, in bash and in JavaScript, and captures the source commit's sha.
+    value: ${{ steps.check.outputs.copy-pattern }}
 
 runs:
   using: "composite"
@@ -40,4 +43,6 @@ runs:
         fi
         echo "owner=${REPO%%/*}" >> "$GITHUB_OUTPUT"
         echo "name=${REPO#*/}" >> "$GITHUB_OUTPUT"
-        echo "copy-prefix=Sync from ${GITHUB_REPOSITORY}@" >> "$GITHUB_OUTPUT"
+        prefix="Sync from ${GITHUB_REPOSITORY}@"
+        echo "copy-prefix=$prefix" >> "$GITHUB_OUTPUT"
+        echo "copy-pattern=^${prefix//./\\.}([0-9a-f]{40})\$" >> "$GITHUB_OUTPUT"

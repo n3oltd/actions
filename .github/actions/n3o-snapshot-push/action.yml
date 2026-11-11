@@ -1,11 +1,11 @@
 name: n3o snapshot push
 description: >-
-  Pushes the checked-out tree of a subtree to main of another repository as one commit without
-  history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
-  main's head, so the push is never forced. main must not exist yet, or its head must be a commit
-  this action made; any other head is refused, unless it is adopt-head. A copy is never replaced from
-  a source commit older than the one it was made from. The subtree must not hold .github/workflows,
-  which the App cannot write.
+  Pushes the checked-out tree of a subtree to main of another repository as one commit that carries
+  none of this repository's history, as the n3o-source-sync App, after scanning the subtree for
+  secrets. The commit's first parent is main's head, so the push is never forced. main must not
+  exist yet, or its head must be a commit this action made or adopt-head; any other head is refused.
+  A copy is never replaced from a source commit older than the one it was made from. The subtree
+  must not hold .github/workflows, which the App cannot write.
 
 inputs:
   subtree-path:
@@ -76,6 +76,7 @@ runs:
         MERGE_HEADS: ${{ inputs.merge-heads }}
         ADOPT_HEAD: ${{ inputs.adopt-head }}
         COPY_PREFIX: ${{ steps.target.outputs.copy-prefix }}
+        COPY_PATTERN: ${{ steps.target.outputs.copy-pattern }}
         GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
@@ -83,6 +84,7 @@ runs:
         prefix=$COPY_PREFIX
         source=$(git rev-parse HEAD)
         tree=$(git rev-parse "HEAD:$SUBTREE_PATH")
+        # No --depth here: a shallow fetch of a merged head gets the push refused as a shallow update.
         for merged in $MERGE_HEADS; do
           git fetch --no-tags "$url" "$merged"
         done
@@ -97,11 +99,11 @@ runs:
             if [ "$head" = "$ADOPT_HEAD" ]; then
               echo "main is at $head, the client's own merges; committing the copy on top of it"
             else
-              copied=${subject#"$prefix"}
-              if [[ "$subject" != "$prefix"* || ! "$copied" =~ ^[0-9a-f]{40}$ ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
+              if [[ ! "$subject" =~ $COPY_PATTERN ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
                 echo "::error::$TARGET_REPO main is at $head, which this action did not make; refusing to push over it. main must not exist, or its head must be a commit this action made."
                 exit 1
               fi
+              copied=${BASH_REMATCH[1]}
               if [ "$copied" != "$source" ]; then
                 status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$copied...$source" --jq .status)
                 if [ "$status" = behind ]; then
@@ -124,8 +126,6 @@ runs:
           if git push "$url" "$commit:refs/heads/main"; then finished=true; fi
         }
 
-        # Two workflows write main: one rejected push means the other just did, so read main again. A third
-        # rejection in a row means something else is writing it.
         finished=false
         for attempt in 1 2 3; do
           copy
