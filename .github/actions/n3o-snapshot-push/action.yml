@@ -3,7 +3,8 @@ description: >-
   Pushes the checked-out tree of a subtree to main of another repository as one commit without
   history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
   main's head, so the push is never forced. main must not exist yet, or its head must be a commit
-  this action made; any other head is refused.
+  this action made; any other head is refused. The subtree must not hold .github/workflows, which the
+  App cannot write.
 
 inputs:
   subtree-path:
@@ -31,6 +32,9 @@ runs:
       run: |
         if [ ! -d "$SUBTREE_PATH" ]; then
           echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
+        fi
+        if [ -d "$SUBTREE_PATH/.github/workflows" ]; then
+          echo "::error::$SUBTREE_PATH/.github/workflows exists, and the n3o-source-sync App cannot write workflow files"; exit 1
         fi
         if [[ ! "$TARGET_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
           echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
