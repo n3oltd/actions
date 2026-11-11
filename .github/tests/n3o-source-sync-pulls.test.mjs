@@ -198,6 +198,26 @@ test("a draft whose assignee can't be assigned fails the run", async () => {
   assert.match(run.log, /nobody-here could not be assigned/);
 });
 
+test("an open draft missing a configured assignee is assigned on the next run", async () => {
+  clientBranch("feature", [["Change", { "file.txt": lines("six") }]]);
+  const pull = openClientPull("feature");
+  await sync();
+  const draft = draftOf(pull.number);
+  draft.assignees = [];
+  github.repos.get(monoRepo).assignable.add("second-reviewer");
+
+  const run = await sync({ ASSIGNEES: `${reviewer},second-reviewer` });
+  const assigning = () =>
+    github.requests.filter((request) => request.url.endsWith(`/issues/${draft.number}/assignees`));
+  const before = assigning().length;
+  const again = await sync({ ASSIGNEES: `${reviewer},second-reviewer` });
+
+  assert.equal(run.status, 0, run.log);
+  assert.equal(again.status, 0, again.log);
+  assert.deepEqual(draft.assignees, [{ login: reviewer }, { login: "second-reviewer" }]);
+  assert.equal(assigning().length, before);
+});
+
 test("the draft body keeps what N3O writes after the marker", async () => {
   clientBranch("feature", [["Change", { "file.txt": lines("six") }]]);
   const pull = openClientPull("feature", { title: "First title" });

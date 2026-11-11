@@ -153,6 +153,8 @@ const assignees = (ASSIGNEES ?? "")
   .map((login) => login.trim())
   .filter(Boolean);
 
+const unassigned = (draft) => assignees.some((login) => !draft.assignees?.some((assignee) => assignee.login === login));
+
 // GitHub drops an assignee who can't see the repository without an error.
 async function assign(number) {
   const issue = await request(monorepo, "POST", `issues/${number}/assignees`, { assignees });
@@ -733,6 +735,7 @@ async function syncPull(number) {
     if (imported && pull.merged_at) selfMerges.ready.set(number, imported.draft);
     return;
   }
+  if (draft.state === "open" && unassigned(draft)) await assign(draft.number);
   const marker = readMarker(draft, number);
 
   if (!marker) {
