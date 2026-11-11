@@ -4,17 +4,24 @@ description: >-
   three levels deep. It scans the files as they are, not git history, skips the paths gitleaks
   allowlists by default (such as node_modules, lock files and images), and redacts what it finds in
   the log. It reads .gitleaks.toml and .gitleaksignore only from that directory, and a .gitleaks.toml
-  must set useDefault = true under [extend].
+  must set useDefault = true under [extend]. On top of the default rules and that .gitleaks.toml, it
+  applies markup-rules.toml, which finds credentials in uSync and XML files.
 
 inputs:
   path:
     description: Directory to scan.
     required: true
 
+outputs:
+  config:
+    description: Path of the composed gitleaks config.
+    value: ${{ steps.config.outputs.config }}
+
 runs:
   using: "composite"
   steps:
     - name: check config
+      id: config
       shell: bash
       env:
         CONFIG: ${{ inputs.path }}/.gitleaks.toml
@@ -35,6 +42,13 @@ runs:
             sys.exit(1)
         EOF
         fi
+        composed="$(mktemp -d "$RUNNER_TEMP/n3o-secret-scan.XXXXXX")/gitleaks.toml"
+        {
+          if [ -f "$CONFIG" ]; then cat "$CONFIG"; else printf '[extend]\nuseDefault = true\n'; fi
+          echo
+          cat "$GITHUB_ACTION_PATH/markup-rules.toml"
+        } > "$composed"
+        echo "config=$composed" >> "$GITHUB_OUTPUT"
 
     - name: install gitleaks
       shell: bash
@@ -54,5 +68,6 @@ runs:
     - name: scan
       shell: bash
       env:
+        CONFIG: ${{ steps.config.outputs.config }}
         SCAN_PATH: ${{ inputs.path }}
-      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'
+      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 --config "$CONFIG" --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'

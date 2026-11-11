@@ -1,0 +1,12 @@
+[[rules]]
+id = "usync-credential-property"
+description = "uSync property whose alias names a credential, with its value in CDATA on the next line"
+regex = '''(?i)<[a-z0-9]*(?:key|token|secret|password|passcode)>\s*<Value><!\[CDATA\[([^\]\s]{16,})\]\]>'''
+secretGroup = 1
+keywords = ["cdata"]
+
+[[rules]]
+id = "sendgrid-api-token-markup"
+description = "SendGrid API key followed by XML markup"
+regex = '''\b(SG\.[A-Za-z0-9=_\-.]{66})[<\]]'''
+keywords = ["sg."]
