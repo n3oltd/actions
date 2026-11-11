@@ -3,8 +3,8 @@ description: >-
   Pushes the checked-out tree of a subtree to main of another repository as one commit without
   history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
   main's head, so the push is never forced. main must not exist yet, or its head must be a commit
-  this action made; any other head is refused, unless it is adopt-head. A copy of a newer source commit
-  is never replaced.
+  this action made; any other head is refused, unless it is adopt-head. A copy is never replaced from
+  a source commit older than the one it was made from.
 
 inputs:
   subtree-path:
@@ -70,11 +70,12 @@ runs:
         TARGET_REPO: ${{ inputs.target-repo }}
         MERGE_HEADS: ${{ inputs.merge-heads }}
         ADOPT_HEAD: ${{ inputs.adopt-head }}
+        COPY_PREFIX: ${{ steps.target.outputs.copy-prefix }}
         GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         url="https://github.com/${TARGET_REPO}.git"
-        prefix="Sync from ${GITHUB_REPOSITORY}@"
+        prefix=$COPY_PREFIX
         source=$(git rev-parse HEAD)
         tree=$(git rev-parse "HEAD:$SUBTREE_PATH")
         for merged in $MERGE_HEADS; do
@@ -91,11 +92,11 @@ runs:
             if [ "$head" = "$ADOPT_HEAD" ]; then
               echo "main is at $head, the client's own merges; committing the copy on top of it"
             else
-              if [[ "$subject" != "$prefix"* ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
+              copied=${subject#"$prefix"}
+              if [[ "$subject" != "$prefix"* || ! "$copied" =~ ^[0-9a-f]{40}$ ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
                 echo "::error::$TARGET_REPO main is at $head, which this action did not make; refusing to push over it. main must not exist, or its head must be a commit this action made."
                 exit 1
               fi
-              copied=${subject#"$prefix"}
               if [ "$copied" != "$source" ]; then
                 status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$copied...$source" --jq .status)
                 if [ "$status" = behind ]; then
@@ -124,7 +125,7 @@ runs:
         for attempt in 1 2 3; do
           copy
           if $finished; then exit 0; fi
-          echo "::warning::push to $TARGET_REPO main was rejected (attempt $attempt of 3); reading main again"
+          echo "::warning::push to $TARGET_REPO main failed (attempt $attempt of 3); reading main again"
         done
         echo "::error::could not push to $TARGET_REPO main after 3 attempts"
         exit 1

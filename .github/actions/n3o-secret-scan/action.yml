@@ -4,7 +4,8 @@ description: >-
   three levels deep. It scans the files as they are, not git history, skips the paths gitleaks
   allowlists by default (such as node_modules, lock files and images), and redacts what it finds in
   the log. It reads .gitleaks.toml and .gitleaksignore only from that directory, and a .gitleaks.toml
-  must set useDefault = true under [extend].
+  must set useDefault = true under [extend]. With scan set to false it only checks that
+  .gitleaks.toml and installs gitleaks, whose path it gives as the gitleaks output.
 
 inputs:
   path:
