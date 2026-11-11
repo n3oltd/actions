@@ -64,7 +64,8 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         owner: ${{ steps.target.outputs.owner }}
-        name: ${{ steps.target.outputs.name }}
+        repositories: ${{ steps.target.outputs.name }}
+        name: ${{ steps.target.outputs.bot-name }}
         email: ${{ steps.target.outputs.email }}
 
     - name: commit and push

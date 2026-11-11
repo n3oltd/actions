@@ -44,6 +44,7 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         owner: ${{ steps.client.outputs.owner }}
+        repositories: ${{ steps.client.outputs.name }}
 
     - name: sync pull requests
       id: sync
@@ -53,7 +54,7 @@ runs:
         CLIENT_REPO: ${{ inputs.client-repo }}
         BRANCH_PREFIX: ${{ inputs.branch-prefix }}
         CLIENT_TOKEN: ${{ steps.app.outputs.token }}
-        CLIENT_BOT_NAME: ${{ steps.client.outputs.name }}
+        CLIENT_BOT_NAME: ${{ steps.client.outputs.bot-name }}
         CLIENT_BOT_EMAIL: ${{ steps.client.outputs.email }}
         COPY_PREFIX: ${{ steps.client.outputs.copy-prefix }}
         # Deliberately the workflow token: what it pushes starts no workflow, so the client's code reaches

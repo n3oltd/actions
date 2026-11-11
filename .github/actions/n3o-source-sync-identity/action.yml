@@ -14,6 +14,9 @@ outputs:
     description: The repository's owner.
     value: ${{ steps.check.outputs.owner }}
   name:
+    description: The repository's name, without the owner, to limit the App's token to.
+    value: ${{ steps.check.outputs.name }}
+  bot-name:
     description: The App's GitHub login, which its commits also carry as their name.
     value: n3o-source-sync[bot]
   email:
@@ -36,4 +39,5 @@ runs:
           echo "::error::'$REPO' is not owner/name"; exit 1
         fi
         echo "owner=${REPO%%/*}" >> "$GITHUB_OUTPUT"
+        echo "name=${REPO#*/}" >> "$GITHUB_OUTPUT"
         echo "copy-prefix=Sync from ${GITHUB_REPOSITORY}@" >> "$GITHUB_OUTPUT"
