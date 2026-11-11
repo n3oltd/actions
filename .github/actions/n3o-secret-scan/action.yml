@@ -4,8 +4,10 @@ description: >-
   three levels deep. It scans the files as they are, not git history, skips the paths gitleaks
   allowlists by default (such as node_modules, lock files and images), and redacts what it finds in
   the log. It reads .gitleaks.toml and .gitleaksignore only from that directory, and a .gitleaks.toml
-  must set useDefault = true under [extend]. With scan set to false it only checks that
-  .gitleaks.toml and installs gitleaks, whose path it gives as the gitleaks output.
+  must set useDefault = true under [extend]. On top of the default rules and that .gitleaks.toml, it
+  applies markup-rules.toml, which finds credentials in uSync and XML files. With scan set to false
+  it only checks that .gitleaks.toml, composes the config and installs gitleaks, and gives their
+  paths as the config and gitleaks outputs.
 
 inputs:
   path:
@@ -19,6 +21,9 @@ inputs:
     default: "true"
 
 outputs:
+  config:
+    description: Path of the composed gitleaks config.
+    value: ${{ steps.config.outputs.config }}
   gitleaks:
     description: Path of the gitleaks binary this action installed, for a later step to scan with the same version.
     value: ${{ steps.install.outputs.gitleaks }}
@@ -27,6 +32,7 @@ runs:
   using: "composite"
   steps:
     - name: check config
+      id: config
       shell: bash
       env:
         CONFIG: ${{ inputs.path }}/.gitleaks.toml
@@ -47,6 +53,13 @@ runs:
             sys.exit(1)
         EOF
         fi
+        composed="$(mktemp -d "$RUNNER_TEMP/n3o-secret-scan.XXXXXX")/gitleaks.toml"
+        {
+          if [ -f "$CONFIG" ]; then cat "$CONFIG"; else printf '[extend]\nuseDefault = true\n'; fi
+          echo
+          cat "$GITHUB_ACTION_PATH/markup-rules.toml"
+        } > "$composed"
+        echo "config=$composed" >> "$GITHUB_OUTPUT"
 
     - name: install gitleaks
       id: install
@@ -69,6 +82,7 @@ runs:
       if: ${{ inputs.scan == 'true' }}
       shell: bash
       env:
+        CONFIG: ${{ steps.config.outputs.config }}
         GITLEAKS: ${{ steps.install.outputs.gitleaks }}
         SCAN_PATH: ${{ inputs.path }}
-      run: '"$GITLEAKS" dir --no-banner --redact --max-archive-depth 3 --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'
+      run: '"$GITLEAKS" dir --no-banner --redact --max-archive-depth 3 --config "$CONFIG" --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'

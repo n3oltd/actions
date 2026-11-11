@@ -4,7 +4,8 @@ description: >-
   history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
   main's head, so the push is never forced. main must not exist yet, or its head must be a commit
   this action made; any other head is refused, unless it is adopt-head. A copy is never replaced from
-  a source commit older than the one it was made from.
+  a source commit older than the one it was made from. The subtree must not hold .github/workflows,
+  which the App cannot write.
 
 inputs:
   subtree-path:
@@ -44,6 +45,9 @@ runs:
       run: |
         if [ ! -d "$SUBTREE_PATH" ]; then
           echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
+        fi
+        if [ -d "$SUBTREE_PATH/.github/workflows" ]; then
+          echo "::error::$SUBTREE_PATH/.github/workflows exists, and the n3o-source-sync App cannot write workflow files"; exit 1
         fi
 
     - id: target
