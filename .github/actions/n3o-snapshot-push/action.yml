@@ -36,6 +36,7 @@ runs:
           echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
         fi
         echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
+        echo "name=${TARGET_REPO#*/}" >> "$GITHUB_OUTPUT"
 
     - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
       with:
@@ -46,6 +47,7 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         owner: ${{ steps.target.outputs.owner }}
+        repositories: ${{ steps.target.outputs.name }}
         name: n3o-source-sync[bot]
         email: 354428725+n3o-source-sync[bot]@users.noreply.github.com
 

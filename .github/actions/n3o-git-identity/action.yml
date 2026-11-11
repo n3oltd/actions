@@ -18,6 +18,10 @@ inputs:
     description: Owner/org the minted token is scoped to.
     required: false
     default: n3oltd
+  repositories:
+    description: Repositories of that owner, without the owner, the token is limited to; empty for every repository the App is installed on.
+    required: false
+    default: ""
   name:
     description: git user.name to set.
     required: false
@@ -43,6 +47,7 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         owner: ${{ inputs.owner }}
+        repositories: ${{ inputs.repositories }}
 
     - name: configure git
       shell: bash
