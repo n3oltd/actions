@@ -1,0 +1,90 @@
+name: n3o snapshot push
+description: >-
+  Pushes the checked-out tree of a subtree to main of another repository as one commit without
+  history, as the n3o-source-sync App, after scanning the subtree for secrets. The commit's parent is
+  main's head, so the push is never forced. main must not exist yet, or its head must be a commit
+  this action made; any other head is refused. The subtree must not hold .github/workflows, which the
+  App cannot write.
+
+inputs:
+  subtree-path:
+    description: Path of the subtree to push (e.g. src/site-example).
+    required: true
+  target-repo:
+    description: Repository to push to, as owner/name (e.g. example-client/website).
+    required: true
+  app-id:
+    description: n3o-source-sync GitHub App id.
+    required: true
+  private-key:
+    description: n3o-source-sync GitHub App private key.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: check inputs
+      id: target
+      shell: bash
+      env:
+        SUBTREE_PATH: ${{ inputs.subtree-path }}
+        TARGET_REPO: ${{ inputs.target-repo }}
+      run: |
+        if [ ! -d "$SUBTREE_PATH" ]; then
+          echo "::error::subtree-path '$SUBTREE_PATH' does not exist"; exit 1
+        fi
+        if [ -d "$SUBTREE_PATH/.github/workflows" ]; then
+          echo "::error::$SUBTREE_PATH/.github/workflows exists, and the n3o-source-sync App cannot write workflow files"; exit 1
+        fi
+        if [[ ! "$TARGET_REPO" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
+          echo "::error::target-repo '$TARGET_REPO' is not owner/name"; exit 1
+        fi
+        echo "owner=${TARGET_REPO%%/*}" >> "$GITHUB_OUTPUT"
+        echo "name=${TARGET_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+    - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
+      with:
+        path: ${{ inputs.subtree-path }}
+
+    - uses: n3oltd/actions/.github/actions/n3o-git-identity@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ steps.target.outputs.owner }}
+        repositories: ${{ steps.target.outputs.name }}
+        name: n3o-source-sync[bot]
+        email: 354428725+n3o-source-sync[bot]@users.noreply.github.com
+
+    - name: commit and push
+      shell: bash
+      env:
+        SUBTREE_PATH: ${{ inputs.subtree-path }}
+        TARGET_REPO: ${{ inputs.target-repo }}
+      run: |
+        set -euo pipefail
+        url="https://github.com/${TARGET_REPO}.git"
+        prefix="Sync from ${GITHUB_REPOSITORY}@"
+        source=$(git rev-parse HEAD)
+        tree=$(git rev-parse "HEAD:$SUBTREE_PATH")
+        parents=()
+
+        refs=$(git ls-remote "$url" refs/heads/main)
+        if awk '$2 == "refs/heads/main" { found = 1 } END { exit !found }' <<< "$refs"; then
+          git fetch --no-tags --depth=1 "$url" refs/heads/main
+          head=$(git rev-parse FETCH_HEAD)
+          subject=$(git log -1 --format=%s "$head")
+          if [[ "$subject" != "$prefix"* ]] || [ "$(git log -1 --format=%ce "$head")" != "$(git config user.email)" ]; then
+            echo "::error::$TARGET_REPO main is at $head, which this action did not make; refusing to push over it. main must not exist, or its head must be a commit this action made."
+            exit 1
+          fi
+          if [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
+            echo "main already matches $SUBTREE_PATH"; exit 0
+          fi
+          parents=(-p "$head")
+        else
+          echo "main does not exist yet; creating it"
+        fi
+
+        commit=$(git commit-tree "$tree" "${parents[@]}" -m "${prefix}${source}")
+        echo "Pushing $SUBTREE_PATH ($commit) -> $TARGET_REPO (main)"
+        git push "$url" "$commit:refs/heads/main"

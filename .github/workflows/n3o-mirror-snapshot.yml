@@ -1,0 +1,40 @@
+name: n3o mirror snapshot
+
+on:
+  workflow_call:
+    inputs:
+      subtree-path:
+        description: 'Monorepo path of the subtree to mirror (e.g. src/site-example)'
+        required: true
+        type: string
+      target-repo:
+        description: 'Client repo as owner/name (e.g. example-client/website)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  pick:
+    uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
+
+  mirror:
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.runs-on }}
+    timeout-minutes: 15
+    concurrency:
+      group: n3o-mirror-snapshot-${{ inputs.target-repo }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
+        with:
+          subtree-path: ${{ inputs.subtree-path }}
+          target-repo: ${{ inputs.target-repo }}
+          app-id: ${{ secrets.N3O_SOURCE_SYNC_APP_ID }}
+          private-key: ${{ secrets.N3O_SOURCE_SYNC_APP_PRIVATE_KEY }}

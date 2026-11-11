@@ -1,0 +1,73 @@
+name: n3o secret scan
+description: >-
+  Fails when gitleaks finds a secret in the files under a directory, including inside archives up to
+  three levels deep. It scans the files as they are, not git history, skips the paths gitleaks
+  allowlists by default (such as node_modules, lock files and images), and redacts what it finds in
+  the log. It reads .gitleaks.toml and .gitleaksignore only from that directory, and a .gitleaks.toml
+  must set useDefault = true under [extend]. On top of the default rules and that .gitleaks.toml, it
+  applies markup-rules.toml, which finds credentials in uSync and XML files.
+
+inputs:
+  path:
+    description: Directory to scan.
+    required: true
+
+outputs:
+  config:
+    description: Path of the composed gitleaks config.
+    value: ${{ steps.config.outputs.config }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: check config
+      id: config
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.path }}/.gitleaks.toml
+      run: |
+        set -euo pipefail
+        if [ -f "$CONFIG" ]; then
+          python3 - "$CONFIG" <<'EOF'
+        import sys, tomllib
+        path = sys.argv[1]
+        try:
+            with open(path, "rb") as f:
+                extend = tomllib.load(f).get("extend", {})
+        except tomllib.TOMLDecodeError as error:
+            print(f"::error file={path}::.gitleaks.toml is not valid TOML: {error}")
+            sys.exit(1)
+        if not isinstance(extend, dict) or extend.get("useDefault") is not True:
+            print(f"::error file={path}::.gitleaks.toml must set useDefault = true under [extend], or its rules replace the default rules instead of adding to them")
+            sys.exit(1)
+        EOF
+        fi
+        composed="$(mktemp -d "$RUNNER_TEMP/n3o-secret-scan.XXXXXX")/gitleaks.toml"
+        {
+          if [ -f "$CONFIG" ]; then cat "$CONFIG"; else printf '[extend]\nuseDefault = true\n'; fi
+          echo
+          cat "$GITHUB_ACTION_PATH/markup-rules.toml"
+        } > "$composed"
+        echo "config=$composed" >> "$GITHUB_OUTPUT"
+
+    - name: install gitleaks
+      shell: bash
+      env:
+        # Renovate updates these two lines together, so they stay adjacent and in this order.
+        GITLEAKS_VERSION: v8.30.1
+        GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+      run: |
+        set -euo pipefail
+        dir="$RUNNER_TEMP/gitleaks"
+        archive="gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz"
+        mkdir -p "$dir"
+        curl -fsSL -o "$dir/$archive" "https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/${archive}"
+        echo "$GITLEAKS_SHA256  $dir/$archive" | sha256sum -c -
+        tar -xzf "$dir/$archive" -C "$dir" gitleaks
+
+    - name: scan
+      shell: bash
+      env:
+        CONFIG: ${{ steps.config.outputs.config }}
+        SCAN_PATH: ${{ inputs.path }}
+      run: '"$RUNNER_TEMP/gitleaks/gitleaks" dir --no-banner --redact --max-archive-depth 3 --config "$CONFIG" --gitleaks-ignore-path "$SCAN_PATH" "$SCAN_PATH"'

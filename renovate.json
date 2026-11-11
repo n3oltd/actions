@@ -232,6 +232,18 @@
       "depNameTemplate": "resourcespace",
       "datasourceTemplate": "custom.resourcespace",
       "versioningTemplate": "docker"
+    },
+    {
+      "description": "The secret scan pins the gitleaks release tag and its archive's SHA-256 in step env, which no packaged manager reads. The datasource finds the new release's digest by tag, so the pin keeps the tag's v prefix.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        ".github/actions/n3o-secret-scan/action.yml"
+      ],
+      "matchStrings": [
+        "GITLEAKS_VERSION: (?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s+GITLEAKS_SHA256: (?<currentDigest>[0-9a-f]{64})"
+      ],
+      "depNameTemplate": "gitleaks/gitleaks",
+      "datasourceTemplate": "github-release-attachments"
     }
   ]
 }
