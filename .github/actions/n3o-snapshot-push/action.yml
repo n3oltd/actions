@@ -47,11 +47,11 @@ runs:
         fi
 
     - id: target
-      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@source-sync-pulls
+      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@main
       with:
         repo: ${{ inputs.target-repo }}
 
-    - uses: n3oltd/actions/.github/actions/n3o-secret-scan@source-sync-pulls
+    - uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
       with:
         path: ${{ inputs.subtree-path }}
 

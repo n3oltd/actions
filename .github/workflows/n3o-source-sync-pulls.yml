@@ -32,13 +32,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: afh-source-sync
+          ref: main
           fetch-depth: 1
           filter: blob:none
           sparse-checkout: ${{ inputs.subtree-path }}
           persist-credentials: false
 
-      - uses: n3oltd/actions/.github/actions/n3o-source-sync-pulls@source-sync-pulls
+      - uses: n3oltd/actions/.github/actions/n3o-source-sync-pulls@main
         with:
           subtree-path: ${{ inputs.subtree-path }}
           client-repo: ${{ inputs.client-repo }}
