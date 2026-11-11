@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, mkdtempSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 const {
   SUBTREE_PATH: subtree,
@@ -162,9 +162,9 @@ async function assign(number) {
   if (missing.length) throw new Error(`#${number}: ${missing.join(", ")} could not be assigned`);
 }
 
-async function dismissApprovals(draft) {
+async function dismissApprovals(draft, head) {
   for (const review of await list(monorepo, `pulls/${draft.number}/reviews`)) {
-    if (review.state !== "APPROVED") continue;
+    if (review.state !== "APPROVED" || review.commit_id === head) continue;
     await request(monorepo, "PUT", `pulls/${draft.number}/reviews/${review.id}/dismissals`, {
       message: "The client pushed commits after this approval; review the new head before merging.",
       event: "DISMISS",
@@ -301,13 +301,14 @@ function applyNetChange(from, to) {
   return true;
 }
 
-async function addsWorkflows(pull, from) {
-  if (!git(monorepo, ["diff", "--name-only", from, pull.head.sha, "--", ".github/workflows"])) return false;
+async function changesGuardedFiles(pull, from) {
+  const guarded = [".github/workflows", ".gitleaks.toml", ".gitleaksignore"];
+  if (!git(monorepo, ["diff", "--name-only", from, pull.head.sha, "--", ...guarded])) return false;
   await notice(
     client,
     pull.number,
     `workflows-${pull.head.sha}`,
-    "Changes under `.github/workflows` can't be taken into the copy. Please remove them from this pull request.",
+    "Changes under `.github/workflows`, or to `.gitleaks.toml` or `.gitleaksignore`, can't be taken into the copy. Please remove them from this pull request.",
   );
   return true;
 }
@@ -334,6 +335,32 @@ function findsSecrets(command, args, input) {
   }
 }
 
+function commitFilesHaveSecrets(range) {
+  for (const commit of git(monorepo, ["rev-list", "--reverse", range, "--", subtree]).split("\n").filter(Boolean)) {
+    const files = git(monorepo, [
+      "diff-tree",
+      "-r",
+      "-z",
+      "--no-commit-id",
+      "--name-only",
+      "--diff-filter=d",
+      commit,
+      "--",
+      subtree,
+    ])
+      .split("\0")
+      .filter(Boolean);
+    const dir = mkdtempSync(join(RUNNER_TEMP, "n3o-source-sync-scan-"));
+    for (const file of files) {
+      mkdirSync(dirname(join(dir, file)), { recursive: true });
+      writeFileSync(join(dir, file), git(monorepo, ["cat-file", "blob", `${commit}:${file}`], { raw: true }));
+    }
+    const args = ["--max-archive-depth", "3", "--gitleaks-ignore-path", subtree, join(dir, subtree)];
+    if (files.length && findsSecrets("dir", args)) return true;
+  }
+  return false;
+}
+
 function patchIds(side, args) {
   const log = git(side, ["log", "-p", "--no-merges", "--no-color", ...args], { raw: true });
 
@@ -351,7 +378,7 @@ async function importPull(pull, draft) {
   fetchClientRefs(pull);
   const forkPoint = clientForkPoint(pull);
 
-  if (await addsWorkflows(pull, forkPoint)) return false;
+  if (await changesGuardedFiles(pull, forkPoint)) return false;
   if (draft) {
     // A compare lists at most 300 files, so a full list may hide one outside the subtree.
     const files = (await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`))?.files ?? [];
@@ -383,12 +410,13 @@ async function importPull(pull, draft) {
     );
     return pull.merged_at ? { draft: null } : false;
   }
-  if (draft) await dismissApprovals(draft);
+  if (draft) await dismissApprovals(draft, git(monorepo, ["rev-parse", "HEAD"]));
   const orphan = draft ? undefined : git(monorepo, ["ls-remote", url(monorepo), `refs/heads/${prefix}${pull.number}`]);
   const draftHead = pushDraftBranch(pull.number, draft?.head.sha ?? orphan.split("\t")[0]);
   const marker = { client: pull.head.sha, draft: draftHead };
 
   if (draft) {
+    await dismissApprovals(draft, draftHead);
     await writeDraft(draft, pull, marker);
     console.log(`${CLIENT_REPO}#${pull.number}: rebuilt draft #${draft.number}`);
     return { draft: draft.number };
@@ -409,7 +437,7 @@ async function applyClient(pull, draft, marker) {
   fetchClientRefs(pull);
   // A merge brings the client's copy commits into the range, so the draft is rebuilt from the fork point instead.
   if (git(monorepo, ["rev-list", "--merges", `${marker.client}..${pull.head.sha}`])) return importPull(pull, draft);
-  if (await addsWorkflows(pull, marker.client)) return false;
+  if (await changesGuardedFiles(pull, marker.client)) return false;
   fetchDraft(draft, 1);
   git(monorepo, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
 
@@ -417,8 +445,9 @@ async function applyClient(pull, draft, marker) {
     await reportStuck(pull, draft, "the client's new commits no longer apply to the draft");
     return false;
   }
-  await dismissApprovals(draft);
+  await dismissApprovals(draft, git(monorepo, ["rev-parse", "HEAD"]));
   const draftHead = pushDraftBranch(pull.number);
+  await dismissApprovals(draft, draftHead);
   await writeDraft(draft, pull, { client: pull.head.sha, draft: draftHead });
   console.log(`${CLIENT_REPO}#${pull.number}: applied the client's new commits to draft #${draft.number}`);
   return true;
@@ -435,7 +464,8 @@ async function pushToClient(pull, draft, marker) {
 
   if (
     findsSecrets("git", ["--gitleaks-ignore-path", subtree, `--log-opts=${range} -- ${subtree}`, "."]) ||
-    findsSecrets("stdin", ["--gitleaks-ignore-path", subtree], messages)
+    findsSecrets("stdin", ["--gitleaks-ignore-path", subtree], messages) ||
+    commitFilesHaveSecrets(range)
   ) {
     await notice(
       monorepo,
