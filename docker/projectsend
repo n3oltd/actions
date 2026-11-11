@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM projectsend/projectsend:2.8.0@sha256:ea8629115fc7e0eefd05ed8262843e5cdc2bd5706614159e8d56f7a8d6cba8d7 AS base
+FROM projectsend/projectsend:2.8.1@sha256:2fca4ae3593971b5390e22e62c8ac7ab3e98a6782476162d263190b46b11c9c3 AS base
 
 ########################
 ### final
