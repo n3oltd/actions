@@ -26,12 +26,12 @@ runs:
   using: "composite"
   steps:
     - id: client
-      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@main
+      uses: n3oltd/actions/.github/actions/n3o-source-sync-identity@source-sync-pulls
       with:
         repo: ${{ inputs.client-repo }}
 
     - id: scan
-      uses: n3oltd/actions/.github/actions/n3o-secret-scan@main
+      uses: n3oltd/actions/.github/actions/n3o-secret-scan@source-sync-pulls
       with:
         path: ${{ inputs.subtree-path }}
         scan: false
@@ -63,7 +63,7 @@ runs:
 
     # A pull request that failed must not hold back the ones merged in the same run.
     - if: ${{ !cancelled() && (steps.sync.outputs.merge-heads != '' || steps.sync.outputs.adopt-head != '') }}
-      uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
+      uses: n3oltd/actions/.github/actions/n3o-snapshot-push@source-sync-pulls
       with:
         subtree-path: ${{ inputs.subtree-path }}
         target-repo: ${{ inputs.client-repo }}
