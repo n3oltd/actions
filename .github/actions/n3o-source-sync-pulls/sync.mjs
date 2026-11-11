@@ -148,19 +148,26 @@ function expectAt(side, ref, branch, sha, cwd) {
 }
 
 function fetchClientRefs(pull) {
+  // GitHub may delete a merged pull request's branch, but keeps its head.
+  const head = pull.merged_at ? `refs/pull/${pull.number}/head` : `refs/heads/${pull.head.ref}`;
   git(client, [
     "fetch",
     "-q",
     "--no-tags",
     url(client),
     `+refs/heads/${copyBranch}:refs/n3o-source-sync/client-base`,
-    `+refs/heads/${pull.head.ref}:refs/n3o-source-sync/client-head`,
+    `+${head}:refs/n3o-source-sync/client-head`,
   ]);
   expectAt(monorepo, "refs/n3o-source-sync/client-head", pull.head.ref, pull.head.sha);
 }
 
-const clientForkPoint = () =>
-  git(monorepo, ["merge-base", "refs/n3o-source-sync/client-base", "refs/n3o-source-sync/client-head"]);
+// A pull request the client merged themselves is in their main, so it is measured from the copy before the merge.
+const clientForkPoint = (pull) =>
+  git(monorepo, [
+    "merge-base",
+    pull.merged_at ? selfMerges.lastCopy : "refs/n3o-source-sync/client-base",
+    "refs/n3o-source-sync/client-head",
+  ]);
 
 function fetchDraft(draft, depth) {
   git(monorepo, [
@@ -261,7 +268,7 @@ function patchIds(side, args) {
 
 async function importPull(pull, draft) {
   fetchClientRefs(pull);
-  const forkPoint = clientForkPoint();
+  const forkPoint = clientForkPoint(pull);
 
   if (draft) {
     // Changes outside the subtree never reach the client's branch, so a rebuild from it would drop them. A compare
@@ -274,6 +281,10 @@ async function importPull(pull, draft) {
   git(monorepo, ["checkout", "-q", "--force", "--detach", mainHead]);
 
   if (!applyClientCommits(forkPoint, pull.head.sha)) {
+    if (pull.merged_at) {
+      console.log(`::warning::${CLIENT_REPO}#${pull.number}, merged by the client, no longer applies to ${copyBranch}`);
+      return false;
+    }
     await notice(
       client,
       pull.number,
@@ -289,7 +300,8 @@ async function importPull(pull, draft) {
       `empty-${pull.head.sha}`,
       `This change is already in \`${copyBranch}\`, so there is nothing to review.`,
     );
-    return false;
+    // Nothing is lost if a client's own merge of it leaves their main.
+    return Boolean(pull.merged_at);
   }
   // A branch without a draft is left by a run whose draft creation failed after the push.
   const orphan = draft ? undefined : git(monorepo, ["ls-remote", url(monorepo), `refs/heads/${prefix}${pull.number}`]);
@@ -385,7 +397,7 @@ async function recordIfInStep(pull, draft, marker) {
     const comparison = await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`);
     if (!comparison?.ahead_by) return false;
     fetchDraft(draft, comparison.ahead_by + 1);
-    since.client = clientForkPoint();
+    since.client = clientForkPoint(pull);
     since.draft = comparison.merge_base_commit.sha;
   }
   const clientIds = patchIds(monorepo, [`${since.client}..refs/n3o-source-sync/client-head`]);
@@ -629,7 +641,9 @@ async function syncPull(number) {
     return;
   }
   if (!draft) {
+    // Only a pull request the client merged themselves gets here closed.
     if (pull.state === "open") await importPull(pull);
+    else if (await importPull(pull)) selfMerges.ready.set(number, (await findDraft(number))?.number ?? null);
     return;
   }
   const marker = readMarker(draft, number);
@@ -646,14 +660,9 @@ async function syncPull(number) {
   }
   if (pull.state === "open" || draft.state === "open") await syncComments(pull, draft);
 
+  if (pull.merged_at) return syncSelfMerged(pull, draft, marker);
   if (pull.state === "closed") {
     if (draft.state !== "open") return;
-    if (pull.merged_at) {
-      console.log(
-        `::warning::${CLIENT_REPO}#${number} was merged in the client repository; draft #${draft.number} is left for N3O`,
-      );
-      return;
-    }
     await notice(
       monorepo,
       draft.number,
@@ -664,7 +673,11 @@ async function syncPull(number) {
     return;
   }
   if (draft.state === "closed") return handleClosedDraft(pull, draft, marker);
+  await syncCommits(pull, draft, marker);
+}
 
+// Returns whether the draft now holds all of the client's commits.
+async function syncCommits(pull, draft, marker) {
   const clientMoved = pull.head.sha !== marker.client;
   const n3oMoved = draft.head.sha !== marker.draft;
   let written = false;
@@ -673,7 +686,8 @@ async function syncPull(number) {
       ? await applyClient(pull, draft, marker)
       : await importPull(pull, draft);
   } else if (n3oMoved && !clientMoved) {
-    written = await pushToClient(pull, draft, marker);
+    // A merged pull request's branch takes no more commits.
+    if (!pull.merged_at) written = await pushToClient(pull, draft, marker);
   } else if (clientMoved && n3oMoved) {
     written =
       (await recordIfInStep(pull, draft, marker)) || (await reportStuck(pull, draft, "both sides have new commits"));
@@ -681,11 +695,82 @@ async function syncPull(number) {
   if (!written && (draft.title !== neutralise(pull.title) || draft.body !== draftBody(pull, marker))) {
     await writeDraft(draft, pull, marker);
   }
+  return !clientMoved || written;
+}
+
+// The client merged this pull request themselves. Their main may build on the merge once the draft holds all of it,
+// and only comments cross after that, because their branch is merged.
+async function syncSelfMerged(pull, draft, marker) {
+  if (draft.state === "open") {
+    if (await syncCommits(pull, draft, marker)) selfMerges.ready.set(pull.number, draft.number);
+    return;
+  }
+  // A draft N3O merged is already in main; one it closed without merging is left for N3O.
+  const merged = draft.merged_at && pull.head.sha === marker.client;
+  if (merged && (await isAncestor(monorepo, draft.merge_commit_sha, mainHead))) selfMerges.ready.set(pull.number, null);
+}
+
+const copyPrefix = `Sync from ${GITHUB_REPOSITORY}@`;
+
+// A client who merges their own pull request leaves their main ending in commits the copy did not make. Each must have
+// come from a merged pull request, found by asking GitHub which one brought it in.
+async function findSelfMerges() {
+  const found = { commits: [], numbers: new Set(), ready: new Map() };
+  const heads = git(client, ["ls-remote", url(client), `refs/heads/${copyBranch}`]);
+  // A client repository has no main until its first copy.
+  if (!heads.split("\n").some((line) => line.endsWith(`\trefs/heads/${copyBranch}`))) return found;
+  git(client, ["fetch", "-q", "--no-tags", url(client), `+refs/heads/${copyBranch}:refs/n3o-source-sync/client-main`]);
+  found.head = git(monorepo, ["rev-parse", "refs/n3o-source-sync/client-main"]);
+  const log = git(monorepo, ["log", "--first-parent", "--format=%H%x09%ce%x09%s", "refs/n3o-source-sync/client-main"]);
+
+  for (const line of log.split("\n")) {
+    const [sha, email, ...subject] = line.split("\t");
+    if (email === CLIENT_BOT_EMAIL && subject.join("\t").startsWith(copyPrefix)) {
+      found.lastCopy = sha;
+      found.copied = subject.join("\t").slice(copyPrefix.length);
+      break;
+    }
+    found.commits.push({ sha });
+  }
+  if (!found.lastCopy) return found;
+  for (const commit of found.commits) {
+    const pulls = (await request(client, "GET", `commits/${commit.sha}/pulls`)) ?? [];
+    commit.number = pulls.find((pull) => pull.merged_at && pull.base.ref === copyBranch)?.number;
+    if (commit.number) found.numbers.add(commit.number);
+  }
+  return found;
+}
+
+// The copy builds on the client's main only when nothing there would be lost, and not from a checkout older than the
+// copy it builds on.
+async function adoptHead() {
+  const missing = selfMerges.commits.filter((commit) => !selfMerges.ready.has(commit.number));
+  if (missing.length) {
+    const shas = missing.map((commit) => commit.sha.slice(0, 7)).join(", ");
+    console.log(
+      `::warning::${CLIENT_REPO} ${copyBranch} has commits the copy did not make that no draft here holds (${shas}); it is left for N3O`,
+    );
+    return "";
+  }
+  if (!(await isAncestor(monorepo, selfMerges.copied, mainHead))) {
+    console.log(`${CLIENT_REPO} ${copyBranch} was copied from a newer commit than this run's checkout; next run`);
+    return "";
+  }
+  const goesBack = `This pull request was merged here, but changes reach \`${copyBranch}\` only through N3O, so \`${copyBranch}\` goes back to N3O's copy.`;
+  for (const number of selfMerges.numbers) {
+    const draftNumber = selfMerges.ready.get(number);
+    const text = draftNumber
+      ? `${goesBack} N3O is reviewing the change as \`${monorepo.repo}#${draftNumber}\`, and it comes back only if N3O merges it, although this pull request still shows as merged.`
+      : `${goesBack} N3O's copy already holds this change.`;
+    await notice(client, number, "self-merged", text);
+  }
+  return selfMerges.head;
 }
 
 const mainHead = git(monorepo, ["rev-parse", "HEAD"]);
 const mergeHeads = [];
 const failed = [];
+const selfMerges = await findSelfMerges();
 const openPulls = await list(client, "pulls?state=open");
 const openDrafts = (await list(monorepo, "pulls?state=open")).filter(
   (pull) =>
@@ -695,6 +780,7 @@ const numbers = [
   ...new Set([
     ...openPulls.map((pull) => pull.number),
     ...openDrafts.map((pull) => Number(pull.head.ref.slice(prefix.length))),
+    ...selfMerges.numbers,
   ]),
 ].sort((a, b) => a - b);
 
@@ -709,5 +795,6 @@ for (const number of numbers) {
   }
 }
 
-appendFileSync(GITHUB_OUTPUT, `merge-heads=${mergeHeads.join(" ")}\n`);
+const adopt = selfMerges.commits.length ? await adoptHead() : "";
+appendFileSync(GITHUB_OUTPUT, `merge-heads=${mergeHeads.join(" ")}\nadopt-head=${adopt}\n`);
 if (failed.length) process.exit(1);

@@ -62,7 +62,7 @@ runs:
       run: node "$GITHUB_ACTION_PATH/sync.mjs"
 
     # A pull request that failed must not hold back the ones merged in the same run.
-    - if: ${{ !cancelled() && steps.sync.outputs.merge-heads != '' }}
+    - if: ${{ !cancelled() && (steps.sync.outputs.merge-heads != '' || steps.sync.outputs.adopt-head != '') }}
       uses: n3oltd/actions/.github/actions/n3o-snapshot-push@main
       with:
         subtree-path: ${{ inputs.subtree-path }}
@@ -70,3 +70,4 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         merge-heads: ${{ steps.sync.outputs.merge-heads }}
+        adopt-head: ${{ steps.sync.outputs.adopt-head }}
