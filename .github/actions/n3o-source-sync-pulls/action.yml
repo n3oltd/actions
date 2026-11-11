@@ -64,8 +64,8 @@ runs:
         CLIENT_BOT_NAME: ${{ steps.client.outputs.bot-name }}
         CLIENT_BOT_EMAIL: ${{ steps.client.outputs.email }}
         COPY_PATTERN: ${{ steps.client.outputs.copy-pattern }}
-        # This token's pushes start no workflow, so client code runs this repository's CI, with its
-        # secrets, only after someone at N3O pushes to the draft.
+        # This token's pushes start no workflow, so a draft's checks run the client's code only after
+        # someone at N3O pushes to it.
         MONOREPO_TOKEN: ${{ github.token }}
         GITLEAKS: ${{ steps.scan.outputs.gitleaks }}
         SCAN_CONFIG: ${{ steps.scan.outputs.config }}
