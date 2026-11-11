@@ -256,12 +256,16 @@ function neutraliseMessages(side, base, { cwd, env } = {}) {
   git(side, ["reset", "-q", "--soft", parent], { cwd });
 }
 
-function applyClientCommits(from, to) {
+function hasLinks(from, to) {
   const raw = [
     git(monorepo, ["log", "--raw", "--no-abbrev", "--format=", `${from}..${to}`]),
     git(monorepo, ["diff", "--raw", "--no-abbrev", from, to]),
   ].join("\n");
-  if (/^:\d{6} (?:120000|160000) /m.test(raw)) {
+  return /^:\d{6} (?:120000|160000) /m.test(raw);
+}
+
+function applyClientCommits(from, to) {
+  if (hasLinks(from, to)) {
     throw new Error(`${from.slice(0, 7)}..${to.slice(0, 7)} adds a symlink or submodule, which is not imported`);
   }
   if (git(monorepo, ["rev-list", "--merges", `${from}..${to}`])) return applyNetChange(from, to);
@@ -309,6 +313,17 @@ async function changesGuardedFiles(pull, from) {
     pull.number,
     `workflows-${pull.head.sha}`,
     "Changes under `.github/workflows`, or to `.gitleaks.toml` or `.gitleaksignore`, can't be taken into the copy. Please remove them from this pull request.",
+  );
+  return true;
+}
+
+async function addsLinks(pull, from) {
+  if (!hasLinks(from, pull.head.sha)) return false;
+  await notice(
+    client,
+    pull.number,
+    `links-${pull.head.sha}`,
+    "Symbolic links and submodules can't be taken into the copy. Please remove them from every commit of this pull request, for example by squashing it, and push again.",
   );
   return true;
 }
@@ -379,6 +394,9 @@ async function importPull(pull, draft) {
   const forkPoint = clientForkPoint(pull);
 
   if (await changesGuardedFiles(pull, forkPoint)) return false;
+  if (await addsLinks(pull, forkPoint)) {
+    throw new Error(`${CLIENT_REPO}#${pull.number} adds a symlink or submodule, which is not imported`);
+  }
   if (draft) {
     // A compare lists at most 300 files, so a full list may hide one outside the subtree.
     const files = (await request(monorepo, "GET", `compare/${mainHead}...${draft.head.sha}`))?.files ?? [];
@@ -391,6 +409,12 @@ async function importPull(pull, draft) {
   if (!applyClientCommits(forkPoint, pull.head.sha)) {
     if (pull.merged_at) {
       console.log(`::warning::${CLIENT_REPO}#${pull.number}, merged by the client, no longer applies to ${copyBranch}`);
+      await notice(
+        client,
+        pull.number,
+        "self-merged-stale",
+        `This pull request was merged here, but changes reach \`${copyBranch}\` only through N3O, and this one no longer applies to N3O's copy, so N3O can't review it. \`${copyBranch}\` goes back to N3O's copy once someone at N3O has read it; please raise the change again from the latest \`${copyBranch}\`.`,
+      );
       return false;
     }
     await notice(
@@ -438,6 +462,9 @@ async function applyClient(pull, draft, marker) {
   // A merge brings the client's copy commits into the range, so the draft is rebuilt from the fork point instead.
   if (git(monorepo, ["rev-list", "--merges", `${marker.client}..${pull.head.sha}`])) return importPull(pull, draft);
   if (await changesGuardedFiles(pull, marker.client)) return false;
+  if (await addsLinks(pull, marker.client)) {
+    throw new Error(`${CLIENT_REPO}#${pull.number} adds a symlink or submodule, which is not imported`);
+  }
   fetchDraft(draft, 1);
   git(monorepo, ["checkout", "-q", "--force", "--detach", "refs/n3o-source-sync/draft"]);
 
@@ -552,12 +579,13 @@ async function onlyMergedMain(pull, marker) {
 
 async function handleClosedDraft(pull, draft, marker) {
   if (draft.merged_at) {
-    if (pull.head.sha !== marker.client && !(await onlyMergedMain(pull, marker))) {
+    const recorded = marker.draft === draft.head.sha || (await isAncestor(monorepo, marker.draft, draft.head.sha));
+    if (!recorded || (pull.head.sha !== marker.client && !(await onlyMergedMain(pull, marker)))) {
       await notice(
         client,
         pull.number,
         "merged-early",
-        `N3O merged this change as of ${marker.client.slice(0, 7)}, without the commits pushed after it, so this pull request has been closed. Please raise the rest as a new pull request.`,
+        "N3O merged this change without some of the commits pushed to it, so this pull request has been closed. Please raise the rest as a new pull request.",
       );
       await request(client, "PATCH", `pulls/${pull.number}`, { state: "closed" });
       return;
@@ -765,7 +793,14 @@ async function syncPull(number) {
     if (imported && pull.merged_at) selfMerges.ready.set(number, imported.draft);
     return;
   }
-  if (draft.state === "open" && unassigned(draft)) await assign(draft.number);
+  if (draft.state === "open" && unassigned(draft)) {
+    try {
+      await assign(draft.number);
+    } catch (error) {
+      failed.push(number);
+      console.log(`::error::${CLIENT_REPO}#${number}: ${error.message}`);
+    }
+  }
   const marker = readMarker(draft, number);
 
   if (!marker) {
@@ -823,7 +858,10 @@ async function syncSelfMerged(pull, draft, marker) {
     if (await syncCommits(pull, draft, marker)) selfMerges.ready.set(pull.number, draft.number);
     return;
   }
-  const merged = draft.merged_at && pull.head.sha === marker.client;
+  const merged =
+    draft.merged_at &&
+    pull.head.sha === marker.client &&
+    (marker.draft === draft.head.sha || (await isAncestor(monorepo, marker.draft, draft.head.sha)));
 
   if (merged && (await isAncestor(monorepo, draft.merge_commit_sha, mainHead))) selfMerges.ready.set(pull.number, null);
 }
