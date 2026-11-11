@@ -29,9 +29,9 @@ inputs:
     default: ""
   adopt-head:
     description: >-
-      A head of main this action did not make, left by the client merging their own pull requests, each
-      now reviewed on this side. The copy is committed on top of it instead of being refused, so their
-      merges stay in main's history but not in its files.
+      A head of main this action did not make, which N3O has read: the client's own merges, each now
+      reviewed on this side, or a commit pushed straight to main. The copy is committed on top of it
+      instead of being refused, so those commits stay in main's history but not in its files.
     required: false
     default: ""
 
