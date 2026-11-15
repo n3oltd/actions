@@ -10,7 +10,8 @@
 #   APP_PORT   port next start listens on
 #
 # Contract: root `npm run build` emits ./out; APP_DIR is a self-contained pnpm
-# Next.js app whose config sets basePath to APP_ROUTE.
+# Next.js app whose packageManager names its pnpm and whose config sets basePath
+# to APP_ROUTE.
 
 ARG APP_DIR=app
 ARG APP_ROUTE=/app
@@ -24,20 +25,24 @@ FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.4 AS oauth2proxy
 ########################
 ### build the Next.js app
 ########################
-FROM node:24.22.0-slim AS app
+FROM node:26.13.1-slim AS app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN corepack enable
 WORKDIR /app
 ARG APP_DIR
 COPY ${APP_DIR}/ ./
+RUN spec=$(node -p 'require("./package.json").packageManager || ""') && \
+    case "$spec" in \
+      pnpm@*) npm install --global --allow-scripts=pnpm "${spec%%+*}" ;; \
+      *) echo "${APP_DIR}/package.json has no packageManager field naming a pnpm version" >&2; exit 1 ;; \
+    esac
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
 ########################
 ### build the static site (-> ./out, served at /var/www)
 ########################
-FROM node:24.22.0-slim AS static
+FROM node:26.13.1-slim AS static
 WORKDIR /site
 COPY . .
 RUN npm ci --omit=dev
@@ -46,9 +51,9 @@ RUN npm run build
 ########################
 ### final
 ########################
-FROM node:24.22.0-slim AS final
+FROM node:26.13.1-slim AS final
 # oauth2-proxy is a Go binary and uses the system CA bundle for outbound TLS
-# (OIDC discovery). node:22-slim ships none — Node bundles its own — so add it,
+# (OIDC discovery). node's slim image ships none — Node bundles its own — so add it,
 # else oauth2-proxy dies with "x509: certificate signed by unknown authority".
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \

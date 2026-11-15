@@ -27,13 +27,11 @@ FROM quay.io/oauth2-proxy/oauth2-proxy:v7.15.4 AS oauth2proxy
 ########################
 ### build
 ########################
-FROM node:24.22.0-slim AS build
+FROM node:26.13.1-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV CI=true
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ENV NODE_OPTIONS=--max-old-space-size=4096
-RUN corepack enable
 WORKDIR /repo
 COPY . .
 ARG PACKAGE
@@ -54,12 +52,23 @@ export NPM_CONFIG_USERCONFIG=/npmauth/npmrc
   printf '//npm.pkg.github.com/:_authToken=%s\n' "$GH_PAT"
 } > "$NPM_CONFIG_USERCONFIG"
 
+install_pnpm() {
+  spec=$(node -p 'const pm = (f) => { try { return require(f).packageManager } catch {} }; pm(process.cwd() + "/package.json") || pm("/repo/package.json") || ""')
+  case "$spec" in
+    pnpm@*) npm install --global --allow-scripts=pnpm "${spec%%+*}" ;;
+    *) echo "install-deps: no packageManager field names the pnpm to install ${PACKAGE} with" >&2; exit 1 ;;
+  esac
+}
+
 if [ -f "${PACKAGE}/package-lock.json" ]; then
   cd "${PACKAGE}" && exec npm ci
 fi
 if [ -f "${PACKAGE}/pnpm-lock.yaml" ]; then
-  cd "${PACKAGE}" && exec pnpm install --frozen-lockfile
+  cd "${PACKAGE}"
+  install_pnpm
+  exec pnpm install --frozen-lockfile
 fi
+install_pnpm
 exec pnpm install --frozen-lockfile --fail-if-no-match --filter "${PACKAGE}..."
 INSTALL
 RUN chmod +x /usr/local/bin/install-deps
@@ -192,7 +201,7 @@ FROM build AS prune
 ARG PACKAGE
 RUN cd "${PACKAGE}" && npm prune --omit=dev
 
-FROM node:24.22.0-slim AS variant-node
+FROM node:26.13.1-slim AS variant-node
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT}
 ARG BUILD_VERSION
@@ -209,7 +218,7 @@ CMD ["sh", "-c", "exec node ${START_ENTRY}"]
 
 # Standalone output carries its own pruned node_modules, so the variant copies it
 # alone; static assets sit beside the server at the path the build wrote them to.
-FROM node:24.22.0-slim AS variant-next
+FROM node:26.13.1-slim AS variant-next
 ARG PORT=8080
 ENV NODE_ENV=production PORT=${PORT} HOSTNAME=0.0.0.0
 ARG BUILD_VERSION
