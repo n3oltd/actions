@@ -45,7 +45,7 @@ on:
       node-version:
         description: Node version the generate command needs. Empty skips the Node setup.
         type: string
-        default: '24'
+        default: '26'
 
       fast:
         description: 'Fast: run on a GitHub-hosted runner (immediate, billable) instead of the self-hosted fleet (queued, free)'

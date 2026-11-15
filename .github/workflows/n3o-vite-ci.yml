@@ -6,9 +6,9 @@ on:
   workflow_call:
     inputs:
       node-version:
-        description: Node.js version to set up
+        description: Node.js version to set up. Empty reads the repository's .nvmrc, or sets up 26 when it has none.
         type: string
-        default: '24'
+        default: ''
 
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
@@ -22,7 +22,8 @@ jobs:
 
       - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
         with:
-          node-version: ${{ inputs.node-version }}
+          node-version: ${{ inputs.node-version || (hashFiles('.nvmrc') == '' && '26') || '' }}
+          node-version-file: ${{ !inputs.node-version && hashFiles('.nvmrc') != '' && '.nvmrc' || '' }}
           cache: npm
 
       - run: npm ci

@@ -113,7 +113,7 @@ jobs:
         if: inputs.npm-packages != ''
         uses: n3oltd/actions/.github/actions/n3o-node-setup@main
         with:
-          node-version: '24'
+          node-version: '26'
 
       - name: setup dotnet + n3o cli
         uses: n3oltd/actions/.github/actions/n3o-dotnet-cli-setup@main
