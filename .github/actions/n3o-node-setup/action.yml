@@ -24,19 +24,24 @@ inputs:
     description: Lockfile path(s) the cache key derives from.
     required: false
   pnpm:
-    description: Set "true" to enable pnpm via corepack before Node setup.
+    description: Set "true" to install the pnpm that package.json's packageManager names, before Node setup.
     required: false
 
 runs:
   using: "composite"
   steps:
-    # corepack symlinks beside the PATH node by default; the self-hosted image's is root-owned.
+    # Ahead of setup-node, whose pnpm cache asks pnpm for its store, so with the runner's own npm;
+    # into RUNNER_TEMP, since the self-hosted image's global prefix is root-owned.
     - if: inputs.pnpm == 'true'
       shell: bash
       run: |
-        mkdir -p "$RUNNER_TEMP/corepack"
-        corepack enable --install-directory "$RUNNER_TEMP/corepack" pnpm
-        echo "$RUNNER_TEMP/corepack" >> "$GITHUB_PATH"
+        spec=$(node -p 'require("./package.json").packageManager || ""')
+        case "$spec" in
+          pnpm@*) ;;
+          *) echo "::error::package.json has no packageManager field naming a pnpm version"; exit 1 ;;
+        esac
+        npm install --global --prefix "$RUNNER_TEMP/pnpm" --allow-scripts=pnpm "${spec%%+*}"
+        echo "$RUNNER_TEMP/pnpm/bin" >> "$GITHUB_PATH"
     - uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
