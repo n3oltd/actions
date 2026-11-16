@@ -53,6 +53,16 @@
       "enabled": false
     },
     {
+      "description": "The github-actions manager also reads renovate-version, as a ghcr.io image with no release date, so it would offer a new Renovate major the day it ships; the custom manager below owns that pin.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/renovatebot/renovate"
+      ],
+      "enabled": false
+    },
+    {
       "description": "These actions publish no major tag, or one that does not follow their releases, so each is pinned to a full version and offered every new minor and patch.",
       "matchManagers": [
         "github-actions"
