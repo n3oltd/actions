@@ -1,7 +1,7 @@
 ########################
 ### base
 ########################
-FROM ghcr.io/zammad/zammad:7.2.3-0000@sha256:0aa8ea67e553a34187b9c80d5eab201eb9d3774a30c0ad22a83f22f1037ac100 AS base
+FROM ghcr.io/zammad/zammad:7.2.3-0005@sha256:5b7676151221c65d1dfa23d84a5988ff22a6aa2d248e620de460d44a526f8e2a AS base
 
 ########################
 ### final
