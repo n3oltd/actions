@@ -16,6 +16,7 @@
   "commitMessageExtra": "{{#unless isGroup}}from {{displayFrom}} to {{displayTo}}{{/unless}}",
   "rebaseWhen": "behind-base-branch",
   "minimumReleaseAge": "48 hours",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "prBodyNotes": [
     "<!-- no-work-issue: automated dependency update, nothing to link -->"
   ],
@@ -220,7 +221,7 @@
   },
   "customManagers": [
     {
-      "description": "The shared Renovate workflow pins the Renovate image through the action's renovate-version input, which no packaged manager reads, so a release that hangs cannot reach every repository the day it ships. Versions come from npm, which publishes the image's version numbers and, unlike ghcr.io, a release date; without one, minimumReleaseAge holds every release back.",
+      "description": "The shared Renovate workflow pins the Renovate image through the action's renovate-version input, which no packaged manager reads, so a release that hangs cannot reach every repository the day it ships. Versions come from npm, which publishes the image's version numbers and, unlike ghcr.io, a release date, so minimumReleaseAge holds each Renovate release for its full wait.",
       "customType": "regex",
       "managerFilePatterns": [
         ".github/workflows/n3o-renovate.yml"
