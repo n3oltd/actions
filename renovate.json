@@ -192,6 +192,18 @@
         "ghcr.io/zammad/zammad"
       ],
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)$"
+    },
+    {
+      "description": "A Renovate release can reach npm without its image reaching ghcr.io, and the shared workflow runs the image, so the bump is checked against the registry before it merges.",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchPackageNames": [
+        "renovate"
+      ],
+      "prBodyNotes": [
+        "Before merging, confirm that `ghcr.io/renovatebot/renovate:{{{newVersion}}}` exists, for example with `docker manifest inspect`. If it does not, close this pull request, because every repository's Renovate run would fail to pull it."
+      ]
     }
   ],
   "pip_requirements": {
@@ -208,7 +220,7 @@
   },
   "customManagers": [
     {
-      "description": "The shared Renovate workflow pins the Renovate image through the action's renovate-version input, which no packaged manager reads, so a release that hangs cannot reach every repository the day it ships.",
+      "description": "The shared Renovate workflow pins the Renovate image through the action's renovate-version input, which no packaged manager reads, so a release that hangs cannot reach every repository the day it ships. Versions come from npm, which publishes the image's version numbers and, unlike ghcr.io, a release date; without one, minimumReleaseAge holds every release back.",
       "customType": "regex",
       "managerFilePatterns": [
         ".github/workflows/n3o-renovate.yml"
@@ -216,9 +228,8 @@
       "matchStrings": [
         "renovate-version: (?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ],
-      "depNameTemplate": "ghcr.io/renovatebot/renovate",
-      "datasourceTemplate": "docker",
-      "versioningTemplate": "docker"
+      "depNameTemplate": "renovate",
+      "datasourceTemplate": "npm"
     },
     {
       "description": "The ResourceSpace release is a Subversion URL in docker/resourcespace, which no packaged manager reads.",
