@@ -81,6 +81,9 @@ on:
       sentry-auth-token:
         required: false
 
+      sixlabors-license:
+        required: false
+
 jobs:
   job1:
     name: ${{ inputs.runs-on }}
@@ -148,6 +151,8 @@ jobs:
         run: dotnet restore
 
       - name: dotnet build
+        env:
+          SixLaborsLicenseKey: ${{ secrets.sixlabors-license }}
         run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
 
       - name: dotnet test
@@ -161,6 +166,8 @@ jobs:
         # .nuspec metadata and leaves the DLL at its default version (1.0.0.0).
         # SourceRevisionId is what the .NET SDK appends to InformationalVersion as
         # "+<sha>" — works regardless of whether SourceLink is explicitly referenced.
+        env:
+          SixLaborsLicenseKey: ${{ secrets.sixlabors-license }}
         run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
 
       - name: dotnet nuget push
