@@ -63,6 +63,14 @@ on:
         type: string
         default: 'https://api.nuget.org/v3/index.json'
 
+      nuget-user:
+        description: >-
+          nuget.org profile that owns the packages. When set, the push uses a short-lived key from
+          nuget.org Trusted Publishing instead of the nuget-api-key secret, and the calling job must
+          grant id-token: write.
+        type: string
+        default: ''
+
       version-suffix:
         description: optional prerelease suffix appended to the version
         type: string
@@ -170,9 +178,16 @@ jobs:
           SixLaborsLicenseKey: ${{ secrets.sixlabors-license }}
         run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
 
+      - id: nuget-login
+        name: nuget login
+        if: ${{ inputs.run-pack && inputs.nuget-user != '' }}
+        uses: NuGet/login@v1
+        with:
+          user: ${{ inputs.nuget-user }}
+
       - name: dotnet nuget push
         if: ${{ inputs.run-pack }}
-        run: dotnet nuget push "**/*.nupkg" --source "${{ inputs.nuget-source }}" --api-key "${{ secrets.nuget-api-key }}" --skip-duplicate --timeout 900
+        run: dotnet nuget push "**/*.nupkg" --source "${{ inputs.nuget-source }}" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY || secrets.nuget-api-key }}" --skip-duplicate --timeout 900
 
       - name: sentry release
         if: inputs.sentry-project != ''
