@@ -85,7 +85,7 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://*:80
 COPY --from=publish /app .
 ENV DLL="${PROJECT}.dll"
-RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
+RUN echo "#!/bin/sh\nexec dotnet ${DLL}" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 RUN hash -r

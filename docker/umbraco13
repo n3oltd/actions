@@ -58,7 +58,7 @@ ENV DLL="${PROJECT}.dll"
 
 COPY --from=publish /publish .
 
-RUN echo "#!/bin/sh\ndotnet ${DLL}" > ./entrypoint.sh
+RUN echo "#!/bin/sh\nexec dotnet ${DLL}" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
