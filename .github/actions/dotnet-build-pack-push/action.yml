@@ -1,0 +1,183 @@
+name: dotnet-build-pack-push
+description: >-
+  Builds, optionally tests and packs a .NET project, pushes any NuGet packages to the configured
+  feed, and optionally creates a Sentry release. Used directly by a job in the publishing
+  repository's own workflow, it can push to nuget.org with Trusted Publishing.
+
+inputs:
+  dotnet-version:
+    description: .NET SDK version to set up
+    default: 10.x
+
+  setup-node:
+    description: >-
+      whether to set up Node.js (and cache ~/.npm + .turbo) before the build. Enable for repos whose
+      MSBuild build runs npm/Turbo (e.g. backoffice frontend plugins). The version is read from a
+      .nvmrc at the repo root.
+    default: 'false'
+
+  working-directory:
+    description: directory (relative to the repo root) to run the build/commands in
+    default: src
+
+  build-configuration:
+    description: build configuration (e.g. Release)
+    default: Release
+
+  run-tests:
+    description: whether to run tests
+    default: 'false'
+
+  run-pack:
+    description: whether to create and push NuGet packages
+    default: 'false'
+
+  version-strategy:
+    description: >-
+      how the version is derived: 'tag' from the git tag (refs/tags/v*, falling back to 1.0.0), or
+      'date' for a date-based version (YYYY.M.D.run_number)
+    default: tag
+
+  version:
+    description: explicit version to use; overrides version-strategy when set
+    default: ''
+
+  version-suffix:
+    description: optional prerelease suffix appended to the version
+    default: ''
+
+  nuget-source:
+    description: NuGet feed to push packages to
+    default: 'https://api.nuget.org/v3/index.json'
+
+  nuget-api-key:
+    description: API key for the NuGet feed; not needed when nuget-user is set
+    default: ''
+
+  nuget-user:
+    description: >-
+      nuget.org profile that owns the packages. When set, the push uses a short-lived key from
+      nuget.org Trusted Publishing, which needs this action to run in a job of the publishing
+      repository's own workflow, with id-token: write.
+    default: ''
+
+  sentry-project:
+    description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
+    default: ''
+
+  sentry-auth-token:
+    description: Sentry auth token, needed when sentry-project is set
+    default: ''
+
+  sixlabors-license:
+    description: SixLabors licence key, for builds that reference ImageSharp
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v7
+
+    - uses: n3oltd/actions/.github/actions/n3o-dotnet-setup@main
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - uses: n3oltd/actions/.github/actions/n3o-node-setup@main
+      if: ${{ inputs.setup-node == 'true' }}
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: cache turbo
+      if: ${{ inputs.setup-node == 'true' && runner.environment == 'github-hosted' }}
+      uses: actions/cache@v6
+      with:
+        path: ${{ inputs.working-directory }}/.turbo
+        key: turbo-${{ runner.os }}-${{ github.sha }}
+        restore-keys: |
+          turbo-${{ runner.os }}-
+
+    - id: prepare
+      name: Set version
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          VERSION="${{ inputs.version }}"
+        elif [ "${{ inputs.version-strategy }}" = "date" ]; then
+          NOW=$(date -u +'%Y.%-m.%-d')
+          VERSION="$NOW.${{ github.run_number }}"
+        else
+          VERSION=1.0.0
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+        fi
+        if [ -n "${{ inputs.version-suffix }}" ]; then
+          VERSION="$VERSION-${{ inputs.version-suffix }}"
+        fi
+        echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+    # Only on GitHub-hosted runners — the self-hosted fleet uses a persistent
+    # shared package cache instead of actions/cache's tarball transfer.
+    - name: cache nuget packages
+      if: runner.environment == 'github-hosted'
+      uses: actions/cache@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/Directory.Packages.props', '**/Directory.Build.props') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
+    - name: dotnet restore
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: dotnet restore
+
+    - name: dotnet build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SixLaborsLicenseKey: ${{ inputs.sixlabors-license }}
+      run: dotnet build --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
+
+    - name: dotnet test
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: dotnet test --no-build --verbosity normal
+
+    - name: dotnet pack
+      if: ${{ inputs.run-pack == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      # --no-build must NOT be used here: dotnet pack must rebuild the DLL so that
+      # /property:Version is baked into the binary. Using --no-build only updates the
+      # .nuspec metadata and leaves the DLL at its default version (1.0.0.0).
+      # SourceRevisionId is what the .NET SDK appends to InformationalVersion as
+      # "+<sha>" — works regardless of whether SourceLink is explicitly referenced.
+      env:
+        SixLaborsLicenseKey: ${{ inputs.sixlabors-license }}
+      run: dotnet pack --configuration ${{ inputs.build-configuration }} --no-restore /property:Version=${{ steps.prepare.outputs.VERSION }} /property:SourceRevisionId=${{ github.sha }}
+
+    - id: nuget-login
+      name: nuget login
+      if: ${{ inputs.run-pack == 'true' && inputs.nuget-user != '' }}
+      uses: NuGet/login@v1
+      with:
+        user: ${{ inputs.nuget-user }}
+
+    - name: dotnet nuget push
+      if: ${{ inputs.run-pack == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: dotnet nuget push "**/*.nupkg" --source "${{ inputs.nuget-source }}" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY || inputs.nuget-api-key }}" --skip-duplicate --timeout 900
+
+    - name: sentry release
+      if: inputs.sentry-project != ''
+      uses: n3oltd/actions/.github/actions/n3o-sentry-release@main
+      with:
+        project: ${{ inputs.sentry-project }}
+        release: ${{ github.event.repository.name }}@${{ steps.prepare.outputs.VERSION }}
+        auth-token: ${{ inputs.sentry-auth-token }}
