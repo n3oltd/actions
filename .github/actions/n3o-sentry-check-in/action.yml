@@ -1,0 +1,104 @@
+name: n3o sentry check-in
+description: >-
+  Sends a cron monitor check-in to the Sentry project a DSN names. Given a schedule, the check-in
+  carries the monitor's configuration, which creates the monitor or replaces the configuration it
+  holds. Fails if Sentry does not accept the check-in.
+
+inputs:
+  dsn:
+    description: The project's DSN.
+    required: true
+  monitor:
+    description: The monitor's slug.
+    required: true
+  status:
+    description: "'ok', 'error' or 'in_progress'."
+    required: false
+    default: ok
+  schedule:
+    description: The monitor's crontab schedule, in UTC. Without it the check-in carries no configuration.
+    required: false
+    default: ""
+  checkin-margin:
+    description: Minutes a check-in may arrive late before it counts as missed.
+    required: false
+    default: ""
+  max-runtime:
+    description: Minutes an in-progress check-in may run before it counts as timed out.
+    required: false
+    default: ""
+  failure-issue-threshold:
+    description: Consecutive failed check-ins that open an issue.
+    required: false
+    default: ""
+  recovery-threshold:
+    description: Consecutive successful check-ins that resolve that issue.
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        DSN: ${{ inputs.dsn }}
+        MONITOR: ${{ inputs.monitor }}
+        STATUS: ${{ inputs.status }}
+        SCHEDULE: ${{ inputs.schedule }}
+        MARGIN: ${{ inputs.checkin-margin }}
+        RUNTIME: ${{ inputs.max-runtime }}
+        FAILURES: ${{ inputs.failure-issue-threshold }}
+        RECOVERIES: ${{ inputs.recovery-threshold }}
+      run: |
+        set -euo pipefail
+
+        scheme=${DSN%%://*}
+        rest=${DSN#*://}
+        key=${rest%%@*}
+        location=${rest#*@}
+        project=${location##*/}
+        host=${location%/*}
+        if [ "$scheme" = "$DSN" ] || [ "$key" = "$rest" ] || [ "$host" = "$location" ] || [ -z "$project" ]; then
+          echo "::error::dsn is not a Sentry DSN"
+          exit 1
+        fi
+
+        case "$STATUS" in
+          ok|error|in_progress) ;;
+          *) echo "::error::status must be ok, error or in_progress"; exit 1 ;;
+        esac
+
+        if [ -z "$SCHEDULE" ] && [ -n "$MARGIN$RUNTIME$FAILURES$RECOVERIES" ]; then
+          echo "::error::the monitor's configuration needs a schedule"
+          exit 1
+        fi
+
+        id=$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')
+        if ! checkin=$(jq -nc --arg id "$id" --arg monitor "$MONITOR" --arg status "$STATUS" \
+                         --arg schedule "$SCHEDULE" --arg margin "$MARGIN" --arg runtime "$RUNTIME" \
+                         --arg failures "$FAILURES" --arg recoveries "$RECOVERIES" '
+            def whole($name; $value):
+              if $value == "" then {}
+              elif ($value | test("^[0-9]+$")) then {($name): ($value | tonumber)}
+              else error("\($name) must be a whole number") end;
+            {check_in_id: $id, monitor_slug: $monitor, status: $status}
+            + if $schedule == "" then {}
+              else {monitor_config: ({schedule: {type: "crontab", value: $schedule}}
+                                     + whole("checkin_margin"; $margin)
+                                     + whole("max_runtime"; $runtime)
+                                     + whole("failure_issue_threshold"; $failures)
+                                     + whole("recovery_threshold"; $recoveries))}
+              end'); then
+          echo "::error::the check-in could not be built"
+          exit 1
+        fi
+
+        code=$(printf '{}\n{"type":"check_in"}\n%s\n' "$checkin" \
+               | curl -sS -m 20 -o /dev/null -w '%{http_code}' -X POST "$scheme://$host/api/$project/envelope/" \
+                   -H "Content-Type: application/x-sentry-envelope" \
+                   -H "X-Sentry-Auth: Sentry sentry_version=7, sentry_client=n3o-sentry-check-in/1, sentry_key=$key" \
+                   --data-binary @-) || code=000
+        case "$code" in
+          2*) echo "checked in to $MONITOR: $STATUS" ;;
+          *) echo "::error::Sentry did not accept the check-in to $MONITOR: HTTP $code"; exit 1 ;;
+        esac
