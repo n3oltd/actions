@@ -1,0 +1,58 @@
+name: n3o wait for release
+description: >-
+  Waits until a site built from the n3o-node image reports, at releaseinfo/v1.0, a commit or a later
+  one that descends from it, so a step after a deploy acts on what was deployed even when a newer
+  deploy has already replaced it. Run it after a checkout with fetch-depth 0.
+
+inputs:
+  url:
+    description: The address the site serves releaseinfo/v1.0 beneath, its base path included.
+    required: true
+  commit:
+    description: The commit the site must report, or one that descends from it.
+    required: false
+    default: ${{ github.sha }}
+  timeout-minutes:
+    description: How long to wait before failing the step.
+    required: false
+    default: "10"
+
+outputs:
+  commit:
+    description: The commit the site reports.
+    value: ${{ steps.wait.outputs.commit }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: wait
+      shell: bash
+      env:
+        URL: ${{ inputs.url }}
+        COMMIT: ${{ inputs.commit }}
+        TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+      run: |
+        set -euo pipefail
+
+        if ! git rev-parse --verify --quiet "$COMMIT^{commit}" > /dev/null; then
+          echo "::error::$COMMIT is not in this checkout; check out with fetch-depth 0"
+          exit 1
+        fi
+
+        releaseinfo="${URL%/}/releaseinfo/v1.0"
+        deadline=$((SECONDS + TIMEOUT_MINUTES * 60))
+
+        until served=$(curl -fsS --max-time 10 "$releaseinfo" \
+            | grep -o '"commit":"[0-9a-f]*"' | cut -d '"' -f 4) \
+          && [ -n "$served" ] \
+          && git fetch --quiet origin "$served" \
+          && git merge-base --is-ancestor "$COMMIT" "$served"; do
+          if [ "$SECONDS" -ge "$deadline" ]; then
+            echo "::error::$releaseinfo does not report $COMMIT or a later commit after $TIMEOUT_MINUTES minutes"
+            exit 1
+          fi
+          sleep 10
+        done
+
+        echo "$releaseinfo reports $served"
+        echo "commit=$served" >> "$GITHUB_OUTPUT"
