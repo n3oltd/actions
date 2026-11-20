@@ -1,4 +1,4 @@
-name: n3o wait for release
+name: n3o wait for commit
 description: >-
   Waits until a site built from the n3o-node image reports, at releaseinfo/v1.0, a commit or a later
   one that descends from it, so a step after a deploy acts on what was deployed even when a newer
