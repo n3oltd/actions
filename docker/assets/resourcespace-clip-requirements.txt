@@ -5,7 +5,7 @@ timm==1.0.31
 # open_clip constructs a Hugging Face tokenizer without depending on one.
 transformers==5.23.0
 faiss-cpu==1.16.0
-fastapi==0.163.1
+fastapi==0.165.0
 uvicorn==0.54.0
 python-multipart==0.0.34
 mysql-connector-python==26.10.0
