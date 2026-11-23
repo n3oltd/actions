@@ -5,12 +5,26 @@ ARG VARIANT=base
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.15-noble AS base
 
+RUN sed -i \
+        -e 's#http://archive.ubuntu.com/ubuntu/#http://azure.archive.ubuntu.com/ubuntu/#' \
+        -e 's#http://security.ubuntu.com/ubuntu/#http://azure.archive.ubuntu.com/ubuntu/#' \
+        /etc/apt/sources.list.d/ubuntu.sources \
+    && grep -q 'azure.archive.ubuntu.com' /etc/apt/sources.list.d/ubuntu.sources \
+    && ! grep -Eq '//(archive|security)\.ubuntu\.com/' /etc/apt/sources.list.d/ubuntu.sources
+
 WORKDIR /app
 
 ########################
 ### build
 ########################
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+
+RUN sed -i \
+        -e 's#http://archive.ubuntu.com/ubuntu/#http://azure.archive.ubuntu.com/ubuntu/#' \
+        -e 's#http://security.ubuntu.com/ubuntu/#http://azure.archive.ubuntu.com/ubuntu/#' \
+        /etc/apt/sources.list.d/ubuntu.sources \
+    && grep -q 'azure.archive.ubuntu.com' /etc/apt/sources.list.d/ubuntu.sources \
+    && ! grep -Eq '//(archive|security)\.ubuntu\.com/' /etc/apt/sources.list.d/ubuntu.sources
 
 ARG PROJECT
 ARG PROJECT_PATH
