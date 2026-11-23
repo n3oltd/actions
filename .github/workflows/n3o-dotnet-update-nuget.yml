@@ -18,7 +18,7 @@ on:
 
 jobs:
   upgrade:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - name: setup dotnet + n3o cli

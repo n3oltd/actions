@@ -14,7 +14,7 @@ on:
 jobs:
   mark:
     if: github.event.issue.labels[0] == null
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
     permissions:
       issues: write
 
