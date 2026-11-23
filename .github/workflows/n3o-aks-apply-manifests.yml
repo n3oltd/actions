@@ -36,7 +36,7 @@ jobs:
   apply:
     name: Apply manifests to AKS
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v7

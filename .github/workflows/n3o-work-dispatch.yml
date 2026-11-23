@@ -13,7 +13,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.actor != 'dependabot[bot]' &&
       github.actor != 'n3o-babar[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - name: app token
@@ -100,7 +100,7 @@ jobs:
 
   issue-linked:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - name: exemptions
@@ -159,7 +159,7 @@ jobs:
       github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
       github.actor != 'n3o-babar[bot]' &&
       github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - name: app token
