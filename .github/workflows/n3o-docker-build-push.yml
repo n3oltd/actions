@@ -58,6 +58,12 @@ on:
         required: false
         default: wait
 
+      runs-on:
+        description: "runner to build on, as the caller's own n3o-pick-runner chose it, so a matrix of builds picks once. Empty picks one here by mode; set, mode is unused."
+        type: string
+        required: false
+        default: ''
+
       rebuild:
         description: build and push even when an image already exists for the commit
         type: boolean
@@ -78,6 +84,7 @@ jobs:
   pick:
     # Name by the service so the run's job list identifies each build rather than repeating "pick".
     name: ${{ inputs.container-repository }} (pick)
+    if: inputs.runs-on == ''
     uses: n3oltd/actions/.github/workflows/n3o-pick-runner.yml@main
     with:
       mode: ${{ inputs.mode }}
@@ -86,7 +93,8 @@ jobs:
   job1:
     name: ${{ inputs.container-repository }}
     needs: pick
-    runs-on: ${{ needs.pick.outputs.runs-on }}
+    if: ${{ !cancelled() && (inputs.runs-on != '' || needs.pick.result == 'success') }}
+    runs-on: ${{ inputs.runs-on || needs.pick.outputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v7
