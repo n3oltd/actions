@@ -3,6 +3,13 @@
 ########################
 FROM mcr.microsoft.com/dotnet/aspnet:8.0.34-noble AS base
 
+RUN sed -i \
+        -e 's#http://archive.ubuntu.com/ubuntu/#http://azure.archive.ubuntu.com/ubuntu/#' \
+        -e 's#http://security.ubuntu.com/ubuntu/#http://azure.archive.ubuntu.com/ubuntu/#' \
+        /etc/apt/sources.list.d/ubuntu.sources \
+    && grep -q 'azure.archive.ubuntu.com' /etc/apt/sources.list.d/ubuntu.sources \
+    && ! grep -Eq '//(archive|security)\.ubuntu\.com/' /etc/apt/sources.list.d/ubuntu.sources
+
 WORKDIR /app
 
 ########################
