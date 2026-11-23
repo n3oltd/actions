@@ -600,7 +600,7 @@ jobs:
     name: report ${{ inputs.product }}
     needs: [prepare, ios, android]
     if: always() && needs.prepare.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions: {}
     outputs:

@@ -12,7 +12,7 @@ jobs:
   build:
     name: Build and Push
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v7

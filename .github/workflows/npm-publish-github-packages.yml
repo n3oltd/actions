@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-publish:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
     steps:
       - name: checkout
