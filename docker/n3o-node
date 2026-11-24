@@ -147,7 +147,10 @@ COPY --from=shipped /repo/${OUTPUT_DIR} /srv${BASE_PATH}
 # Config arrives here rather than at the compiler, so the artifact tested in one environment
 # is the one promoted to the next, and a restart re-reads it. APP_BASE_HREF substitutes
 # __APP_BASE__, so one image serves under different public paths.
-RUN mv /srv${BASE_PATH}index.html /srv${BASE_PATH}index.html.tmpl
+RUN mv /srv${BASE_PATH}index.html /srv${BASE_PATH}index.html.tmpl && \
+    if [ -f "/srv${BASE_PATH}content-security-policy.json" ]; then \
+      mv "/srv${BASE_PATH}content-security-policy.json" /etc/caddy/content-security-policy.json; \
+    fi
 COPY <<'ENTRY' /usr/local/bin/inject-app-env
 #!/bin/sh
 set -eu
@@ -161,6 +164,35 @@ jq -Rs --argjson cfg "$cfg" --arg baseHref "$base_href" -r \
   < "${dir}index.html.tmpl" > "${dir}index.html"
 mkdir -p "${dir}releaseinfo"
 jq -nc '{releaseVersion: env.RELEASE_VERSION, buildVersion: env.BUILD_VERSION, commit: env.COMMIT_SHA}' > "${dir}releaseinfo/v1.0"
+policy_file=/etc/caddy/content-security-policy.json
+: > /etc/caddy/content-security-policy.caddy
+if [ -f "$policy_file" ]; then
+  env_script=$(jq -Rrs 'capture("<script id=\"__app_env_script__\">(?<s>.*?)</script>"; "s").s // ""' < "${dir}index.html")
+  hash=""
+  if [ -n "$env_script" ]; then
+    hash=$(printf '%s' "$env_script" | sha256sum | cut -d' ' -f1 | xxd -r -p | base64)
+  fi
+  report=$(jq -rn '
+    env[env.APP_ENV_PREFIX + "SENTRY_DSN"] // ""
+    | capture("^(?<scheme>https?)://(?<key>[^:@/]+)(:[^@]*)?@(?<host>[^/]+)/(?<prefix>(.*/)?)(?<project>[^/]+)$")?
+    | "\(.scheme)://\(.host)/\(.prefix)api/\(.project)/security/?sentry_key=\(.key)"
+      + ((env[env.APP_ENV_PREFIX + "ENVIRONMENT"] // "") as $e
+         | if $e == "" then "" else "&sentry_environment=" + ($e | @uri) end)
+    // ""')
+  jq -r --arg hash "$hash" --arg report "$report" '
+    if (.header | IN("Content-Security-Policy", "Content-Security-Policy-Report-Only")) | not then
+      error("content-security-policy.json names \(.header | tojson), not a policy header")
+    else . end
+    | (.policy
+       | split(";") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))
+       | map(if $hash != "" and (startswith("script-src ") or . == "script-src")
+             then . + " '"'"'sha256-" + $hash + "'"'"'" else . end)
+       | . + (if $report == "" then [] else ["report-uri " + $report, "report-to csp-endpoint"] end)
+       | join("; ")) as $policy
+    | "header \(.header) `\($policy)`"
+      + (if $report == "" then "" else "\nheader Reporting-Endpoints `csp-endpoint=\"\($report)\"`" end)
+  ' < "$policy_file" > /etc/caddy/content-security-policy.caddy
+fi
 exec "$@"
 ENTRY
 RUN chmod +x /usr/local/bin/inject-app-env
@@ -173,6 +205,7 @@ COPY <<CADDY /etc/caddy/Caddyfile
 :${PORT} {
 	encode zstd gzip
 	root * /srv
+	import /etc/caddy/content-security-policy.caddy
 
 	# A miss here is a miss: falling back serves HTML where a script was asked
 	# for, and the browser executes it.
