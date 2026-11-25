@@ -1,83 +1,173 @@
-# Deploys the platforms-js package for a client to its Azure blob storage container.
-# Installs the published @n3oltd/platforms-js-shared package, swaps in the
-# environment config, and replaces the platforms-js/ blobs in the connect-<subscription> container.
+# Deploys the shared platforms.js build to an environment's platforms origin. Installs the published
+# @n3oltd/platforms-js-shared package and writes it to v1/ in the environment's platforms storage
+# account, the hashed files before the ones that move, and the release info last.
 name: 'Deploy Platforms JS'
 
 on:
   workflow_call:
     inputs:
-      data-region:
-        description: data residency region the deployment targets (e.g. eu1)
-        type: string
-        required: true
-
-      subscription-code:
-        description: platforms subscription code identifying the client/tenant
-        type: string
-        required: true
-
       environment-id:
-        description: target environment/slot identifier under the deployment path
+        description: target environment (qa or prod)
         type: string
         required: true
 
-env:
-  GH_PAT: ${{ secrets.GH_PAT }}
+      dist-tag:
+        description: the version or npm dist-tag of the shared package to deploy
+        type: string
+        required: false
+        default: latest
 
 jobs:
   deploy-platforms:
     name: Deploy Platforms
-    
-    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
-    
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          sparse-checkout: |
-            ${{ inputs.data-region }}/platforms-js/${{ inputs.environment-id }}
 
-      - id: latest-json-metadata
-        name: Read latest JSON metadata
-        working-directory: ${{ inputs.data-region }}/platforms-js/${{ inputs.environment-id }}/latest
+    runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
+
+    concurrency:
+      group: platforms-origin-${{ inputs.environment-id }}
+      cancel-in-progress: false
+
+    env:
+      ENVIRONMENT_ID: ${{ inputs.environment-id }}
+      PACKAGE_REF: ${{ inputs.dist-tag }}
+      HASHED_CACHE_CONTROL: public, max-age=31536000, immutable
+      MOVING_CACHE_CONTROL: public, max-age=300, stale-while-revalidate=86400
+      POINTER: v1
+
+    steps:
+      - name: Resolve the storage account
         run: |
-          packageVersion=$(jq -r '.packageVersion' metadata.json)
-          echo "packageVersion=$packageVersion" >> $GITHUB_OUTPUT
-    
-      - name: install platforms package
+          case "$ENVIRONMENT_ID" in
+            qa|prod)
+              echo "ACCOUNT=n3oplatforms$ENVIRONMENT_ID" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Invalid environment: $ENVIRONMENT_ID"
+              exit 1
+              ;;
+          esac
+
+      - name: Install platforms package
         run: |
+          if [[ ! "$PACKAGE_REF" =~ ^([0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}-[0-9]+|[a-z][a-z0-9-]*)$ ]]; then
+            echo "Not a version or dist-tag of the shared package: $PACKAGE_REF"
+            exit 1
+          fi
+
           mkdir work-dir
           cd work-dir
           echo '{}' > package.json
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-          npm install "@n3oltd/platforms-js-shared@${{ steps.latest-json-metadata.outputs.packageVersion }}"
-          
-      - name: Copy config.json
+          npm install "@n3oltd/platforms-js-shared@$PACKAGE_REF"
+
+      - name: Read the installed build
+        working-directory: work-dir
         run: |
-          cp work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms/config/config.${{ inputs.environment-id }}.json work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms/config.json
+          version=$(jq -r '.version' node_modules/@n3oltd/platforms-js-shared/package.json)
+          commit=$(npm view "@n3oltd/platforms-js-shared@$version" gitHead)
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "COMMIT=$commit" >> "$GITHUB_ENV"
+
+      - name: Stage the files
+        run: |
+          shopt -s dotglob nullglob
+          dist=work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms
+          mkdir -p stage/hashed stage/moving
+
+          imported_elsewhere() {
+            local file
+
+            for file in "$dist"/*.js; do
+              if [ "$(basename "$file")" != "$1" ] && grep -q -F "\"./$1\"" "$file"; then
+                return 0
+              fi
+            done
+
+            return 1
+          }
+
+          for entry in "$dist"/*; do
+            name=$(basename "$entry")
+
+            if [ -d "$entry" ]; then
+              if [ "$name" != config ]; then
+                echo "The build holds a folder, $name, that this deploy does not know how to cache"
+                exit 1
+              fi
+            elif [ "$name" = config.json ]; then
+              continue
+            elif [[ "$name" =~ ^[A-Za-z0-9_-]{8}\.js(\.map)?$ ]]; then
+              if ! imported_elsewhere "${name%.map}"; then
+                echo "$name is named like a hashed chunk, but no file in the build imports ${name%.map}"
+                exit 1
+              fi
+
+              cp "$entry" stage/hashed/
+            else
+              cp "$entry" stage/moving/
+            fi
+          done
+
+          cp "$dist/config/config.$ENVIRONMENT_ID.json" stage/moving/config.json
+          test -f stage/moving/platforms.js
+          hashed=(stage/hashed/*)
+          moving=(stage/moving/*)
+          echo "${#hashed[@]} hashed files; moving: ${moving[*]#stage/moving/}"
 
       - name: Azure Login
         uses: azure/login@v3
         with:
-          creds:  ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set Storage Connection String
+      - name: Write the hashed files
         run: |
-          if [ "${{ inputs.environment-id }}" = "prod" ]; then
-            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_PROD }}" >> $GITHUB_ENV
-          elif [ "${{ inputs.environment-id }}" = "qa" ]; then
-            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_QA }}" >> $GITHUB_ENV
-          elif [ "${{ inputs.environment-id }}" = "staging" ]; then
-            echo "storage_connection_string=${{ secrets.AZURE_STORAGE_CONNECTION_STRING_STAGING }}" >> $GITHUB_ENV
-          else
-            echo "Invalid environment: ${{ inputs.environment-id }}"
-            exit 1
-          fi
+          az storage blob upload-batch \
+            --auth-mode key \
+            --account-name "$ACCOUNT" \
+            --destination platforms \
+            --destination-path "$POINTER" \
+            --source stage/hashed \
+            --content-cache-control "$HASHED_CACHE_CONTROL" \
+            --overwrite true
 
-      - name: Replace platforms-js/ in connect-{subscription} container
+      - name: Write the files that move, platforms.js last
         run: |
-          az storage blob delete-batch --connection-string "${{ env.storage_connection_string }}" --source "connect-${{ env.subscription_code }}" --pattern "platforms-js/*"
-          az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms" --destination-path="platforms-js" --overwrite="true"
-        env:
-          subscription_code: "${{ inputs.subscription-code }}"
-          
+          shopt -s dotglob nullglob
+
+          upload() {
+            az storage blob upload \
+              --auth-mode key \
+              --account-name "$ACCOUNT" \
+              --container-name platforms \
+              --name "$POINTER/$(basename "$1")" \
+              --file "$1" \
+              --content-cache-control "$MOVING_CACHE_CONTROL" \
+              --overwrite true
+          }
+
+          for file in stage/moving/*; do
+            if [ "$(basename "$file")" != platforms.js ]; then
+              upload "$file"
+            fi
+          done
+
+          upload stage/moving/platforms.js
+
+      - name: Write the release info
+        run: |
+          jq -n \
+            --arg buildVersion "$VERSION" \
+            --arg commit "$COMMIT" \
+            '{releaseVersion: null, buildVersion: $buildVersion, commit: (if $commit == "" then null else $commit end)}' \
+            > releaseinfo.json
+
+          az storage blob upload \
+            --auth-mode key \
+            --account-name "$ACCOUNT" \
+            --container-name platforms \
+            --name "$POINTER/releaseinfo/v1.0" \
+            --file releaseinfo.json \
+            --content-type application/json \
+            --content-cache-control no-store \
+            --overwrite true
