@@ -14,6 +14,11 @@ jobs:
       github.actor != 'dependabot[bot]' &&
       github.actor != 'n3o-babar[bot]'
     runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
+    # A newer event replaces a waiting one for the same PR, since only the newest state matters.
+    # A merge releases issues and tracks rollouts, so it gets a group of its own and never waits.
+    concurrency:
+      group: work-pr-status-${{ github.repository }}-${{ github.event.pull_request.number }}-${{ github.event.action == 'closed' && github.run_id || 'open' }}
+      cancel-in-progress: false
 
     steps:
       - name: app token
@@ -101,6 +106,9 @@ jobs:
   issue-linked:
     if: github.event_name == 'pull_request'
     runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
+    concurrency:
+      group: work-issue-linked-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
 
     steps:
       - name: exemptions
