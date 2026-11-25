@@ -50,7 +50,7 @@ jobs:
           echo '{}' > package.json
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-          npm install "@n3oltd/platforms-js-shared@${{ steps.latest-json-metadata.outputs.deploymentVersion }}"
+          npm install "@n3oltd/platforms-js-shared@${{ steps.latest-json-metadata.outputs.packageVersion }}"
           
       - name: Copy config.json
         run: |

@@ -18,6 +18,12 @@ on:
         required: false
         default: ''
 
+      dist-tag:
+        description: The npm dist-tag the package is published under; deploys install latest, so a test build takes another
+        type: string
+        required: false
+        default: 'latest'
+
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -71,7 +77,7 @@ jobs:
           npm version ${{ steps.version.outputs.version }};
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc;
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
-          npm publish --tag latest;
+          npm publish --tag "${{ inputs.dist-tag }}";
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
 
