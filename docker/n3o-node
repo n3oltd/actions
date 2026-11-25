@@ -179,26 +179,29 @@ if [ -f "$policy_file" ]; then
     (env.APP_ENV_PREFIX + "SENTRY_DSN") as $name
     | (env[$name] // "") as $dsn
     | if $dsn == "" then ""
-      elif ($dsn | test("[`\r\n]")) then error("\($name) holds a backtick or a line break")
+      elif ($dsn | test("[`\"\r\n]")) then error("\($name) holds a backtick, a quote or a line break")
       else
-        ($dsn | capture("^(?<scheme>https?)://(?<key>\\w+)(:[^@]*)?@(?<host>[\\w.-]+(:\\d+)?)/(?<prefix>(.*/)?)(?<project>\\d+)$")
+        ($dsn | capture("^(?<scheme>https?)://(?<key>\\w+)(:[^@]*)?@(?<host>[\\w.-]+(:\\d+)?)/(?<prefix>([\\w.-]+/)*)(?<project>\\d+)$")
                // error("\($name) is not a Sentry DSN"))
         | "\(.scheme)://\(.host)/\(.prefix)api/\(.project)/security/?sentry_key=\(.key)"
           + ((env[env.APP_ENV_PREFIX + "ENVIRONMENT"] // "") as $environment
              | if $environment == "" then "" else "&sentry_environment=" + ($environment | @uri) end)
       end')
-  jq -r --arg hash "$hash" --arg report "$report" '
+  jq -rs --arg hash "$hash" --arg report "$report" '
     def named($name): (.[0] | ascii_downcase) == $name;
     def with_source($name; $source):
       if any(.[]; named($name))
       then map(if named($name) and (any(.[1:][]; . == $source) | not) then . + [$source] else . end)
-      else . + [[$name, $source]] end;
-    if (.header | IN("Content-Security-Policy", "Content-Security-Policy-Report-Only")) | not then
+      else error("content-security-policy.json sets \($name), which its policy does not name") end;
+    if length != 1 or (.[0] | type) != "object" then error("content-security-policy.json is not one JSON object") else .[0] end
+    | if (.header | IN("Content-Security-Policy", "Content-Security-Policy-Report-Only")) | not then
       error("content-security-policy.json names \(.header | tojson), not a policy header")
     elif (.policy // "" | test("^\\s*$")) then
       error("content-security-policy.json holds no policy")
     else . end
-    | [(.settings // {}) | to_entries[] | (.key | ascii_downcase) as $name | .value[] | . as $setting
+    | [(.settings // {}) | to_entries[]
+       | if .key | test("^[a-z-]+$") | not then error("content-security-policy.json names \(.key | tojson), not a directive") else . end
+       | .key as $name | .value[] | . as $setting
        | if ($setting | startswith(env.APP_ENV_PREFIX)) | not then
            error("content-security-policy.json names \($setting | tojson) for \($name), not a setting the page receives")
          else (env[$setting] // "") end
@@ -214,8 +217,8 @@ if [ -f "$policy_file" ]; then
        | reduce $settings[] as $setting (.; with_source($setting.name; $setting.source))
        | . + (if $report == "" then [] else [["report-uri", $report], ["report-to", "csp-endpoint"]] end)
        | map(join(" ")) | join("; ")) as $policy
-    | if $policy | test("[`\r\n]") then
-        error("the policy content-security-policy.json makes holds a backtick or a line break")
+    | if $policy | test("[`\r\n{},]") then
+        error("the policy content-security-policy.json makes holds a backtick, a line break, a brace or a comma")
       else . end
     | "header \(.header) `\($policy)`"
       + (if $report == "" then "" else "\nheader Reporting-Endpoints `csp-endpoint=\"\($report)\"`" end)
