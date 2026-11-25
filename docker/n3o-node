@@ -147,7 +147,10 @@ COPY --from=shipped /repo/${OUTPUT_DIR} /srv${BASE_PATH}
 # Config arrives here rather than at the compiler, so the artifact tested in one environment
 # is the one promoted to the next, and a restart re-reads it. APP_BASE_HREF substitutes
 # __APP_BASE__, so one image serves under different public paths.
-RUN mv /srv${BASE_PATH}index.html /srv${BASE_PATH}index.html.tmpl
+RUN mv /srv${BASE_PATH}index.html /srv${BASE_PATH}index.html.tmpl && \
+    if [ -f "/srv${BASE_PATH}content-security-policy.json" ]; then \
+      mv "/srv${BASE_PATH}content-security-policy.json" /etc/caddy/content-security-policy.json; \
+    fi
 COPY <<'ENTRY' /usr/local/bin/inject-app-env
 #!/bin/sh
 set -eu
@@ -161,6 +164,67 @@ jq -Rs --argjson cfg "$cfg" --arg baseHref "$base_href" -r \
   < "${dir}index.html.tmpl" > "${dir}index.html"
 mkdir -p "${dir}releaseinfo"
 jq -nc '{releaseVersion: env.RELEASE_VERSION, buildVersion: env.BUILD_VERSION, commit: env.COMMIT_SHA}' > "${dir}releaseinfo/v1.0"
+policy_file=/etc/caddy/content-security-policy.json
+if [ -f "$policy_file" ]; then
+  if [ ! -s "$policy_file" ]; then
+    echo "inject-app-env: content-security-policy.json is empty" >&2
+    exit 1
+  fi
+  env_script=$(jq -Rrs 'capture("<script id=\"__app_env_script__\">(?<s>.*?)</script>"; "m").s // ""' < "${dir}index.html")
+  hash=""
+  if [ -n "$env_script" ]; then
+    hash=$(printf '%s' "$env_script" | sha256sum | cut -d' ' -f1 | xxd -r -p | base64)
+  fi
+  report=$(jq -rn '
+    (env.APP_ENV_PREFIX + "SENTRY_DSN") as $name
+    | (env[$name] // "") as $dsn
+    | if $dsn == "" then ""
+      elif ($dsn | test("[`\"\r\n]")) then error("\($name) holds a backtick, a quote or a line break")
+      else
+        ($dsn | capture("^(?<scheme>https?)://(?<key>[A-Za-z0-9_]+)(:[^@]*)?@(?<host>[A-Za-z0-9_.-]+(:[0-9]+)?)/(?<prefix>([A-Za-z0-9_.-]+/)*)(?<project>[0-9]+)$")
+               // error("\($name) is not a Sentry DSN"))
+        | "\(.scheme)://\(.host)/\(.prefix)api/\(.project)/security/?sentry_key=\(.key)"
+          + ((env[env.APP_ENV_PREFIX + "ENVIRONMENT"] // "") as $environment
+             | if $environment == "" then "" else "&sentry_environment=" + ($environment | @uri) end)
+      end')
+  jq -rs --arg hash "$hash" --arg report "$report" '
+    def named($name): (.[0] | ascii_downcase) == $name;
+    def with_source($name; $source):
+      if any(.[]; named($name))
+      then map(if named($name) and (any(.[1:][]; . == $source) | not) then . + [$source] else . end)
+      else error("content-security-policy.json sets \($name), which its policy does not name") end;
+    if length != 1 or (.[0] | type) != "object" then error("content-security-policy.json is not one JSON object") else .[0] end
+    | if (.header | IN("Content-Security-Policy", "Content-Security-Policy-Report-Only")) | not then
+      error("content-security-policy.json names \(.header | tojson), not a policy header")
+    elif (.policy // "" | test("^\\s*$")) then
+      error("content-security-policy.json holds no policy")
+    else . end
+    | [(.settings // {}) | to_entries[]
+       | if .key | test("^[a-z-]+$") | not then error("content-security-policy.json names \(.key | tojson), not a directive") else . end
+       | .key as $name | .value[] | . as $setting
+       | if ($setting | startswith(env.APP_ENV_PREFIX)) | not then
+           error("content-security-policy.json names \($setting | tojson) for \($name), not a setting the page receives")
+         else (env[$setting] // "") end
+       | if . == "" then error("content-security-policy.json names \($setting) for \($name), which is empty")
+         elif test("[\\s;,\"'"'"'`]") then error("\($setting) holds \(tojson), which is not one source")
+         else {name: $name, source: .} end] as $settings
+    | (.policy
+       | split(";") | map([splits("\\s+")] | map(select(. != ""))) | map(select(length > 0))
+       | if any(.[]; named("script-src")) | not then
+           error("content-security-policy.json has no script-src for the scripts its page runs")
+         else . end
+       | map(if $hash != "" and named("script-src") then . + ["'"'"'sha256-" + $hash + "'"'"'"] else . end)
+       | reduce $settings[] as $setting (.; with_source($setting.name; $setting.source))
+       | . + (if $report == "" then [] else [["report-uri", $report], ["report-to", "csp-endpoint"]] end)
+       | map(join(" ")) | join("; ")) as $policy
+    | if $policy | test("[`\r\n{},]") then
+        error("the policy content-security-policy.json makes holds a backtick, a line break, a brace or a comma")
+      else . end
+    | "header \(.header) `\($policy)`"
+      + (if $report == "" then "" else "\nheader Reporting-Endpoints `csp-endpoint=\"\($report)\"`" end)
+  ' < "$policy_file" > /etc/caddy/content-security-policy.caddy
+  export CADDY_CONTENT_SECURITY_POLICY="import /etc/caddy/content-security-policy.caddy"
+fi
 exec "$@"
 ENTRY
 RUN chmod +x /usr/local/bin/inject-app-env
@@ -173,6 +237,7 @@ COPY <<CADDY /etc/caddy/Caddyfile
 :${PORT} {
 	encode zstd gzip
 	root * /srv
+	{\$CADDY_CONTENT_SECURITY_POLICY}
 
 	# A miss here is a miss: falling back serves HTML where a script was asked
 	# for, and the browser executes it.
