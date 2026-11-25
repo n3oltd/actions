@@ -1,16 +1,11 @@
-# Builds the n3o-elements library for a subscription and publishes it as a
+# Builds the n3o-elements library and publishes it as a
 # versioned npm package to GitHub Packages, optionally creating a Sentry release
-# with sourcemaps. Call this to publish the Platforms JS package for a tenant.
+# with sourcemaps. Call this to publish the shared Platforms JS package.
 name: 'Build & Push Platforms JS'
 
 on:
   workflow_call:
     inputs:
-      subscription-code:
-        description: platforms subscription code identifying the client/tenant
-        type: string
-        required: true
-
       sentry-project:
         description: Sentry project slug for the release and sourcemaps (empty to skip Sentry)
         type: string
@@ -22,6 +17,12 @@ on:
         type: string
         required: false
         default: ''
+
+      dist-tag:
+        description: The npm dist-tag the package is published under; deploys install latest, so a test build takes another
+        type: string
+        required: false
+        default: 'latest'
 
 env:
   GH_PAT: ${{ secrets.GH_PAT }}
@@ -43,29 +44,12 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           cache: 'npm'
           
-      - name: Fetch config files
-        run: |
-          mkdir -p packages/n3o-elements/src
-
-          wget -O themes.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/build/themes.json
-          wget -O localization.json https://cdn.n3o.cloud/connect-${{ inputs.subscription-code }}/subscription/localization.json
-
-          jq -n \
-            --arg themes "$(cat themes.json)" \
-            '{themes: ($themes | fromjson)}' \
-            > packages/n3o-elements/src/configuration.json
-
-          jq -n \
-            --arg localization "$(cat localization.json)" \
-            '{localization: ($localization | fromjson)}' \
-            > packages/formatter/src/configuration.json
-
       - id: version
         name: compute version
         run: |
           version="$(date +"%Y.%m.%d")-${{ github.run_number }}"
           echo "version=$version" >> $GITHUB_OUTPUT
-          release="platforms-js@$version-${{ inputs.subscription-code }}"
+          release="platforms-js@$version"
           echo "release=$release" >> $GITHUB_OUTPUT
 
       - name: npm install and build
@@ -74,7 +58,6 @@ jobs:
           npm run build:n3o-elements
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
-          VITE_SUBSCRIPTION_CODE: ${{ inputs.subscription-code }}
           VITE_SENTRY_RELEASE: ${{ steps.version.outputs.release }}
           npm_config_fetch_retry_mintimeout: 30000
           npm_config_fetch_retries: 5
@@ -89,12 +72,12 @@ jobs:
       - name: npm publish
         working-directory: packages/n3o-elements
         run: |
-          name="@n3oltd/platforms-js-${{ inputs.subscription-code }}"
+          name="@n3oltd/platforms-js-shared"
           jq "del(.devDependencies, .scripts, .dependencies) | .name = \"$name\"" package.json > tmp.json && mv tmp.json package.json
           npm version ${{ steps.version.outputs.version }};
           echo "//npm.pkg.github.com/:_authToken=${{ env.GH_PAT }}" >> .npmrc;
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc;
-          npm publish --tag latest;
+          npm publish --tag "${{ inputs.dist-tag }}";
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_PAT }}
 

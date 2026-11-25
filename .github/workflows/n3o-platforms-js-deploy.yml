@@ -1,5 +1,5 @@
 # Deploys the platforms-js package for a client to its Azure blob storage container.
-# Installs the published @n3oltd/platforms-js-<subscription> package, swaps in the
+# Installs the published @n3oltd/platforms-js-shared package, swaps in the
 # environment config, and replaces the platforms-js/ blobs in the connect-<subscription> container.
 name: 'Deploy Platforms JS'
 
@@ -50,11 +50,11 @@ jobs:
           echo '{}' > package.json
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-          npm install "@n3oltd/platforms-js-${{ inputs.subscription-code }}@${{ steps.latest-json-metadata.outputs.deploymentVersion }}"
+          npm install "@n3oltd/platforms-js-shared@${{ steps.latest-json-metadata.outputs.packageVersion }}"
           
       - name: Copy config.json
         run: |
-          cp work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config/config.${{ inputs.environment-id }}.json work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms/config.json
+          cp work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms/config/config.${{ inputs.environment-id }}.json work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms/config.json
 
       - name: Azure Login
         uses: azure/login@v3
@@ -77,7 +77,7 @@ jobs:
       - name: Replace platforms-js/ in connect-{subscription} container
         run: |
           az storage blob delete-batch --connection-string "${{ env.storage_connection_string }}" --source "connect-${{ env.subscription_code }}" --pattern "platforms-js/*"
-          az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="work-dir/node_modules/@n3oltd/platforms-js-${{ inputs.subscription-code }}/dist/platforms" --destination-path="platforms-js" --overwrite="true"
+          az storage blob upload-batch --connection-string="${{ env.storage_connection_string }}" --destination="connect-${{ env.subscription_code }}" --source="work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms" --destination-path="platforms-js" --overwrite="true"
         env:
           subscription_code: "${{ inputs.subscription-code }}"
           
