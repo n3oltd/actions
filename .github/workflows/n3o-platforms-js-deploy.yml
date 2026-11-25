@@ -12,7 +12,7 @@ on:
         required: true
 
       dist-tag:
-        description: the npm dist-tag of the shared package to deploy
+        description: the version or npm dist-tag of the shared package to deploy
         type: string
         required: false
         default: latest
@@ -23,21 +23,26 @@ jobs:
 
     runs-on: ${{ github.event.repository.private && 'n3o-github-runner' || 'ubuntu-latest' }}
 
+    concurrency:
+      group: platforms-origin-${{ inputs.environment-id }}
+      cancel-in-progress: false
+
     env:
+      ENVIRONMENT_ID: ${{ inputs.environment-id }}
+      PACKAGE_REF: ${{ inputs.dist-tag }}
       HASHED_CACHE_CONTROL: public, max-age=31536000, immutable
       MOVING_CACHE_CONTROL: public, max-age=300, stale-while-revalidate=86400
       POINTER: v1
 
     steps:
-      - id: account
-        name: Resolve the storage account
+      - name: Resolve the storage account
         run: |
-          case "${{ inputs.environment-id }}" in
+          case "$ENVIRONMENT_ID" in
             qa|prod)
-              echo "name=n3oplatforms${{ inputs.environment-id }}" >> "$GITHUB_OUTPUT"
+              echo "ACCOUNT=n3oplatforms$ENVIRONMENT_ID" >> "$GITHUB_ENV"
               ;;
             *)
-              echo "Invalid environment: ${{ inputs.environment-id }}"
+              echo "Invalid environment: $ENVIRONMENT_ID"
               exit 1
               ;;
           esac
@@ -49,21 +54,33 @@ jobs:
           echo '{}' > package.json
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" >> .npmrc
           echo "@n3oltd:registry=https://npm.pkg.github.com" >> .npmrc
-          npm install "@n3oltd/platforms-js-shared@${{ inputs.dist-tag }}"
+          npm install "@n3oltd/platforms-js-shared@$PACKAGE_REF"
 
-      - id: package
-        name: Read the installed build
+      - name: Read the installed build
         working-directory: work-dir
         run: |
           version=$(jq -r '.version' node_modules/@n3oltd/platforms-js-shared/package.json)
           commit=$(npm view "@n3oltd/platforms-js-shared@$version" gitHead)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "COMMIT=$commit" >> "$GITHUB_ENV"
 
       - name: Stage the files
         run: |
+          shopt -s dotglob nullglob
           dist=work-dir/node_modules/@n3oltd/platforms-js-shared/dist/platforms
           mkdir -p stage/hashed stage/moving
+
+          imported_elsewhere() {
+            local file
+
+            for file in "$dist"/*.js; do
+              if [ "$(basename "$file")" != "$1" ] && grep -q -F "\"./$1\"" "$file"; then
+                return 0
+              fi
+            done
+
+            return 1
+          }
 
           for entry in "$dist"/*; do
             name=$(basename "$entry")
@@ -76,13 +93,18 @@ jobs:
             elif [ "$name" = config.json ]; then
               continue
             elif [[ "$name" =~ ^[A-Za-z0-9_-]{8}\.js(\.map)?$ ]]; then
+              if ! imported_elsewhere "${name%.map}"; then
+                echo "$name is named like a hashed chunk, but no file in the build imports ${name%.map}"
+                exit 1
+              fi
+
               cp "$entry" stage/hashed/
             else
               cp "$entry" stage/moving/
             fi
           done
 
-          cp "$dist/config/config.${{ inputs.environment-id }}.json" stage/moving/config.json
+          cp "$dist/config/config.$ENVIRONMENT_ID.json" stage/moving/config.json
           test -f stage/moving/platforms.js
           hashed=(stage/hashed/*)
           moving=(stage/moving/*)
@@ -97,7 +119,7 @@ jobs:
         run: |
           az storage blob upload-batch \
             --auth-mode key \
-            --account-name "${{ steps.account.outputs.name }}" \
+            --account-name "$ACCOUNT" \
             --destination platforms \
             --destination-path "$POINTER" \
             --source stage/hashed \
@@ -106,10 +128,12 @@ jobs:
 
       - name: Write the files that move, platforms.js last
         run: |
+          shopt -s dotglob nullglob
+
           upload() {
             az storage blob upload \
               --auth-mode key \
-              --account-name "${{ steps.account.outputs.name }}" \
+              --account-name "$ACCOUNT" \
               --container-name platforms \
               --name "$POINTER/$(basename "$1")" \
               --file "$1" \
@@ -128,14 +152,14 @@ jobs:
       - name: Write the release info
         run: |
           jq -n \
-            --arg buildVersion "${{ steps.package.outputs.version }}" \
-            --arg commit "${{ steps.package.outputs.commit }}" \
+            --arg buildVersion "$VERSION" \
+            --arg commit "$COMMIT" \
             '{releaseVersion: null, buildVersion: $buildVersion, commit: (if $commit == "" then null else $commit end)}' \
             > releaseinfo.json
 
           az storage blob upload \
             --auth-mode key \
-            --account-name "${{ steps.account.outputs.name }}" \
+            --account-name "$ACCOUNT" \
             --container-name platforms \
             --name "$POINTER/releaseinfo/v1.0" \
             --file releaseinfo.json \
