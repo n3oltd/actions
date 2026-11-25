@@ -181,7 +181,7 @@ if [ -f "$policy_file" ]; then
     | if $dsn == "" then ""
       elif ($dsn | test("[`\"\r\n]")) then error("\($name) holds a backtick, a quote or a line break")
       else
-        ($dsn | capture("^(?<scheme>https?)://(?<key>\\w+)(:[^@]*)?@(?<host>[\\w.-]+(:\\d+)?)/(?<prefix>([\\w.-]+/)*)(?<project>\\d+)$")
+        ($dsn | capture("^(?<scheme>https?)://(?<key>[A-Za-z0-9_]+)(:[^@]*)?@(?<host>[A-Za-z0-9_.-]+(:[0-9]+)?)/(?<prefix>([A-Za-z0-9_.-]+/)*)(?<project>[0-9]+)$")
                // error("\($name) is not a Sentry DSN"))
         | "\(.scheme)://\(.host)/\(.prefix)api/\(.project)/security/?sentry_key=\(.key)"
           + ((env[env.APP_ENV_PREFIX + "ENVIRONMENT"] // "") as $environment
