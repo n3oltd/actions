@@ -49,6 +49,11 @@ jobs:
 
       - name: Install platforms package
         run: |
+          if [[ ! "$PACKAGE_REF" =~ ^([0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}-[0-9]+|[a-z][a-z0-9-]*)$ ]]; then
+            echo "Not a version or dist-tag of the shared package: $PACKAGE_REF"
+            exit 1
+          fi
+
           mkdir work-dir
           cd work-dir
           echo '{}' > package.json
